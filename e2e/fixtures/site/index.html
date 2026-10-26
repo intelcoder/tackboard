@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fixture site</title>
+<style>
+  body { font-family: sans-serif; margin: 8px; }
+  #l1 { padding: 24px; background: #eef3ff; width: 600px; }
+  #l2 { padding: 20px; background: #dde8ff; }
+  #l3 { padding: 16px; background: #c9dbff; }
+  #l4 { padding: 12px; background: #b4cdff; }
+  #cta { margin-top: 24px; padding: 10px 18px; font-size: 16px; }
+  #spacer { height: 2000px; }
+</style>
+</head>
+<body>
+<div id="l1">Level one
+  <div id="l2">Level two
+    <div id="l3">Level three
+      <div id="l4">Level four text</div>
+    </div>
+  </div>
+</div>
+<button id="cta">Start free trial</button>
+<div id="spacer"></div>
+<h2 id="far">Far down the page</h2>
+<script>window.__clicks = 0; document.getElementById("cta").addEventListener("click", function () { window.__clicks++; });</script>
+<script src="{{BUNDLE_URL}}"></script>
+</body>
+</html>
