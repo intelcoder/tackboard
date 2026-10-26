@@ -20,7 +20,8 @@ test("persistence", async ({ harness: h }) => {
   expect((await h.agent(["next"])).stdout).toContain(first);
   writeFileSync(join(h.repo, "edited.txt"), "made by the agent\n");
   await h.agent(["reply", first, "I made a file"]);
-  await h.agent(["resolve", first]);
+  await thread(page, first).locator(`[data-key="top-${first}"]`).first().click();
+  await thread(page, first).locator(`[data-key="resolve-${first}"]`).click();
   await page.locator('[data-key="tab-resolved"]').click();
   await expect(chip(page, first)).toHaveText("resolved", { timeout: 8000 });
   await thread(page, first).locator(`[data-key="top-${first}"]`).first().click();

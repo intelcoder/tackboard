@@ -34,7 +34,6 @@ const USAGE = [
   "  start",
   "  next [--as name]",
   "  reply <id> <text> [--ask] [--as name]",
-  "  resolve <id> [--as name]",
   '  comment --selector <css> <text> [--mention me] [--as name]',
   "  wait [--timeout s] [--as name]",
   "  ack [--as name]",
@@ -184,13 +183,6 @@ async function run1(cmd: string, c: Client, cwd: string, a: Args): Promise<numbe
       console.log(`replied to ${t.id}; status: ${statusLabel(t.status)}`);
       return 0;
     }
-    case "resolve": {
-      const [id] = pos;
-      if (!id) throw new CliError("usage: resolve <id>");
-      const t = await c.post<ThreadDto>(paths.resolve(id), { by: "agent", agent: c.agent });
-      console.log(`${t.id}: ${statusLabel(t.status)}`);
-      return 0;
-    }
     case "comment": {
       const selector = a.values.selector;
       if (!selector || !pos.length) throw new CliError("usage: comment --selector <css> <text> [--mention me]");
@@ -237,7 +229,8 @@ export async function run(argv: string[], cwd: string): Promise<number> {
     if (!cmd) throw new CliError(USAGE);
     if (cmd === "init") return await init(cwd, a);
     if (cmd === "start") return await start(cwd);
-    if (!["next", "wait", "reply", "resolve", "comment", "ack", "status", "history"].includes(cmd)) throw new CliError(USAGE);
+    if (cmd === "resolve") throw new CliError(`only the user closes a thread; ask with: ${brand.cli} reply <id> "<text>" --ask`);
+    if (!["next", "wait", "reply", "comment", "ack", "status", "history"].includes(cmd)) throw new CliError(USAGE);
     const c = connect(cwd, a.values.as);
     const n = await c.get<NoticesResponse>(paths.notices, { agent: c.agent });
     for (const notice of n.notices) console.log(`${formatNotice(notice)}\n`);

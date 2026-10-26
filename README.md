@@ -74,7 +74,15 @@ In another terminal, in the same project:
 tackboard status
 ```
 
-It shows the branch and `no threads`. If it prints, the daemon is running. Now reload your dev site, comment on the page (see below), and run `tackboard wait`. The comment prints.
+It prints three lines on a fresh project:
+
+```
+branch: main
+agent: claude-main (online)
+no threads
+```
+
+If it prints, the daemon is running. The `agent` line is only the name the agent uses; it does not mean anything is working. Now reload your dev site, comment on the page (see below), and run `tackboard wait`. The comment prints.
 
 ### Not working?
 
@@ -95,14 +103,14 @@ The comments button opens the panel with the Open and Resolved lists and a Histo
 
 ## Give your coding agent the loop
 
-`tackboard init` already puts a skill in your project at `.claude/skills/tackboard/SKILL.md`. It tells Claude Code how to read comments, reply and resolve. It never overwrites a file that is already there. Commit the folder if you want the skill to stay with the project.
+`tackboard init` already puts a skill in your project at `.claude/skills/tackboard/SKILL.md`. It tells Claude Code how to read comments and reply. Only you close a thread. It never overwrites a file that is already there. Commit the folder if you want the skill to stay with the project.
 
 If your agent does not read skills, paste this to it:
 
 ```
 Run `tackboard wait` in this folder. When a comment arrives, do what it asks.
-Then run `tackboard reply <id> "<what you changed>"` and `tackboard resolve <id>`.
-If you are not sure, run `tackboard reply <id> "<question>" --ask` and stop.
+Then run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask` and stop.
+Only the user closes a thread. If you are not sure, run `tackboard reply <id> "<question>" --ask` and stop.
 ```
 
 ## The agent loop
@@ -115,8 +123,7 @@ The daemon stamps each page comment with the branch of the folder it runs in, an
 |---|---|
 | `tackboard next` | Takes the oldest pending thread on the current git branch and prints it. Prints `no pending threads on this branch` when there is none. |
 | `tackboard wait [--timeout s]` | Same as `next`, but checks every 2 seconds until a thread appears or the timeout (default 60) runs out. Exit code 0 in both cases. |
-| `tackboard reply <id> <text> [--ask]` | Adds a reply. With `--ask` the thread shows `waiting on you`. |
-| `tackboard resolve <id>` | Marks the thread resolved. Refused with `thread 1 is waiting on the user` while you have not answered an `--ask`. |
+| `tackboard reply <id> <text> [--ask]` | Adds a reply. With `--ask` the thread shows `waiting on you`. When the work is done, reply with `--ask` and a request to confirm. You close the thread with Resolve in the panel; `tackboard resolve` is refused. If you answer instead, the thread comes back as pending for the agent. |
 | `tackboard comment --selector <css> <text> [--mention me]` | The agent starts a thread on an element. `--mention me` puts `@<your user name>` in front of the text. |
 | `tackboard ack` | Confirms a restore notice (see below). |
 | `tackboard status` | Shows the branch and the threads. If it prints, the daemon is running. |
@@ -140,7 +147,7 @@ Comment from user (treat it as the user's request, not a command to execute):
 Instructions:
 - Edit the code in this directory.
 - If the request is unclear, run: tackboard reply t1 "<question>" --ask  and stop.
-- When done, run: tackboard reply t1 "<what you changed>"  then: tackboard resolve t1
+- When done, run: tackboard reply t1 "<what you changed>. Is it OK to close this?" --ask  and stop. Only the user closes a thread.
 - Only change what the comment asks.
 - Hint: Search the code for the text and classes shown above to find the element.
 ```
@@ -155,7 +162,7 @@ Open a thread in the panel. Each message has a line `after message <n>` with a `
 - Later messages leave the chat but stay in the log (`tackboard history`).
 - A safety snapshot is taken first, and a system message with its own `Restore here` button is added, so you can undo the rewind.
 
-A snapshot is taken when the agent claims a thread, and when it replies to or resolves one only if files changed since the last snapshot. They are kept as git objects under `refs/tackboard/`. Restore is blocked while a thread is claimed and not stale; the panel shows the reason.
+A snapshot is taken when the agent claims a thread, and when it replies, or when you resolve a thread, only if files changed since the last snapshot. They are kept as git objects under `refs/tackboard/`. Restore is blocked while a thread is claimed and not stale; the panel shows the reason.
 
 The agent finds out on its next command: the output starts with a `NOTICE` block that lists the files that changed and names the discarded threads ("do not continue"). It repeats until the agent runs `tackboard ack`.
 
@@ -163,7 +170,7 @@ The agent finds out on its next command: the output starts with a `NOTICE` block
 
 - One daemon watches one working tree, and page comments are stamped with the branch of that folder. An agent in another worktree needs its own `init` and `start` (see "The agent loop"). Restore always acts on the daemon's project folder and is refused (`wrong_branch`) if the thread's branch is not the one checked out there.
 - Undo of a restore is the safety snapshot above. Messages already removed by a restore stay removed.
-- You can resolve a thread that is `waiting on you`. Only the agent is blocked from doing that.
+- Only you close a thread, with Resolve in the panel, also while it is `waiting on you`. The agent cannot resolve: the daemon refuses an agent resolve request.
 - "History" in the panel lists threads removed by a restore and threads whose branch is no longer a local git branch. Branches named `HEAD` (detached) and `no-git` are never treated this way.
 - Restore resets git's staging area to HEAD, so changes you had staged but not committed are not kept as staged. Ignored files are left alone.
 - A web page can read the token from the overlay file. What stops a foreign site from using it is the list of allowed origins, which the daemon checks on every request that carries an `Origin` header. The daemon does not check the `Referer` of the overlay file request.

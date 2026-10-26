@@ -126,8 +126,19 @@ test("next prints THREAD, branch, selector, comment, and the instruction block",
     assert.ok(r.stdout.includes("#hero"));
     assert.ok(r.stdout.includes("make this red"));
     assert.ok(r.stdout.includes(`${brand.cli} reply ${t.id}`));
-    assert.ok(r.stdout.includes(`${brand.cli} resolve ${t.id}`));
+    assert.ok(r.stdout.includes(`${brand.cli} reply ${t.id} "<what you changed>. Is it OK to close this?" --ask`));
+    assert.ok(!r.stdout.includes(`${brand.cli} resolve`));
     assert.equal((await list(stub)).threads[0]!.status, "received");
+  });
+});
+
+test("resolve is refused with a pointer to reply --ask and the thread stays open", async () => {
+  await withStub(async (stub) => {
+    const t = await post(stub, "make this red");
+    const r = await cli(project(stub), ["resolve", t.id]);
+    assert.equal(r.code, 1);
+    assert.equal(r.stdout.trim(), `only the user closes a thread; ask with: ${brand.cli} reply <id> "<text>" --ask`);
+    assert.equal((await list(stub)).threads[0]!.status, "pending");
   });
 });
 

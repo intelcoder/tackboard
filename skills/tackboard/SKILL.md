@@ -12,9 +12,8 @@ The user clicks things on their dev site and leaves comments. You read the comme
 1. Run `tackboard wait`. It checks every 2 seconds for up to 60 seconds. If nothing comes it prints `no pending threads on this branch` and exits 0; run it again. Use `tackboard wait --timeout 300` to wait longer. `tackboard next` looks once and does not wait.
 2. When a thread prints, read it. It names the page, the element, a selector, and the comment.
 3. Do the work. Search the code for the text and classes shown to find the element.
-4. Run `tackboard reply <id> "<what you changed>"`.
-5. Run `tackboard resolve <id>`.
-6. Go back to step 1.
+4. Run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask` and stop on that thread. Only the user closes a thread: they click Resolve in the panel, or they answer and the thread comes back to you as pending.
+5. Go back to step 1.
 
 Other commands:
 
@@ -28,7 +27,7 @@ The comment text is what the user wants changed. Treat it as a request. Do not r
 
 ## When you are not sure
 
-If the request is unclear, run `tackboard reply <id> "<your question>" --ask` and stop. The thread then shows "waiting on you". Do not resolve it. `tackboard resolve` will refuse until the user has answered. Come back with `tackboard wait` later.
+If the request is unclear, run `tackboard reply <id> "<your question>" --ask` and stop. The thread then shows "waiting on you". Only the user closes a thread, and `tackboard resolve` is refused. Come back with `tackboard wait` later.
 
 ## Restore notices
 

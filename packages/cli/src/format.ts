@@ -40,7 +40,7 @@ export function formatThread(t: ThreadDto): string {
     "Instructions:",
     "- Edit the code in this directory.",
     `- If the request is unclear, run: ${brand.cli} reply ${t.id} "<question>" --ask  and stop.`,
-    `- When done, run: ${brand.cli} reply ${t.id} "<what you changed>"  then: ${brand.cli} resolve ${t.id}`,
+    `- When done, run: ${brand.cli} reply ${t.id} "<what you changed>. Is it OK to close this?" --ask  and stop. Only the user closes a thread.`,
     "- Only change what the comment asks.",
     `- Hint: ${HINTS[el.confidence]}`,
   );

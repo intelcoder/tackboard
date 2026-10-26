@@ -30,13 +30,13 @@ test("restore", async ({ harness: h }) => {
   await confirm.locator("[data-keep]").click();
   await expect(confirm).toHaveCount(0);
 
-  // the agent claims it again, edits files, replies and resolves
+  // the agent claims it again, edits files, replies, and you resolve
   expect((await h.agent(["next"])).stdout).toContain(id);
   writeFileSync(file("keep.txt"), "edited by the agent\n");
   writeFileSync(file("fresh.txt"), "new file\n");
   rmSync(file("gone.txt"));
   expect((await h.agent(["reply", id, "changed three files"])).code).toBe(0);
-  expect((await h.agent(["resolve", id])).code).toBe(0);
+  await row.locator(`[data-key="resolve-${id}"]`).click();
 
   // restore to the first message
   await page.locator('[data-key="tab-resolved"]').click();

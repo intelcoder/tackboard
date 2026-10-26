@@ -47,7 +47,7 @@ test("post, list, claim-next, reply, resolve round trip", () =>
     assert.equal(claimed.thread.id, t.id);
     const replied = await (await d.call("POST", paths.messages(t.id), { author: "claude", text: "done" })).json();
     assert.equal(replied.messages.length, 2);
-    const resolved = await (await d.call("POST", paths.resolve(t.id), { by: "agent", agent: "claude" })).json();
+    const resolved = await (await d.call("POST", paths.resolve(t.id), { by: "user" })).json();
     assert.equal(resolved.status, "resolved");
     const reopened = await (await d.call("POST", paths.reopen(t.id))).json();
     assert.equal(reopened.status, "pending");
@@ -60,6 +60,22 @@ test("post, list, claim-next, reply, resolve round trip", () =>
     const agent_thread = await d.call("POST", paths.agentThread, { agent: "claude", selector: "h1", text: "look" });
     assert.equal(agent_thread.status, 201);
     assert.equal((await agent_thread.json()).status, "waiting");
+  }));
+
+test("a resolve request by the agent is refused, with or without agent, and the thread stays as it was", () =>
+  with_daemon(async (d) => {
+    const t = (await (await d.call("POST", paths.threads, post_body("fix this"))).json()) as ThreadDto;
+    await d.call("POST", paths.claimNext, { agent: "claude" });
+    await d.call("POST", paths.messages(t.id), { author: "claude", text: "done" });
+    const before = await (await d.call("GET", paths.threads)).json();
+    for (const body of [{ by: "agent", agent: "claude" }, { by: "agent" }]) {
+      const r = await d.call("POST", paths.resolve(t.id), body);
+      assert.equal(r.status, 409);
+      assert.equal((await r.json()).error, "waiting_on_user");
+    }
+    assert.deepEqual(await (await d.call("GET", paths.threads)).json(), before);
+    const events = ((await (await d.call("GET", paths.history)).json()) as { events: HistoryEvent[] }).events;
+    assert.equal(events.some((e) => e.type === "resolved"), false);
   }));
 
 test("100 KB comment accepted, 150 KB rejected with 413 and daemon still answers /health", () =>

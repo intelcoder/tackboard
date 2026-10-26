@@ -82,14 +82,18 @@ export function runApiContract(label: string, start: () => Promise<Handle>): voi
       assert.equal(replied.status, "pending");
     }));
 
-  test(`contract (${label}): resolve while waiting by agent is 409 waiting_on_user`, () =>
+  test(`contract (${label}): resolve by agent is 409 waiting_on_user and the thread stays open`, () =>
     withDaemon(async (api) => {
       const t = (await (await post(api)).json()) as ThreadDto;
       await api.call("POST", paths.claimNext, { agent: "claude" });
-      await api.call("POST", paths.messages(t.id), { author: "claude", text: "?", ask: true });
-      const r = await api.call("POST", paths.resolve(t.id), { by: "agent", agent: "claude" });
-      assert.equal(r.status, 409);
-      assert.equal((await r.json()).error, "waiting_on_user");
+      await api.call("POST", paths.messages(t.id), { author: "claude", text: "done" });
+      for (const body of [{ by: "agent", agent: "claude" }, { by: "agent" }]) {
+        const r = await api.call("POST", paths.resolve(t.id), body);
+        assert.equal(r.status, 409);
+        assert.equal((await r.json()).error, "waiting_on_user");
+      }
+      const list = (await (await api.call("GET", paths.threads)).json()) as { threads: ThreadDto[] };
+      assert.equal(list.threads[0]!.status, "received");
     }));
 
   test(`contract (${label}): user may resolve a waiting thread`, () =>

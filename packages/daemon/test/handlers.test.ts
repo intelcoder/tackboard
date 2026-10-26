@@ -128,13 +128,13 @@ test("list filters by branch", () => {
   assert.equal(claimed?.messages[0]!.text, "on main");
 });
 
-test("resolve while waiting by agent rejects with waiting_on_user", () => {
+test("resolve by agent rejects with waiting_on_user", () => {
   const s = setup();
   const posted = s.post.handle(postArgs());
   s.claim.handle({ agent: "claude" });
-  s.reply.handle({ id: posted.id, author: "claude", text: "?", ask: true });
+  s.reply.handle({ id: posted.id, author: "claude", text: "done" });
   assert.throws(
-    () => s.resolve.handle({ id: posted.id, by: "agent", agent: "claude" }),
+    () => s.resolve.handle({ id: posted.id, by: "agent" }),
     (e: unknown) => e instanceof DomainError && e.code === "waiting_on_user",
   );
   assert.equal(s.resolve.handle({ id: posted.id, by: "user" }).status, "resolved");
@@ -274,7 +274,7 @@ test("state open and resolved filter threads and leave history alone", () => {
   assert.deepEqual(s.list.handle({}).threads.map((t) => t.id), [a.id, b.id]);
 });
 
-test("claim, reply, resolve and agent comment each register the agent as present", () => {
+test("claim, reply and agent comment each register the agent as present", () => {
   const s = setup();
   const name = () => s.list.handle({}).agent;
   assert.deepEqual(name(), { name: null, online: false });
@@ -285,9 +285,6 @@ test("claim, reply, resolve and agent comment each register the agent as present
   s.clock.t += 1000;
   s.reply.handle({ id: t1.id, author: "replier", text: "hi" });
   assert.deepEqual(name(), { name: "replier", online: true });
-  s.clock.t += 1000;
-  s.resolve.handle({ id: t1.id, by: "agent", agent: "resolver" });
-  assert.deepEqual(name(), { name: "resolver", online: true });
   s.clock.t += 1000;
   s.postAgent.handle({ agent: "poster", selector: "#a", text: "q" });
   assert.deepEqual(name(), { name: "poster", online: true });

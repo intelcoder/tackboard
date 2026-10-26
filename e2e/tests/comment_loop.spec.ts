@@ -43,12 +43,23 @@ test("comment loop", async ({ harness: h }) => {
   const again = await h.agent(["next"]);
   expect(idOf(again.stdout)).toBe(id);
   expect(again.stdout).toContain("the logo blue");
+  await h.agent(["reply", id, "made it the logo blue. Is it OK to close this?", "--ask"]);
+  await expect(chip(page, id)).toHaveText("waiting on you", { timeout: 3000 });
 
   await thread(page, id).locator(`[data-key="resolve-${id}"]`).click();
   await expect(thread(page, id)).toHaveCount(0);
   await page.locator('[data-key="tab-resolved"]').click();
   await expect(chip(page, id)).toHaveText("resolved");
   await shot(page, "comment_loop");
+});
+
+test("the agent cannot resolve a thread", async ({ harness: h }) => {
+  const id = await postComment(h.page, "#cta", "Make this blue");
+  await h.agent(["next"]);
+  const r = await h.agent(["resolve", id]);
+  expect(r.code).toBe(1);
+  expect(r.stdout).toContain("only the user closes a thread");
+  await expect(chip(h.page, id)).toHaveText("received");
 });
 
 test("agent-started thread", async ({ harness: h }) => {

@@ -1,7 +1,6 @@
 import type { ThreadDto } from "@app/shared";
 import type { CheckpointStore } from "../../domain/checkpoint_store.ts";
 import type { Clock, ThreadRepository } from "../../domain/repositories.ts";
-import { AgentName } from "../../domain/value_objects.ts";
 import { loadThread } from "../load_thread.ts";
 import { checkpointIfChanged } from "../save_checkpoint.ts";
 
@@ -15,10 +14,9 @@ export class ResolveThreadHandler {
     this.checkpoints = checkpoints;
   }
 
-  handle(cmd: { id: string; by: "user" | "agent"; agent?: string }): ThreadDto {
+  handle(cmd: { id: string; by: "user" | "agent" }): ThreadDto {
     const now = this.clock.now();
     const thread = loadThread(this.repo, cmd.id);
-    if (cmd.by === "agent" && cmd.agent !== undefined) this.repo.touchAgent(AgentName.of(cmd.agent).value, now);
     // Resolve adds no message, so the checkpoint goes on the last one, and only if that message has none yet.
     const last = thread.messages[thread.messages.length - 1]!;
     const checkpoint = last.checkpointId === undefined

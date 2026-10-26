@@ -26,9 +26,13 @@ test("the skill has a name and a description in its frontmatter", () => {
   assert.match(front[1]!, /^description: \S.*$/m);
 });
 
+test("the skill says only the user closes a thread", () => {
+  assert.match(readFileSync(SKILL, "utf8"), /only the user closes/i);
+});
+
 test("every command in the usage text appears in the skill", () => {
   const commands = usage_commands();
-  assert.ok(commands.length >= 10, commands.join(","));
+  assert.ok(commands.length >= 9, commands.join(","));
   const text = readFileSync(SKILL, "utf8");
   for (const name of commands) {
     assert.ok(text.includes(`${brand.cli} ${name}`), `skill is missing: ${name}`);

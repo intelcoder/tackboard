@@ -82,7 +82,7 @@ export async function discardedThread(h: Harness): Promise<string> {
   await h.agent(["next"]);
   await expect(chip(page, id)).toHaveText("received", { timeout: 4000 });
   await h.agent(["reply", id, "changed the label"]);
-  await h.agent(["resolve", id]);
+  await thread(page, id).locator(`[data-key="resolve-${id}"]`).click();
   await page.locator('[data-key="tab-resolved"]').click();
   await expect(chip(page, id)).toHaveText("resolved", { timeout: 6000 });
   const row = thread(page, id);

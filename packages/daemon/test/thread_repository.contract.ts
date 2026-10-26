@@ -173,7 +173,7 @@ export function runContract(label: string, makeRepo: () => RepoHarness): void {
     h.repo.save(t);
     t.claim(AgentName.of("claude"), 2_000);
     h.repo.save(t);
-    t.resolve("agent", 3_000);
+    t.resolve("user", 3_000);
     h.repo.save(t);
     h.repo.save(t);
     const other = open(h.repo, "main", "other");

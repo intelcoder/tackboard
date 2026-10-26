@@ -183,7 +183,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
   app.post("/threads/:id/resolve", (c) => {
     const b = c.get("body");
     if (b.by !== "user" && b.by !== "agent") throw new DomainError("invalid", "by must be user or agent");
-    return c.json(resolve.handle({ id: c.req.param("id"), by: b.by, agent: typeof b.agent === "string" ? b.agent : undefined }));
+    return c.json(resolve.handle({ id: c.req.param("id"), by: b.by }));
   });
 
   app.post("/threads/:id/reopen", (c) => c.json(reopen.handle({ id: c.req.param("id") })));

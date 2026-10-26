@@ -34,7 +34,7 @@ async function longThread(h: Harness, finish: boolean): Promise<string> {
     await h.agent(["reply", id, `reply number ${i}: this answer is long enough to take a few lines inside the narrow panel`]);
   }
   if (finish) {
-    await h.agent(["resolve", id]);
+    await thread(h.page, id).locator(`[data-key="resolve-${id}"]`).click();
     await h.page.locator('[data-key="tab-resolved"]').click();
     await expect(chip(h.page, id)).toHaveText("resolved", { timeout: 6000 });
     const row = thread(h.page, id);

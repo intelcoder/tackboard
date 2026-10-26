@@ -207,10 +207,7 @@ export async function startStubDaemon(opts: { token?: string } = {}): Promise<St
       } else if (action === "resolve") {
         if (t.status === "resolved") throw new HttpError("not_pending", "already resolved");
         if (body.by !== "user" && body.by !== "agent") throw new HttpError("invalid", "by must be user or agent");
-        if (body.by === "agent") {
-          if (t.status === "waiting") throw new HttpError("waiting_on_user", "waiting on the user's reply");
-          if (typeof body.agent === "string") touch(body.agent);
-        }
+        if (body.by === "agent") throw new HttpError("waiting_on_user", "only the user closes a thread; ask with reply --ask");
         t.status = "resolved";
         log(t.id, "resolved", { by: body.by });
       } else if (action === "reopen") {

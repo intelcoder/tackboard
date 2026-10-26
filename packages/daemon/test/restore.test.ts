@@ -108,7 +108,7 @@ function worked_thread(s: Setup, text: string, edit: (dir: string) => void): Thr
   edit(s.dir);
   s.clock.t += 1_000;
   s.reply.handle({ id: posted.id, author: "claude", text: "done" });
-  s.resolve.handle({ id: posted.id, by: "agent", agent: "claude" });
+  s.resolve.handle({ id: posted.id, by: "user" });
   return s.get.handle({ id: posted.id });
 }
 
@@ -175,7 +175,7 @@ test("resolve creates a checkpoint only when files changed since the last one an
   s.claim.handle({ agent: "claude" });
   s.reply.handle({ id: posted.id, author: "claude", text: "looking" });
   write(s.dir, "a.txt", "edited after reply\n");
-  s.resolve.handle({ id: posted.id, by: "agent", agent: "claude" });
+  s.resolve.handle({ id: posted.id, by: "user" });
   const list = messages(s, posted.id);
   assert.equal(list[1]!.checkpointId !== undefined, true, "the last message got the checkpoint");
   assert.equal(s.real_store.hasChangedSince(list[1]!.checkpointId!), false);
@@ -183,7 +183,7 @@ test("resolve creates a checkpoint only when files changed since the last one an
   const other = s.post.handle(post_args("second"));
   s.claim.handle({ agent: "claude" });
   s.reply.handle({ id: other.id, author: "claude", text: "looking" });
-  s.resolve.handle({ id: other.id, by: "agent", agent: "claude" });
+  s.resolve.handle({ id: other.id, by: "user" });
   assert.equal(messages(s, other.id)[1]!.checkpointId, undefined, "no change, no checkpoint");
 });
 
@@ -443,7 +443,7 @@ test("a checkpoint failure at reply or resolve saves nothing", () => {
 
   fail.hasChangedSince = "cannot read the folder";
   expect_code(() => s.reply.handle({ id: posted.id, author: "claude", text: "x" }), "internal", /checkpoint.*cannot read/);
-  expect_code(() => s.resolve.handle({ id: posted.id, by: "agent", agent: "claude" }), "internal", /checkpoint/);
+  expect_code(() => s.resolve.handle({ id: posted.id, by: "user" }), "internal", /checkpoint/);
   assert.deepEqual(s.get.handle({ id: posted.id }), before);
 
   delete fail.hasChangedSince;
@@ -465,7 +465,7 @@ test("a real snapshot failure (an unreadable file) becomes a domain error and sa
   try {
     expect_code(() => s.reply.handle({ id: posted.id, author: "claude", text: "done" }), "internal", /checkpoint/);
     assert.deepEqual(s.get.handle({ id: posted.id }), before);
-    expect_code(() => s.resolve.handle({ id: posted.id, by: "agent", agent: "claude" }), "internal", /checkpoint/);
+    expect_code(() => s.resolve.handle({ id: posted.id, by: "user" }), "internal", /checkpoint/);
     assert.deepEqual(s.get.handle({ id: posted.id }), before);
   } finally {
     chmodSync(join(s.dir, "secret.txt"), 0o644);
