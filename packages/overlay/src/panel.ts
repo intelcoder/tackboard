@@ -3,7 +3,7 @@ import { brand } from "@app/shared";
 import type { ElementRef, ThreadDto } from "@app/shared";
 import type { Api } from "./api.ts";
 import type { H } from "./dom.ts";
-import { findElement } from "./element_ref.ts";
+import { createFinder } from "./element_ref.ts";
 import { notificationState, permissionAsked, permissionBanner, rememberNotNow } from "./notifications.ts";
 import { createOutbox } from "./outbox.ts";
 import type { OutboxItem } from "./outbox.ts";
@@ -11,7 +11,7 @@ import { badgeCount, clampToViewport, errorText, isSubmitKey, restoreDisabledRea
 import type { Tab } from "./panel_logic.ts";
 import type { Store } from "./store.ts";
 import { toastText } from "./toast.ts";
-import { detachedList, emptyState, queuedItem, restoreConfirm, splitByElement, targetLabel, threadItem } from "./thread_view.ts";
+import { detachedList, emptyState, queuedItem, restoreConfirm, targetLabel, threadItem } from "./thread_view.ts";
 import type { QueuedView } from "./thread_view.ts";
 
 export type PanelOptions = {
@@ -54,6 +54,7 @@ function storageOf(win: Window): Storage | undefined {
 
 export function createPanel(o: PanelOptions): Panel {
   const { document: doc, window: win, layer, h, store, api } = o;
+  const finder = createFinder(doc, win, store);
   const storage = storageOf(win);
 
   // What only the panel cares about. Anything the pins or pill need lives in the store.
@@ -133,7 +134,7 @@ export function createPanel(o: PanelOptions): Panel {
     goTo(t);
     markRead(t);
     if (!scroll) return;
-    const el = findElement(t.element, doc);
+    const el = finder.find(t);
     if (!el) return;
     try {
       el.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
@@ -192,7 +193,7 @@ export function createPanel(o: PanelOptions): Panel {
 
   const queuedView = (item: OutboxItem<Job>, label: string | null): QueuedView => ({
     label,
-    text: item.job.text,
+    text: item.job.text.length > 300 ? `${item.job.text.slice(0, 299)}…` : item.job.text,
     status: item.state === "sending" ? "Sending…" : item.state === "retry" ? "Waiting to retry" : `Not sent: ${item.reason}`,
     failed: item.state === "failed",
     onRetry: () => outbox.retry(item),
@@ -298,7 +299,7 @@ export function createPanel(o: PanelOptions): Panel {
     return threadItem(h, t, {
       open,
       label: targetLabel(t.element),
-      missing: !history && !findElement(t.element, doc),
+      missing: !history && !finder.find(t),
       history,
       draft: replyDrafts.get(t.id) ?? "",
       onToggle: () => {
@@ -361,7 +362,8 @@ export function createPanel(o: PanelOptions): Panel {
           : emptyState(h, "Nothing resolved yet", "Resolved threads show up here."));
       return list;
     }
-    const { placed, detached } = splitByElement(shown, doc);
+    const placed = shown.filter((t) => finder.find(t));
+    const detached = shown.filter((t) => !finder.find(t));
     for (const t of placed) list.append(itemFor(t, false));
     if (detached.length) list.append(detachedList(h, detached, (t) => itemFor(t, false)));
     return list;
@@ -398,7 +400,7 @@ export function createPanel(o: PanelOptions): Panel {
   const draw = () => {
     if (panel.hasAttribute("hidden")) return;
     const s = store.get();
-    const detachedIds = s.threads.filter((t) => !findElement(t.element, doc)).map((t) => t.id);
+    const detachedIds = s.threads.filter((t) => !finder.find(t)).map((t) => t.id);
     const look = JSON.stringify([
       s.threads, s.history, s.branch, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
       tab, showHistory, historyOpenId, composer?.ref.selector ?? null, outbox.items(), confirming, notice,

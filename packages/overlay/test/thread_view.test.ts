@@ -6,7 +6,7 @@ import type { MessageDto, ThreadDto, ThreadStatus } from "@app/shared";
 import { createH } from "../src/dom.ts";
 import { toastText } from "../src/toast.ts";
 import {
-  detachedList, messageView, queuedItem, restoreConfirm, splitByElement, statusChip, threadItem,
+  detachedList, messageView, queuedItem, restoreConfirm, statusChip, threadItem,
 } from "../src/thread_view.ts";
 import type { ThreadItemOptions } from "../src/thread_view.ts";
 
@@ -123,13 +123,9 @@ test("discarded messages are hidden outside History and shown with the discarded
   assert.equal(history.querySelector(".tb-restore button"), null, "no restore button in history");
 });
 
-test("a thread with a missing element lands in the DetachedList", () => {
-  const placed = thread(1);
+test("the DetachedList shows a thread whose element is missing", () => {
   const lost = thread(2, { element: { ...thread(2).element, selector: "#gone", tag: "section", text: "nothing like this" } });
-  const split = splitByElement([placed, lost], doc);
-  assert.deepEqual(split.placed.map((t) => t.n), [1]);
-  assert.deepEqual(split.detached.map((t) => t.n), [2]);
-  const list = detachedList(h, split.detached, (t) => threadItem(h, t, options({ open: false, missing: true, label: "section#gone" })));
+  const list = detachedList(h, [lost], (t) => threadItem(h, t, options({ open: false, missing: true, label: "section#gone" })));
   assert.ok(list.textContent!.includes("element missing"));
   assert.equal(list.querySelectorAll(".tb-thread").length, 1);
 });
