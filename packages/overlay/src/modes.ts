@@ -11,7 +11,7 @@ const ICONS: Record<string, string[]> = {
 /**
  * ModeSwitch plus PanelToggle in one dark pill. It is the only element that stays
  * in every mode. The mode controller is the store itself: clicking a tool sets `mode`,
- * and the other parts (hover, pins, T9's poller) subscribe to it.
+ * and the other parts (hover, pins, the poller) subscribe to it.
  */
 export function createModeSwitch(h: H, store: Store): HTMLElement {
   const icon = (name: string) => {

@@ -75,8 +75,6 @@ export function createPanel(o: PanelOptions): Panel {
   const flashLayer = h("div", { class: "tb-flash-layer" });
   layer.append(panel, flashLayer);
 
-  // ---- store helpers ----
-
   const saveThread = (t: ThreadDto) => {
     const s = store.get();
     const has = s.threads.some((x) => x.id === t.id);
