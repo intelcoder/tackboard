@@ -1,0 +1,11 @@
+
+> typecheck
+> tsc --noEmit -p tsconfig.json
+
+
+> build
+> node scripts/build.ts
+
+build cli
+build overlay
+wrote /Users/fiddlest/projects/tackboard-wt-b/packages/overlay/dist/tackboard.js

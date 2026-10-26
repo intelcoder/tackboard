@@ -2,7 +2,7 @@
 // setAttribute, never through any HTML-parsing sink (scripts/guard.ts enforces it).
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-const SVG_TAGS = new Set(["svg", "path", "circle", "g", "line", "rect"]);
+const SVG_TAGS = new Set(["svg", "path"]);
 
 export type Child = Node | string | number | null | undefined | false;
 export type Props = Record<string, unknown> | null | undefined;

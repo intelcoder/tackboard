@@ -2,7 +2,7 @@ import type { ListThreadsResponse, ThreadDto } from "@app/shared";
 
 export type Mode = "hidden" | "view" | "comment";
 
-/** Everything the overlay shows. T9 (panel, poller) reads and writes this; nothing else is shared. */
+/** Everything the overlay shows. The panel and the poller read and write this; nothing else is shared. */
 export type OverlayState = {
   mode: Mode;
   panelOpen: boolean;
@@ -17,7 +17,7 @@ export type OverlayState = {
   loaded: boolean;
   /** Set while the daemon is unreachable. */
   error: string | null;
-  /** Count shown on the PanelToggle badge (computed by T9 `badgeCount`). */
+  /** Count shown on the PanelToggle badge (computed by `badgeCount`). */
   badge: number;
   activeThreadId: string | null;
   /** Pin with this thread id pulses (scroll links). */

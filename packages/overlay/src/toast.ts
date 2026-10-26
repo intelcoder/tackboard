@@ -18,7 +18,7 @@ export function toastText(event: ToastEvent): string {
 }
 
 /** A short message that fades after a few seconds. One at a time. */
-export function createToast(h: H, layer: Element, setTimer: (fn: () => void, ms: number) => unknown = setTimeout) {
+export function createToast(h: H, layer: Element) {
   let current: HTMLElement | null = null;
   let stamp = 0;
   return {
@@ -27,7 +27,7 @@ export function createToast(h: H, layer: Element, setTimer: (fn: () => void, ms:
       const mine = ++stamp;
       current = h("div", { class: "tb-toast", role: "status" }, text);
       layer.append(current);
-      setTimer(() => {
+      setTimeout(() => {
         if (mine === stamp) {
           current?.remove();
           current = null;
