@@ -1,5 +1,6 @@
 import type { ElementRef } from "@app/shared";
 import { LIMITS } from "@app/shared";
+import { readSourceInfo } from "./source_map.ts";
 
 const norm = (s: string | null | undefined): string => (s ?? "").replace(/\s+/g, " ").trim();
 
@@ -48,7 +49,7 @@ export function buildElementRef(el: Element): ElementRef {
     text: norm(el.textContent).slice(0, LIMITS.elementText),
     html: el.outerHTML.slice(0, LIMITS.html),
     rect: { x: r.x ?? r.left, y: r.y ?? r.top, w: r.width, h: r.height },
-    confidence: "text",
+    ...readSourceInfo(el),
   };
 }
 
