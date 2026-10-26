@@ -155,8 +155,8 @@ export function createPanel(o: PanelOptions): Panel {
     notice = null;
     call().then(
       (t) => {
-        saveThread(t);
         after?.(t);
+        saveThread(t);
         draw();
       },
       (e) => {
@@ -166,11 +166,15 @@ export function createPanel(o: PanelOptions): Panel {
     );
   };
 
-  const reply = (t: ThreadDto, text: string) =>
-    run(() => api.postMessage(t.id, { author: "user", text }), () => {
-      replyDrafts.delete(t.id);
+  const replying = new Set<string>();
+  const reply = (t: ThreadDto, text: string) => {
+    if (replying.has(t.id)) return;
+    replying.add(t.id);
+    run(() => api.postMessage(t.id, { author: "user", text }).finally(() => replying.delete(t.id)), () => {
+      if ((replyDrafts.get(t.id) ?? "").trim() === text) replyDrafts.delete(t.id);
       tab = "open";
     });
+  };
 
   const rewind = (t: ThreadDto, messageId: string, number: number) => {
     notice = null;
