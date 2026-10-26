@@ -20,13 +20,30 @@ export function badgeLabel(count: number): string {
   return count > 0 ? `Comments, ${count} ${statusLabel("waiting")} or unread` : "Comments";
 }
 
-/** Moves a box so all of it is inside the viewport. A box bigger than the viewport sits at the corner. */
+type Box = { x: number; y: number; w: number; h: number };
+
+const PILL_GAP = 8;
+
+/**
+ * Moves a box so all of it is inside the viewport. A box bigger than the viewport sits at the corner.
+ * With the pill's box, the box also stays clear of it: it moves up above the pill, and when it is too tall
+ * for that it sits at the top and gets a `maxHeight` that ends above the pill.
+ */
 export function clampToViewport(
-  box: { x: number; y: number; w: number; h: number },
+  box: Box,
   viewport: { w: number; h: number },
-): { x: number; y: number } {
+  pill?: Box,
+): { x: number; y: number; maxHeight?: number } {
   const fit = (at: number, size: number, room: number) => Math.max(0, Math.min(at, room - size));
-  return { x: fit(box.x, box.w, viewport.w), y: fit(box.y, box.h, viewport.h) };
+  const x = fit(box.x, box.w, viewport.w);
+  const y = fit(box.y, box.h, viewport.h);
+  if (!pill) return { x, y };
+  const beside = x + box.w <= pill.x || x >= pill.x + pill.w;
+  const above = y + box.h <= pill.y;
+  if (beside || above) return { x, y };
+  const room = Math.max(0, pill.y - PILL_GAP);
+  if (box.h <= room) return { x, y: room - box.h };
+  return { x, y: 0, maxHeight: room };
 }
 
 export type Banner = "ask" | "link" | "blocked" | null;

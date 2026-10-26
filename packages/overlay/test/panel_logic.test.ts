@@ -50,6 +50,30 @@ test("clampToViewport keeps the panel fully inside, including after a smaller vi
   assert.deepEqual(clampToViewport({ x: 10, y: 10, w: 320, h: 400 }, { w: 200, h: 200 }), { x: 0, y: 0 }, "bigger than the viewport pins to the corner");
 });
 
+test("clamp keeps the panel clear of the pill", () => {
+  const pill = { x: 106, y: 746, w: 200, h: 50 };
+  const view = { w: 320, h: 800 };
+  const clear = (b: { x: number; y: number; w: number; h: number }, r: { x: number; y: number; maxHeight?: number }) => {
+    const bottom = r.y + Math.min(b.h, r.maxHeight ?? b.h);
+    const side = b.x + b.w <= pill.x || b.x >= pill.x + pill.w;
+    return side || bottom <= pill.y;
+  };
+  // dragged to the bottom right, then the window shrank: the panel moves up above the pill
+  const low = { x: 200, y: 700, w: 292, h: 400 - 100 };
+  const moved = clampToViewport(low, view, pill);
+  assert.ok(clear(low, moved), JSON.stringify(moved));
+  assert.equal(moved.y, pill.y - 8 - low.h);
+  assert.equal(moved.maxHeight, undefined);
+  // too tall to fit above the pill: it sits at the top and gets a smaller height
+  const tall = { x: 14, y: 100, w: 292, h: 760 };
+  const squeezed = clampToViewport(tall, view, pill);
+  assert.equal(squeezed.y, 0);
+  assert.equal(squeezed.maxHeight, pill.y - 8);
+  // beside the pill, or already above it, nothing changes
+  assert.deepEqual(clampToViewport({ x: 0, y: 700, w: 100, h: 100 }, view, pill), { x: 0, y: 700 });
+  assert.deepEqual(clampToViewport({ x: 14, y: 100, w: 292, h: 300 }, view, pill), { x: 14, y: 100 });
+});
+
 test("bannerFor maps granted, default, dismissed, denied and unsupported", () => {
   assert.equal(bannerFor("default", false), "ask");
   assert.equal(bannerFor("default", true), "link");

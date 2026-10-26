@@ -430,6 +430,7 @@ export function createPanel(o: PanelOptions): Panel {
       lastActive = s.activeThreadId;
       (panel.querySelector(".tb-thread.active") as HTMLElement | null)?.scrollIntoView?.({ block: "nearest" });
     }
+    place();
     if (focused) {
       const again = panel.querySelector(`[data-key="${focused}"]`) as HTMLElement | null;
       again?.focus?.();
@@ -447,9 +448,19 @@ export function createPanel(o: PanelOptions): Panel {
 
   const place = () => {
     if (!moved) return;
+    panel.style.maxHeight = "";
     const r = panel.getBoundingClientRect();
-    moved = clampToViewport({ x: moved.x, y: moved.y, w: r.width, h: r.height }, o.viewport());
-    Object.assign(panel.style, { left: `${moved.x}px`, top: `${moved.y}px`, right: "auto", bottom: "auto" });
+    const pill = (panel.getRootNode() as ShadowRoot).querySelector?.(".tb-modes")?.getBoundingClientRect();
+    const fit = clampToViewport(
+      { x: moved.x, y: moved.y, w: r.width, h: r.height },
+      o.viewport(),
+      pill && { x: pill.left, y: pill.top, w: pill.width, h: pill.height },
+    );
+    moved = { x: fit.x, y: fit.y };
+    Object.assign(panel.style, {
+      left: `${fit.x}px`, top: `${fit.y}px`, right: "auto", bottom: "auto",
+      maxHeight: fit.maxHeight === undefined ? "" : `${fit.maxHeight}px`,
+    });
   };
 
   const startDrag = (ev: Event) => {
