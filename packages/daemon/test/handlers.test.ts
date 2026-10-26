@@ -304,3 +304,15 @@ test("message timestamps come from the injected clock", () => {
   const user = s.reply.handle({ id: posted.id, author: "user", text: "y" });
   assert.equal(user.messages[2]!.at, 3_000_000);
 });
+
+test("list restoreBlocked still names the claimed thread when the state filter hides it", () => {
+  const s = setup();
+  const done = s.post.handle(postArgs("done"));
+  s.post.handle(postArgs("busy"));
+  s.claim.handle({ agent: "claude" });
+  s.resolve.handle({ id: done.id, by: "user" });
+  s.claim.handle({ agent: "claude" });
+  const resolvedOnly = s.list.handle({ state: "resolved" });
+  assert.deepEqual(resolvedOnly.threads.map((t) => t.messages[0]!.text), ["done"]);
+  assert.match(resolvedOnly.restoreBlocked ?? "", /claimed by claude/);
+});
