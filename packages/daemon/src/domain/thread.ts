@@ -8,6 +8,23 @@ export type DomainEvent = { type: HistoryEventType; at: number; data: unknown };
 
 type Message = MessageDto & { seq: number };
 
+/** Plain snapshot of a Thread's persisted fields, used by repositories to rehydrate without re-running invariants. */
+export type ThreadState = {
+  id: string;
+  n: number;
+  branch: string;
+  commit: string;
+  url: string;
+  viewport: { w: number; h: number };
+  element: ElementRef;
+  openedBy: "user" | "agent";
+  status: ThreadStatus;
+  agent?: string;
+  unread: boolean;
+  claimedAt?: number;
+  messages: Array<MessageDto & { seq: number }>;
+};
+
 type OpenArgs = {
   id: string;
   n: number;
@@ -80,6 +97,30 @@ export class Thread {
     t.push(a.agent.value, a.text, a.now, a.seq, true);
     t.record("posted", a.now, { thread: t.toDto(a.now) });
     return t;
+  }
+
+  /** Rehydrate from persisted state. Runs no invariants and records no events. */
+  static fromState(state: ThreadState): Thread {
+    const copy = structuredClone(state);
+    const t = new Thread({
+      id: copy.id, n: copy.n, branch: copy.branch, commit: copy.commit, url: copy.url,
+      viewport: copy.viewport, element: copy.element, openedBy: copy.openedBy,
+      status: copy.status, agent: copy.agent, unread: copy.unread,
+    });
+    t._claimedAt = copy.claimedAt;
+    t._messages = copy.messages;
+    return t;
+  }
+
+  toState(): ThreadState {
+    const s: ThreadState = {
+      id: this.id, n: this.n, branch: this.branch, commit: this.commit, url: this.url,
+      viewport: this.viewport, element: this.element, openedBy: this.openedBy,
+      status: this._status, unread: this._unread, messages: this._messages,
+    };
+    if (this._agent !== undefined) s.agent = this._agent;
+    if (this._claimedAt !== undefined) s.claimedAt = this._claimedAt;
+    return structuredClone(s);
   }
 
   get status(): ThreadStatus { return this._status; }
