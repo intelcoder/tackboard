@@ -1,0 +1,27 @@
+{
+  "name": "app-root",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "node --test \"packages/*/test/*.test.ts\"",
+    "test:e2e": "npm run build && playwright test -c e2e/playwright.config.ts",
+    "build": "node scripts/build.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.4",
+    "esbuild": "0.28.2",
+    "hono": "4.13.13"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "26.6.5",
+    "linkedom": "0.18.13",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "7.0.2"
+  }
+}
