@@ -79,11 +79,11 @@ function indexByText(doc: Document, wanted: Set<string>): Map<string, Element> {
   return index;
 }
 
-/** Selector first, then the same tag with exactly the same text, else null (the thread is "detached"). */
-export function findElement(ref: ElementRef, doc: Document, byText: () => Map<string, Element> = () => indexByText(doc, new Set([ref.text]))): Element | null {
+/** Selector first (an agent thread has no tag, any element matches), then the same tag with exactly the same text, else null (the thread is "detached"). */
+function findElement(ref: ElementRef, doc: Document, byText: () => Map<string, Element>): Element | null {
   try {
     const hit = doc.querySelector(ref.selector);
-    if (hit && hit.tagName.toLowerCase() === ref.tag) return hit;
+    if (hit && (!ref.tag || hit.tagName.toLowerCase() === ref.tag)) return hit;
   } catch {
     // an invalid stored selector falls through to the text match
   }
@@ -112,7 +112,7 @@ export function createFinder(doc: Document, win: Window, store: Store): { find(t
   return {
     find(t) {
       const here = win.location.href;
-      if (pageOf(t.url) !== pageOf(here)) return null;
+      if (t.url && pageOf(t.url) !== pageOf(here)) return null;
       const threads = store.get().threads;
       if (threads !== list || here !== page) {
         for (const [id, el] of kept) if (!el || here !== page) kept.delete(id);

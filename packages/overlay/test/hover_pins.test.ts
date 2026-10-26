@@ -149,6 +149,14 @@ test("a thread made on another page draws no pin and makes no lookup", () => {
   assert.equal(s.root.querySelectorAll(".tb-pin").length, 1, "query and hash are ignored");
 });
 
+test("a thread with an empty url is tried on this page", () => {
+  const s = setup(`<p id="a">a</p>`);
+  const a = s.document.getElementById("a")!;
+  setRect(a, { left: 10, top: 10, width: 40, height: 20 });
+  s.overlay.store.set({ threads: [thread(1, a, "pending", "")] });
+  assert.equal(s.root.querySelectorAll(".tb-pin").length, 1);
+});
+
 test("scrolling does not search the page again for a kept or an unmatched element", () => {
   const s = setup(`<p id="a">a</p>`);
   const a = s.document.getElementById("a")!;
