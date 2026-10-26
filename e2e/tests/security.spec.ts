@@ -103,13 +103,13 @@ test("security", async ({ harness: h }) => {
     await other.waitForTimeout(500);
     expect(await count_threads()).toBe(0);
 
-    // the overlay the foreign page loaded cannot post a comment either: the composer shows an error
+    // the overlay the foreign page loaded cannot post a comment either: the comment waits in the queue
     await other.locator(".tb-modes [data-mode=comment]").click();
     await other.hover("#target");
     await other.click("#target");
     await other.locator('[data-key="composer"]').fill("from a foreign page");
     await other.locator('[data-key="send"]').click();
-    await expect(other.locator(".tb-composer .tb-error")).toBeVisible();
+    await expect(other.locator(".tb-queue .tb-queued")).toContainText("Waiting to retry");
     expect(await count_threads()).toBe(0);
   } finally {
     await foreign_browser.close();

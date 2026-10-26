@@ -6,7 +6,7 @@ import type { MessageDto, ThreadDto, ThreadStatus } from "@app/shared";
 import { createH } from "../src/dom.ts";
 import { toastText } from "../src/toast.ts";
 import {
-  detachedList, messageView, restoreConfirm, splitByElement, statusChip, threadItem,
+  detachedList, messageView, queuedItem, restoreConfirm, splitByElement, statusChip, threadItem,
 } from "../src/thread_view.ts";
 import type { ThreadItemOptions } from "../src/thread_view.ts";
 
@@ -33,7 +33,7 @@ function options(extra: Partial<ThreadItemOptions> = {}): ThreadItemOptions {
   return {
     open: true, label: "button#here", missing: false, history: false, draft: "",
     onToggle: nothing, onDraft: nothing, onReply: nothing, onResolve: nothing, onReopen: nothing,
-    onRelease: nothing, onRestore: nothing, confirm: null,
+    onRelease: nothing, onRestore: nothing, confirm: null, queued: [],
     ...extra,
   };
 }
@@ -146,4 +146,55 @@ test("the Release button shows only on received threads", () => {
   assert.ok(!resolveButton.hasAttribute("disabled"), "the user can always resolve");
   const stale = threadItem(h, thread(1, { status: "received", claimStale: true }), options());
   assert.ok(stale.querySelector(".tb-hint")!.textContent!.length > 0, "a stale claim shows a hint");
+});
+
+function press(box: Element, init: object) {
+  const ev = Object.assign(new (parsed.window as any).Event("keydown", { bubbles: true, cancelable: true }), { key: "Enter", ...init });
+  box.dispatchEvent(ev);
+  return ev as Event;
+}
+
+test("Enter in the reply box sends and empties it; Shift+Enter and composition do not", () => {
+  const sent: string[] = [];
+  const el = threadItem(h, thread(1), options({ onReply: (text) => sent.push(text) }));
+  const box = el.querySelector("textarea") as HTMLTextAreaElement;
+  box.value = "  hello  ";
+  assert.equal(press(box, { shiftKey: true }).defaultPrevented, false);
+  assert.equal(press(box, { isComposing: true }).defaultPrevented, false);
+  assert.equal(press(box, { keyCode: 229 }).defaultPrevented, false);
+  assert.deepEqual(sent, []);
+  assert.equal(press(box, {}).defaultPrevented, true);
+  assert.deepEqual(sent, ["hello"]);
+  assert.equal(box.value, "");
+  box.value = "again";
+  press(box, { ctrlKey: true });
+  assert.deepEqual(sent, ["hello", "again"]);
+});
+
+test("queued items show their status, and only Not sent has Retry and Remove", () => {
+  const calls: string[] = [];
+  const view = (status: string, failed: boolean) =>
+    queuedItem(h, { label: null, text: "mine", status, failed, onRetry: () => calls.push("retry"), onRemove: () => calls.push("remove") });
+  const sending = view("Sending…", false);
+  assert.ok(sending.textContent!.includes("mine"));
+  assert.ok(sending.textContent!.includes("Sending…"));
+  assert.equal(sending.querySelectorAll("button").length, 0);
+  const failed = view("Not sent: boom", true);
+  const names = [...failed.querySelectorAll("button")].map((b) => b.textContent);
+  assert.deepEqual(names, ["Retry", "Remove"]);
+  (failed.querySelectorAll("button")[0] as HTMLElement).click();
+  (failed.querySelectorAll("button")[1] as HTMLElement).click();
+  assert.deepEqual(calls, ["retry", "remove"]);
+  const comment = queuedItem(h, { label: "button#cta", text: "x", status: "Sending…", failed: false, onRetry() {}, onRemove() {} });
+  assert.ok(comment.querySelector(".tb-target")!.textContent === "button#cta");
+});
+
+test("a queued reply shows at the end of its thread and as text only", () => {
+  const evil = "<img src=x onerror=alert(1)>";
+  const el = threadItem(h, thread(1), options({
+    queued: [{ label: null, text: evil, status: "Sending…", failed: false, onRetry() {}, onRemove() {} }],
+  }));
+  assert.equal(el.querySelector("img"), null);
+  assert.equal(el.querySelector(".tb-convo")!.lastElementChild!.classList.contains("tb-queued"), true);
+  assert.equal(el.querySelectorAll(".tb-msg").length, 1, "a queued item is not a real message");
 });

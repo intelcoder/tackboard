@@ -99,6 +99,8 @@ Reload your dev site. A small bar appears with three tools and a comments button
 - View comments: the page shows pins for existing comments. This is the mode on load.
 - Add comment: hover to outline an element, click it, and type your comment.
 
+In the comment box and the reply box, Enter sends and Shift+Enter adds a line.
+
 The comments button opens the panel with the Open and Resolved lists and a History link at the bottom. The mode you pick and the panel position are not remembered after a reload.
 
 ## Give your coding agent the loop
@@ -170,6 +172,7 @@ The agent finds out on its next command: the output starts with a `NOTICE` block
 
 - One daemon watches one working tree, and page comments are stamped with the branch of that folder. An agent in another worktree needs its own `init` and `start` (see "The agent loop"). Restore always acts on the daemon's project folder and is refused (`wrong_branch`) if the thread's branch is not the one checked out there.
 - Undo of a restore is the safety snapshot above. Messages already removed by a restore stay removed.
+- A message you send waits in the page until the daemon takes it, and the page tries again every 3 seconds if the daemon cannot be reached. The waiting messages are lost if you reload the page.
 - Only you close a thread, with Resolve in the panel, also while it is `waiting on you`. The agent cannot resolve: the daemon refuses an agent resolve request.
 - "History" in the panel lists threads removed by a restore and threads whose branch is no longer a local git branch. Branches named `HEAD` (detached) and `no-git` are never treated this way.
 - Restore resets git's staging area to HEAD, so changes you had staged but not committed are not kept as staged. Ignored files are left alone.

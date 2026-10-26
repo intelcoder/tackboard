@@ -5,11 +5,14 @@ import type { Api } from "./api.ts";
 import type { H } from "./dom.ts";
 import { findElement } from "./element_ref.ts";
 import { notificationState, permissionAsked, permissionBanner, rememberNotNow } from "./notifications.ts";
-import { badgeCount, clampToViewport, errorText, restoreDisabledReason, visibleThreads } from "./panel_logic.ts";
+import { createOutbox } from "./outbox.ts";
+import type { OutboxItem } from "./outbox.ts";
+import { badgeCount, clampToViewport, errorText, isSubmitKey, restoreDisabledReason, visibleThreads } from "./panel_logic.ts";
 import type { Tab } from "./panel_logic.ts";
 import type { Store } from "./store.ts";
 import { toastText } from "./toast.ts";
-import { detachedList, emptyState, restoreConfirm, splitByElement, targetLabel, threadItem } from "./thread_view.ts";
+import { detachedList, emptyState, queuedItem, restoreConfirm, splitByElement, targetLabel, threadItem } from "./thread_view.ts";
+import type { QueuedView } from "./thread_view.ts";
 
 export type PanelOptions = {
   document: Document;
@@ -33,6 +36,10 @@ export type Panel = {
   destroy(): void;
 };
 
+type Job =
+  | { kind: "comment"; ref: ElementRef; url: string; viewport: { w: number; h: number }; text: string }
+  | { kind: "reply"; threadId: string; text: string };
+
 const FLASH_MS = 1800;
 const SAVED_KEY = `${brand.configGlobal}:notify-later`;
 const BLOCKED_KEY = `${brand.configGlobal}:blocked-hint-hidden`;
@@ -55,8 +62,6 @@ export function createPanel(o: PanelOptions): Panel {
   let historyOpenId: string | null = null;
   let composer: { ref: ElementRef } | null = null;
   let composerDraft = "";
-  let composerError: string | null = null;
-  let sending = false;
   let confirming: { threadId: string; messageId: string } | null = null;
   let notice: string | null = null;
   let dismissed = permissionAsked(storage, SAVED_KEY);
@@ -166,15 +171,33 @@ export function createPanel(o: PanelOptions): Panel {
     );
   };
 
-  const replying = new Set<string>();
-  const reply = (t: ThreadDto, text: string) => {
-    if (replying.has(t.id)) return;
-    replying.add(t.id);
-    run(() => api.postMessage(t.id, { author: "user", text }).finally(() => replying.delete(t.id)), () => {
-      if ((replyDrafts.get(t.id) ?? "").trim() === text) replyDrafts.delete(t.id);
+  const deliver = async (job: Job, signal: AbortSignal) => {
+    if (job.kind === "reply") {
+      saveThread(await api.postMessage(job.threadId, { author: "user", text: job.text }, signal));
       tab = "open";
-    });
+      return;
+    }
+    const t = await api.postThread({ element: job.ref, url: job.url, viewport: job.viewport, text: job.text }, signal);
+    saveThread(t);
+    tab = "open";
+    store.set({ mode: "view", activeThreadId: t.id, panelOpen: true });
+    o.refresh();
   };
+  const outbox = createOutbox<Job>({ send: deliver, onChange: () => draw() });
+
+  const reply = (t: ThreadDto, text: string) => {
+    replyDrafts.delete(t.id);
+    outbox.add({ kind: "reply", threadId: t.id, text });
+  };
+
+  const queuedView = (item: OutboxItem<Job>, label: string | null): QueuedView => ({
+    label,
+    text: item.job.text,
+    status: item.state === "sending" ? "Sending…" : item.state === "retry" ? "Waiting to retry" : `Not sent: ${item.reason}`,
+    failed: item.state === "failed",
+    onRetry: () => outbox.retry(item),
+    onRemove: () => outbox.remove(item),
+  });
 
   const rewind = (t: ThreadDto, messageId: string, number: number) => {
     notice = null;
@@ -195,7 +218,6 @@ export function createPanel(o: PanelOptions): Panel {
   const compose = (ref: ElementRef) => {
     composer = { ref };
     composerDraft = "";
-    composerError = null;
     showHistory = false;
     store.set({ composing: true, panelOpen: true, activeThreadId: null });
   };
@@ -207,25 +229,9 @@ export function createPanel(o: PanelOptions): Panel {
 
   const send = () => {
     const text = composerDraft.trim();
-    if (!composer || !text || sending) return;
-    sending = true;
-    composerError = null;
-    draw();
-    api.postThread({ element: composer.ref, url: win.location.href, viewport: o.viewport(), text }).then(
-      (t) => {
-        sending = false;
-        composer = null;
-        saveThread(t);
-        tab = "open";
-        store.set({ composing: false, mode: "view", activeThreadId: t.id, panelOpen: true });
-        o.refresh();
-      },
-      (e) => {
-        sending = false;
-        composerError = errorText(e);
-        draw();
-      },
-    );
+    if (!composer || !text) return;
+    outbox.add({ kind: "comment", ref: composer.ref, url: win.location.href, viewport: o.viewport(), text });
+    closeComposer();
   };
 
   // ---- drawing ----
@@ -269,22 +275,19 @@ export function createPanel(o: PanelOptions): Panel {
       placeholder: "Comment on this element", "aria-label": "Comment", "data-key": "composer",
       oninput: (ev: Event) => { composerDraft = (ev.target as HTMLTextAreaElement).value; },
       onkeydown: (ev: Event) => {
-        const key = ev as KeyboardEvent;
-        if (key.key === "Enter" && (key.metaKey || key.ctrlKey)) {
-          key.preventDefault();
-          send();
-        }
+        if (!isSubmitKey(ev as KeyboardEvent)) return;
+        ev.preventDefault();
+        send();
       },
     }) as HTMLTextAreaElement;
     box.value = composerDraft;
     return h("div", { class: "tb-composer" },
       h("span", { class: "target" }, targetLabel(composer!.ref)),
       box,
-      composerError ? h("span", { class: "tb-error", role: "alert" }, composerError) : null,
       h("div", { class: "tb-row" },
         h("span", { class: "tb-hint" }, `Goes to ${s.agent.name ?? "the agent"}`),
         h("button", { type: "button", class: "tb-btn", "data-key": "cancel", onclick: closeComposer }, "Cancel"),
-        h("button", { type: "button", class: "tb-btn primary", "data-key": "send", disabled: sending, onclick: send }, sending ? "Sending…" : "Send")));
+        h("button", { type: "button", class: "tb-btn primary", "data-key": "send", onclick: send }, "Send")));
   };
 
   const itemFor = (t: ThreadDto, history: boolean): HTMLElement => {
@@ -306,6 +309,7 @@ export function createPanel(o: PanelOptions): Panel {
       },
       onDraft: (text) => replyDrafts.set(t.id, text),
       onReply: (text) => reply(t, text),
+      queued: outbox.items().flatMap((item) => (item.job.kind === "reply" && item.job.threadId === t.id ? [queuedView(item, null)] : [])),
       onResolve: () => run(() => api.resolve(t.id, { by: "user" })),
       onReopen: () => run(() => api.reopen(t.id), () => { tab = "open"; }),
       onRelease: () => run(() => api.release(t.id)),
@@ -397,7 +401,7 @@ export function createPanel(o: PanelOptions): Panel {
     const detachedIds = s.threads.filter((t) => !findElement(t.element, doc)).map((t) => t.id);
     const look = JSON.stringify([
       s.threads, s.history, s.branch, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
-      tab, showHistory, historyOpenId, composer?.ref.selector ?? null, composerError, sending, confirming, notice,
+      tab, showHistory, historyOpenId, composer?.ref.selector ?? null, outbox.items(), confirming, notice,
       notificationState(), dismissed, blockedHidden, detachedIds,
     ]);
     if (look === lastLook) return;
@@ -429,7 +433,15 @@ export function createPanel(o: PanelOptions): Panel {
         panel.append(historyView());
       } else {
         if (s.loaded && s.threads.length) panel.append(tabs());
-        panel.append(listView());
+        const list = listView();
+        const comments = outbox.items().flatMap((item) => (item.job.kind === "comment" ? [queuedView(item, targetLabel(item.job.ref))] : []));
+        // the waiting comments scroll with the list, so they can never squeeze it
+        if (comments.length) {
+          list.insertBefore(h("div", { class: "tb-queue" },
+            h("div", { class: "tb-section" }, "Waiting to send"),
+            ...comments.map((q) => queuedItem(h, q))), list.firstChild);
+        }
+        panel.append(list);
         panel.append(h("div", { class: "tb-foot" },
           h("button", { type: "button", class: "tb-link", "data-key": "history", onclick: () => { showHistory = true; draw(); } },
             `History (${s.history.length})`)));
@@ -536,6 +548,7 @@ export function createPanel(o: PanelOptions): Panel {
     openThread,
     destroy() {
       unsub();
+      outbox.destroy();
       win.removeEventListener("resize", onResize);
       for (const t of timers) clearTimeout(t);
       panel.remove();

@@ -73,12 +73,20 @@ export const panelCss = `
 .tb-reply textarea{flex:1;min-width:0;border:1px solid var(--tb-line);border-radius:6px;padding:6px 9px;background:var(--tb-bg);color:var(--tb-fg);font:inherit;resize:vertical;min-height:32px;max-height:120px}
 .tb-row.tb-actions{padding-left:30px;justify-content:flex-start}
 
+/* messages waiting to be sent: faded, with their status under them */
+.tb-queued{display:flex;flex-direction:column;gap:2px;align-items:flex-end;min-width:0}
+.tb-queued .text{white-space:pre-wrap;overflow-wrap:anywhere;padding:6px 10px;max-width:92%;background:var(--tb-soft);border-radius:10px 10px 2px 10px;opacity:.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tb-queued .tb-row{justify-content:flex-end}
+.tb-queue{flex:none;border-bottom:1px solid var(--tb-line)}
+.tb-queue .tb-queued{padding:6px 14px;align-items:flex-start;border-bottom:1px solid var(--tb-line)}
+.tb-queue .tb-queued:last-child{border-bottom:0}
+.tb-queue .tb-queued .tb-row{justify-content:flex-start}
+
 /* Composer and RestoreConfirm */
 .tb-composer{display:flex;flex-direction:column;gap:8px;padding:10px 12px;min-width:0;overflow:auto}
 .tb-composer .target{font:500 11px var(--mono);color:var(--tb-accent);background:var(--tb-accent-soft);padding:2px 6px;border-radius:3px;align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tb-composer textarea{width:100%;min-height:64px;resize:vertical;border:1px solid var(--tb-line);border-radius:6px;padding:7px 9px;background:var(--tb-bg);color:var(--tb-fg);font:inherit}
 .tb-confirm-title{font:600 13px var(--display)}
-.tb-error{color:var(--st-waiting);font-size:12px;overflow-wrap:anywhere}
 .tb-reason{color:var(--st-waiting)}
 .tb-row{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
 .tb-row .tb-hint{margin-right:auto}

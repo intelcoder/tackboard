@@ -46,6 +46,7 @@ export function createApi(opts: ApiOptions) {
     path: string,
     query?: Record<string, string | undefined>,
     body?: unknown,
+    signal?: AbortSignal,
   ): Promise<T> {
     const params = new URLSearchParams();
     for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined) params.set(k, v);
@@ -56,6 +57,7 @@ export function createApi(opts: ApiOptions) {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal,
     });
     const raw = await res.text();
     let parsed: unknown;
@@ -79,10 +81,11 @@ export function createApi(opts: ApiOptions) {
     health: () => call<OkResponse>("GET", paths.health),
     listThreads: (q: { branch?: string; state?: "open" | "resolved" } = {}) =>
       call<ListThreadsResponse>("GET", paths.threads, q),
-    postThread: (b: PostThreadRequest) => call<ThreadDto>("POST", paths.threads, undefined, b),
+    postThread: (b: PostThreadRequest, signal?: AbortSignal) => call<ThreadDto>("POST", paths.threads, undefined, b, signal),
     postAgentThread: (b: PostAgentThreadRequest) => call<ThreadDto>("POST", paths.agentThread, undefined, b),
     claimNext: (b: ClaimNextRequest) => call<ClaimNextResponse>("POST", paths.claimNext, undefined, b),
-    postMessage: (id: string, b: PostMessageRequest) => call<ThreadDto>("POST", paths.messages(id), undefined, b),
+    postMessage: (id: string, b: PostMessageRequest, signal?: AbortSignal) =>
+      call<ThreadDto>("POST", paths.messages(id), undefined, b, signal),
     resolve: (id: string, b: ResolveRequest) => call<ThreadDto>("POST", paths.resolve(id), undefined, b),
     reopen: (id: string) => call<ThreadDto>("POST", paths.reopen(id), undefined, {}),
     release: (id: string) => call<ThreadDto>("POST", paths.release(id), undefined, {}),

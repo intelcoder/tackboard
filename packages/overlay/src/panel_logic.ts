@@ -86,3 +86,11 @@ export function restoreDisabledReason(list: { restoreBlocked: string | null }): 
 export function errorText(error: unknown): string {
   return error instanceof ApiError ? error.message : "Cannot reach the daemon";
 }
+
+type KeyInfo = Pick<KeyboardEvent, "key" | "shiftKey" | "ctrlKey" | "metaKey" | "isComposing" | "keyCode">;
+
+/** Enter, Ctrl+Enter and Cmd+Enter send; Shift+Enter adds a line; the Enter that ends an input method composition is left alone. */
+export function isSubmitKey(e: KeyInfo): boolean {
+  if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return false;
+  return e.ctrlKey || e.metaKey || !e.shiftKey;
+}

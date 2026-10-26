@@ -4,6 +4,7 @@ import { statusLabel } from "@app/shared";
 import type { ElementRef, MessageDto, ThreadDto, ThreadStatus } from "@app/shared";
 import type { H } from "./dom.ts";
 import { findElement } from "./element_ref.ts";
+import { isSubmitKey } from "./panel_logic.ts";
 
 export function statusChip(h: H, status: ThreadStatus | "discarded"): HTMLElement {
   return h("span", { class: "tb-chip", "data-s": status }, statusLabel(status));
@@ -54,6 +55,29 @@ export function restoreConfirm(
       rewind));
 }
 
+/** A message the user sent that has not reached the daemon yet. */
+export type QueuedView = {
+  /** The commented element, for a new comment. */
+  label: string | null;
+  text: string;
+  status: string;
+  failed: boolean;
+  onRetry(): void;
+  onRemove(): void;
+};
+
+export function queuedItem(h: H, q: QueuedView): HTMLElement {
+  return h("div", { class: "tb-queued" },
+    q.label ? h("span", { class: "tb-target" }, q.label) : null,
+    h("span", { class: "text" }, q.text),
+    h("span", { class: q.failed ? "tb-hint tb-reason" : "tb-hint" }, q.status),
+    q.failed
+      ? h("div", { class: "tb-row" },
+        h("button", { type: "button", class: "tb-btn", "data-key": "retry", onclick: q.onRetry }, "Retry"),
+        h("button", { type: "button", class: "tb-btn", "data-key": "remove", onclick: q.onRemove }, "Remove"))
+      : null);
+}
+
 export function emptyState(h: H, title: string, detail?: string): HTMLElement {
   return h("div", { class: "tb-empty" }, h("b", null, title), detail ? h("span", null, detail) : null);
 }
@@ -69,6 +93,8 @@ export type ThreadItemOptions = {
   onToggle(): void;
   onDraft(text: string): void;
   onReply(text: string): void;
+  /** Replies still on their way, shown after the real messages. */
+  queued: QueuedView[];
   onResolve(): void;
   onReopen(): void;
   onRelease(): void;
@@ -110,28 +136,30 @@ export function threadItem(h: H, thread: ThreadDto, o: ThreadItemOptions): HTMLE
       if (o.confirm && o.confirm.messageId === m.id) convo.append(o.confirm.view);
     }
   });
+  for (const q of o.queued) convo.append(queuedItem(h, q));
   root.append(convo);
   if (o.history) return root;
 
   if (thread.status === "received" && thread.claimStale) {
     root.append(h("div", { class: "tb-hint tb-note" }, "This claim is more than 30 minutes old. Release it so another agent can take it."));
   }
+  const submit = () => {
+    const text = box.value.trim();
+    if (!text) return;
+    box.value = "";
+    o.onReply(text);
+  };
   const box = h("textarea", {
     rows: 1, placeholder: "Reply…", "aria-label": "Reply", "data-key": `reply-${thread.id}`,
     oninput: (ev: Event) => o.onDraft((ev.target as HTMLTextAreaElement).value),
     onkeydown: (ev: Event) => {
-      const key = ev as KeyboardEvent;
-      if (key.key !== "Enter" || key.shiftKey) return;
-      key.preventDefault();
-      const text = (key.target as HTMLTextAreaElement).value.trim();
-      if (text) o.onReply(text);
+      if (!isSubmitKey(ev as KeyboardEvent)) return;
+      ev.preventDefault();
+      submit();
     },
   }) as HTMLTextAreaElement;
   box.value = o.draft;
-  const send = h("button", {
-    type: "button", class: "tb-btn primary", "data-key": `send-${thread.id}`,
-    onclick: () => { const text = box.value.trim(); if (text) o.onReply(text); },
-  }, "Send");
+  const send = h("button", { type: "button", class: "tb-btn primary", "data-key": `send-${thread.id}`, onclick: submit }, "Send");
   root.append(h("div", { class: "tb-reply" }, box, send));
 
   const actions = h("div", { class: "tb-row tb-actions" });

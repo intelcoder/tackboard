@@ -12,18 +12,17 @@ test("oversize", async ({ harness: h }) => {
   expect(accepted).toBeTruthy();
   expect(await healthy()).toBe(true);
 
-  // a 150 KB comment shows an inline error in the composer and the daemon stays up
+  // a 150 KB comment shows a Not sent item in the queue and the daemon stays up
   await page.locator(".tb-modes [data-mode=comment]").click();
   await page.hover("#l4");
   await page.click("#l4");
   await page.locator('[data-key="composer"]').fill("b".repeat(150 * 1024));
   await page.locator('[data-key="send"]').click();
-  const error = page.locator(".tb-composer .tb-error");
-  await expect(error).toBeVisible();
+  const error = page.locator(".tb-queue .tb-queued");
+  await expect(error).toContainText("Not sent");
   await expect(error).toContainText("100 KB");
-  await expect(page.locator('[data-key="composer"]')).toBeVisible();
   expect(await healthy()).toBe(true);
-  await page.locator('[data-key="cancel"]').click();
+  await error.getByRole("button", { name: "Remove" }).click();
   // the refusal is the expected failed request, so take it out of the problems list
   expect(h.problems.filter((p) => p.includes("413"))).toHaveLength(2);
   h.problems.splice(0, h.problems.length, ...h.problems.filter((p) => !p.includes("413")));
