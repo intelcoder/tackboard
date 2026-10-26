@@ -89,12 +89,16 @@ export const panelCss = `
 .tb-btn.danger{background:var(--st-waiting);border-color:var(--st-waiting);color:#fff}
 .tb-btn.danger:hover{filter:brightness(1.1);color:#fff}
 .tb-btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.tb-btn.danger:disabled{opacity:1;background:var(--tb-soft);border-color:var(--tb-line);color:var(--tb-muted)}
 .tb-hint{font-size:11px;color:var(--tb-muted)}
 
 /* RestorePoint */
 .tb-restore{display:flex;align-items:center;gap:8px;font:500 11px var(--mono);color:var(--tb-muted);padding:6px 8px;background:var(--tb-soft);border-radius:4px}
-.tb-restore .line{flex:1;height:1px;background:var(--tb-line)}
-.tb-restore button{border:1px solid var(--tb-line);background:var(--tb-bg);border-radius:4px;padding:2px 8px;font:500 11px var(--mono)}
+.tb-restore .line{flex:1;height:1px;background:var(--tb-line);min-width:0}
+.tb-restore-label{display:flex;white-space:nowrap;min-width:0;overflow:hidden}
+.tb-restore-label>span{flex:none}
+.tb-restore-label>.tb-restore-hash{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tb-restore button{flex:none;white-space:nowrap;border:1px solid var(--tb-line);background:var(--tb-bg);border-radius:4px;padding:2px 8px;font:500 11px var(--mono)}
 .tb-restore button:hover{border-color:var(--tb-accent);color:var(--tb-accent)}
 
 /* PermissionBanner, error line, EmptyState */

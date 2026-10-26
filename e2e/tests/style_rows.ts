@@ -69,9 +69,11 @@ export const rows: StyleRow[] = [
   row({ id: "R31", state: "conversation", selector: ".tb-msg.me .text", prop: "background-color", expected: { cssVar: "--tb-soft" }, breakCss: css(".tb-msg.me .text", "background-color", WRONG) }),
   row({ id: "R32", state: "conversation", selector: ".tb-msg.agent .text", prop: "background-color", expected: { cssVar: "--agent-bg" }, breakCss: css(".tb-msg.agent .text", "background-color", WRONG) }),
   row({ id: "R33", state: "composerOpen", selector: '[data-key="send"]', prop: "background-color", expected: { cssVar: "--tb-accent" }, breakCss: css('[data-key="send"]', "background-color", WRONG) }),
-  row({ id: "R34", state: "restoreConfirm", selector: ".tb-confirm .tb-btn.danger", prop: "background-color", expected: { cssVar: "--st-waiting" }, breakCss: css(".tb-confirm .tb-btn.danger", "background-color", WRONG) }),
+  // In this state the thread is claimed, so Rewind is blocked and wears the grey disabled look.
+  row({ id: "R34", state: "restoreConfirm", selector: ".tb-confirm .tb-btn.danger", prop: "background-color", expected: { cssVar: "--tb-soft" }, breakCss: css(".tb-confirm .tb-btn.danger", "background-color", WRONG) }),
   row({ id: "R35", state: "notificationsDenied", selector: ".tb-banner.blocked", prop: "background-color", expected: { cssVar: "--st-waiting-bg" }, breakCss: css(".tb-banner.blocked", "background-color", WRONG) }),
   row({ id: "R36", state: "historyView", selector: ".tb-msg.tb-discarded", prop: "opacity", expected: "0.55", breakCss: css(".tb-msg.tb-discarded", "opacity", "1") }),
   row({ id: "R37", state: "panelOpen", selector: panel, scheme: "dark", prop: "background-color", expected: DARK_PANEL, breakCss: css(panel, "background-color", WRONG) }),
   row({ id: "R38", state: "pulsingPin", selector: pin, reducedMotion: true, prop: "animation-name", expected: "none", breakCss: `${pin}.pulse{animation:tbpulse .9s ease-out 2!important}` }),
+  row({ id: "R39", state: "restoreConfirm", selector: ".tb-confirm .tb-btn.danger", prop: "color", expected: { cssVar: "--tb-muted" }, breakCss: css(".tb-confirm .tb-btn.danger", "color", WRONG) }),
 ];

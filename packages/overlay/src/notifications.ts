@@ -31,7 +31,7 @@ export function rememberNotNow(storage: Storage | undefined, key: string): void 
 /** The notification banner (or the small link after "Not now"). Null when there is nothing to show. */
 export function permissionBanner(
   h: H,
-  o: { state: NotificationState; dismissed: boolean; onAllow(): void; onNotNow(): void; onAskAgain(): void },
+  o: { state: NotificationState; dismissed: boolean; onAllow(): void; onNotNow(): void; onAskAgain(): void; onDismiss(): void },
 ): HTMLElement | null {
   const kind = bannerFor(o.state, o.dismissed);
   if (kind === "ask") {
@@ -47,7 +47,8 @@ export function permissionBanner(
   }
   if (kind === "blocked") {
     return h("div", { class: "tb-banner blocked", role: "status" },
-      h("span", null, "Notifications are blocked. Change it in the browser's site settings."));
+      h("span", null, "Notifications are blocked. Change it in the browser's site settings."),
+      h("button", { type: "button", class: "tb-btn", "data-key": "dismiss-blocked", onclick: o.onDismiss }, "Dismiss"));
   }
   return null;
 }

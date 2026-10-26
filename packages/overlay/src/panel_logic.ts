@@ -49,7 +49,7 @@ export function clampToViewport(
 export type Banner = "ask" | "link" | "blocked" | null;
 
 export function bannerFor(state: NotificationState, dismissed: boolean): Banner {
-  if (state === "denied") return "blocked";
+  if (state === "denied") return dismissed ? null : "blocked";
   if (state === "default") return dismissed ? "link" : "ask";
   return null;
 }

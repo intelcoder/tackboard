@@ -35,6 +35,7 @@ export type Panel = {
 
 const FLASH_MS = 1800;
 const SAVED_KEY = `${brand.configGlobal}:notify-later`;
+const BLOCKED_KEY = `${brand.configGlobal}:blocked-hint-hidden`;
 
 function storageOf(win: Window): Storage | undefined {
   try {
@@ -59,6 +60,7 @@ export function createPanel(o: PanelOptions): Panel {
   let confirming: { threadId: string; messageId: string } | null = null;
   let notice: string | null = null;
   let dismissed = permissionAsked(storage, SAVED_KEY);
+  let blockedHidden = permissionAsked(storage, BLOCKED_KEY);
   let moved: { x: number; y: number } | null = null;
   const replyDrafts = new Map<string, string>();
   const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -122,6 +124,7 @@ export function createPanel(o: PanelOptions): Panel {
   const openThread = (id: string, scroll = false) => {
     const t = store.get().threads.find((x) => x.id === id);
     if (!t) return;
+    if (confirming && confirming.threadId !== id) confirming = null;
     goTo(t);
     markRead(t);
     if (!scroll) return;
@@ -249,6 +252,7 @@ export function createPanel(o: PanelOptions): Panel {
         type: "button", class: tab === name ? "on" : null, "aria-pressed": String(tab === name), "data-key": `tab-${name}`,
         onclick: () => {
           tab = name;
+          confirming = null;
           store.set({ activeThreadId: null });
         },
       }, label, " ", h("i", null, visibleThreads(all, name).length));
@@ -358,7 +362,7 @@ export function createPanel(o: PanelOptions): Panel {
   const banner = (): HTMLElement | null =>
     permissionBanner(h, {
       state: notificationState(),
-      dismissed,
+      dismissed: notificationState() === "denied" ? blockedHidden : dismissed,
       onAllow: () => {
         const Alert = (globalThis as { Notification?: { requestPermission(): Promise<unknown> } }).Notification;
         Promise.resolve(Alert?.requestPermission()).then(draw, draw);
@@ -372,10 +376,16 @@ export function createPanel(o: PanelOptions): Panel {
         dismissed = false;
         draw();
       },
+      onDismiss: () => {
+        blockedHidden = true;
+        rememberNotNow(storage, BLOCKED_KEY);
+        draw();
+      },
     });
 
   let lastLook = "";
   let lastActive: string | null = null;
+  let lastConfirm: string | null = null;
 
   const draw = () => {
     if (panel.hasAttribute("hidden")) return;
@@ -384,7 +394,7 @@ export function createPanel(o: PanelOptions): Panel {
     const look = JSON.stringify([
       s.threads, s.history, s.branch, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
       tab, showHistory, historyOpenId, composer?.ref.selector ?? null, composerError, sending, confirming, notice,
-      notificationState(), dismissed, detachedIds,
+      notificationState(), dismissed, blockedHidden, detachedIds,
     ]);
     if (look === lastLook) return;
     lastLook = look;
@@ -402,7 +412,7 @@ export function createPanel(o: PanelOptions): Panel {
     if (composer) {
       panel.append(composerView());
     } else {
-      if (!showHistory) {
+      if (!showHistory && !confirming) {
         const note = banner();
         if (note) panel.append(note);
       }
@@ -428,10 +438,15 @@ export function createPanel(o: PanelOptions): Panel {
       lastActive = s.activeThreadId;
       (panel.querySelector(".tb-thread.active") as HTMLElement | null)?.scrollIntoView?.({ block: "nearest" });
     }
+    const confirmKey = confirming ? `${confirming.threadId}/${confirming.messageId}` : null;
+    if (confirmKey !== lastConfirm) {
+      lastConfirm = confirmKey;
+      (panel.querySelector(".tb-confirm") as HTMLElement | null)?.scrollIntoView?.({ block: "nearest" });
+    }
     place();
     if (focused) {
       const again = panel.querySelector(`[data-key="${focused}"]`) as HTMLElement | null;
-      again?.focus?.();
+      again?.focus?.({ preventScroll: true });
       if (again && from !== null && to !== null && "setSelectionRange" in again) {
         try {
           (again as HTMLTextAreaElement).setSelectionRange(from, to);

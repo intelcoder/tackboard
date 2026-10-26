@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import { statusLabel } from "@app/shared";
 import type { ThreadDto } from "@app/shared";
 import { badgeCount, badgeLabel, bannerFor, clampToViewport, diffForEvents, errorText, restoreDisabledReason, visibleThreads } from "../src/panel_logic.ts";
-import { notificationState } from "../src/notifications.ts";
+import { parseHTML } from "linkedom";
+import { createH } from "../src/dom.ts";
+import { notificationState, permissionBanner } from "../src/notifications.ts";
 import { ApiError } from "../src/api.ts";
 
 function thread(n: number, extra: Partial<ThreadDto> = {}): ThreadDto {
@@ -78,9 +80,32 @@ test("bannerFor maps granted, default, dismissed, denied and unsupported", () =>
   assert.equal(bannerFor("default", false), "ask");
   assert.equal(bannerFor("default", true), "link");
   assert.equal(bannerFor("denied", false), "blocked");
-  assert.equal(bannerFor("denied", true), "blocked");
   assert.equal(bannerFor("granted", false), null);
   assert.equal(bannerFor("unsupported", false), null);
+});
+
+test("denied and not dismissed shows blocked", () => {
+  assert.equal(bannerFor("denied", false), "blocked");
+});
+
+test("denied and dismissed shows nothing", () => {
+  assert.equal(bannerFor("denied", true), null);
+});
+
+test("the blocked banner has a Dismiss button that calls onDismiss", () => {
+  const h = createH(parseHTML("<html><body></body></html>").document as unknown as Document);
+  const calls: string[] = [];
+  const banner = permissionBanner(h, {
+    state: "denied", dismissed: false, onAllow() {}, onNotNow() {}, onAskAgain() {}, onDismiss: () => calls.push("dismiss"),
+  })!;
+  const button = [...banner.querySelectorAll("button")].find((b) => b.textContent === "Dismiss") as HTMLElement;
+  assert.ok(button, "a Dismiss button");
+  button.click();
+  assert.deepEqual(calls, ["dismiss"]);
+  const gone = permissionBanner(h, {
+    state: "denied", dismissed: true, onAllow() {}, onNotNow() {}, onAskAgain() {}, onDismiss() {},
+  });
+  assert.equal(gone, null);
 });
 
 test("diffForEvents reports a new agent message once", () => {

@@ -27,7 +27,9 @@ export function messageView(h: H, message: MessageDto, showDiscarded: boolean): 
 
 function restorePoint(h: H, message: MessageDto, number: number, canRestore: boolean, onRestore: (id: string) => void): HTMLElement {
   return h("div", { class: "tb-restore" },
-    h("span", null, `after message ${number} · ${(message.checkpointId ?? "").slice(0, 7)}`),
+    h("span", { class: "tb-restore-label" },
+      h("span", null, `after message ${number}`),
+      h("span", { class: "tb-restore-hash" }, ` · ${(message.checkpointId ?? "").slice(0, 7)}`)),
     h("span", { class: "line" }),
     canRestore
       ? h("button", { type: "button", onclick: () => onRestore(message.id) }, "Restore here")

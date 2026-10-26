@@ -221,7 +221,7 @@ test("restore rewinds files, takes a safety checkpoint first, marks later messag
   assert.equal(after_list[0]!.discarded, false);
   assert.equal(after_list[1]!.discarded, true);
   assert.equal(after_list[2]!.author, "system");
-  assert.equal(after_list[2]!.text, `Restored to message ${target.id}`);
+  assert.equal(after_list[2]!.text, "Restored to message 1");
   assert.equal(after_list[2]!.checkpointId, result.safetyCheckpointId);
   assert.equal(after_list[2]!.discarded, false);
 
@@ -229,6 +229,19 @@ test("restore rewinds files, takes a safety checkpoint first, marks later messag
   assert.equal(restored.length, 1, "exactly one restored event");
   assert.equal(restored[0]!.threadId, thread.id);
   assert.equal(restored[0]!.at, s.clock.t);
+});
+
+test("the restore note counts only messages that are still shown", () => {
+  const s = setup();
+  const thread = worked_thread(s, "first", (dir) => write(dir, "a.txt", "a2\n"));
+  s.restore.handle({ threadId: thread.id, messageId: thread.messages[0]!.id });
+  // Now the shown messages are the first one and the note, so the note is message 2.
+  const note = messages(s, thread.id).find((m) => m.author === "system")!;
+  s.clock.t += 5_000;
+  s.restore.handle({ threadId: thread.id, messageId: note.id });
+  const notes = messages(s, thread.id).filter((m) => m.author === "system");
+  assert.equal(notes[0]!.text, "Restored to message 1");
+  assert.equal(notes[1]!.text, "Restored to message 2");
 });
 
 test("restore discards messages across threads that are later than the target", () => {

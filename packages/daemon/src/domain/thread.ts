@@ -212,7 +212,10 @@ export class Thread {
 
   /** Adds the "Restored to message" note (carrying the safety checkpoint) and records the one `restored` event. */
   noteRestore(messageId: string, safetyCheckpointId: string, now: number, seq: number, data: unknown): void {
-    this.addSystemMessage(`Restored to message ${messageId}`, now, seq, safetyCheckpointId);
+    // The number is the place among the messages the user still sees, as the confirm and the toast count them.
+    const shown = this._messages.filter((m) => !m.discarded);
+    const number = shown.findIndex((m) => m.id === messageId) + 1;
+    this.addSystemMessage(`Restored to message ${number}`, now, seq, safetyCheckpointId);
     this.record("restored", now, data);
   }
 

@@ -1,0 +1,159 @@
+
+> test:e2e
+> npm run build && playwright test -c e2e/playwright.config.ts
+
+
+> build
+> node scripts/build.ts
+
+build cli
+build overlay
+wrote /Users/fiddlest/projects/tackboard-wt-b/packages/overlay/dist/tackboard.js
+
+Running 115 tests using 4 workers
+
+  ✓    4 [chromium] › e2e/tests/claim_race.spec.ts:4:1 › claim race (1.5s)
+  ✓    1 [chromium] › e2e/tests/comment_loop.spec.ts:54:1 › agent-started thread (2.5s)
+  ✓    3 [chromium] › e2e/tests/comment_loop.spec.ts:6:1 › comment loop (4.5s)
+  ✓    5 [chromium] › e2e/tests/comment_loop.spec.ts:67:1 › user can reopen and release (3.1s)
+  ✓    2 [chromium] › e2e/tests/branch_scoping.spec.ts:4:1 › branch scoping (6.3s)
+  ✓    6 [chromium] › e2e/tests/design_fixes.spec.ts:49:5 › restore confirm is fully visible on open (enabled, 1280) (4.3s)
+  ✓    8 [chromium] › e2e/tests/design_fixes.spec.ts:49:5 › restore confirm is fully visible on open (enabled, 320) (4.2s)
+  ✓    9 [chromium] › e2e/tests/design_fixes.spec.ts:49:5 › restore confirm is fully visible on open (blocked, 1280) (4.0s)
+  ✓    7 [chromium] › e2e/tests/design_fixes.spec.ts:49:5 › restore confirm is fully visible on open (enabled, 390) (6.0s)
+  ✓   10 [chromium] › e2e/tests/design_fixes.spec.ts:49:5 › restore confirm is fully visible on open (blocked, 390) (3.9s)
+  ✓   11 [chromium] › e2e/tests/design_fixes.spec.ts:49:5 › restore confirm is fully visible on open (blocked, 320) (3.9s)
+  ✓   12 [chromium] › e2e/tests/design_fixes.spec.ts:80:3 › restore marker is a single line (1280) (3.7s)
+  ✓   13 [chromium] › e2e/tests/design_fixes.spec.ts:80:3 › restore marker is a single line (390) (3.7s)
+  ✓   14 [chromium] › e2e/tests/design_fixes.spec.ts:80:3 › restore marker is a single line (320) (3.7s)
+  ✓   18 [chromium] › e2e/tests/detached.spec.ts:6:1 › detached (932ms)
+  ✓   15 [chromium] › e2e/tests/design_fixes.spec.ts:103:1 › the denied banner can be dismissed and stays dismissed after a reload (3.8s)
+  ✓   20 [chromium] › e2e/tests/nested_hover.spec.ts:4:1 › nested_hover (658ms)
+  ✓   17 [chromium] › e2e/tests/design_fixes.spec.ts:139:1 › an enabled Rewind keeps the amber fill (4.6s)
+  ✓   22 [chromium] › e2e/tests/oversize.spec.ts:5:1 › oversize (1.4s)
+  ✓   19 [chromium] › e2e/tests/modes.spec.ts:4:1 › modes (5.5s)
+  ✓   23 [chromium] › e2e/tests/panel_ui.spec.ts:7:1 › panel ui (2.9s)
+  ✘   16 [chromium] › e2e/tests/design_fixes.spec.ts:127:1 › history says the message number, not the internal id (9.6s)
+  ✓   25 [chromium] › e2e/tests/react_mapping.spec.ts:13:3 › with the source plugin › source attribute gives file and line (817ms)
+  ✓   24 [chromium] › e2e/tests/persistence.spec.ts:7:1 › persistence (3.4s)
+  ✓   26 [chromium] › e2e/tests/react_mapping.spec.ts:25:3 › without the source plugin › component names are found from React (877ms)
+  ✓   27 [chromium] › e2e/tests/react_mapping.spec.ts:34:1 › plain html site has text confidence only (813ms)
+  ✓   21 [chromium] › e2e/tests/notifications.spec.ts:31:1 › notifications (8.1s)
+  ✓   31 [chromium] › e2e/tests/responsive.spec.ts:163:1 › resize from 1280 to 320 clamps a dragged panel back inside (1.0s)
+  ✓   32 [chromium] › e2e/tests/responsive.spec.ts:189:1 › responsive check fails when the panel is forced to 400px wide at 320 (612ms)
+  ✓   28 [chromium] › e2e/tests/responsive.spec.ts:158:3 › responsive at 320 (7.6s)
+  ✓   29 [chromium] › e2e/tests/responsive.spec.ts:158:3 › responsive at 390 (7.8s)
+  ✓   30 [chromium] › e2e/tests/responsive.spec.ts:158:3 › responsive at 1280 (7.6s)
+  ✓   34 [chromium] › e2e/tests/scroll_links.spec.ts:4:1 › scroll links (1.4s)
+  ✓   37 [chromium] › e2e/tests/styles.spec.ts:56:3 › R01 holds (432ms)
+  ✓   35 [chromium] › e2e/tests/security.spec.ts:26:1 › security (1.3s)
+  ✓   33 [chromium] › e2e/tests/restore.spec.ts:6:1 › restore (7.1s)
+  ✓   38 [chromium] › e2e/tests/styles.spec.ts:62:3 › R01 fails when broken (427ms)
+  ✓   39 [chromium] › e2e/tests/styles.spec.ts:56:3 › R02 holds (433ms)
+  ✓   40 [chromium] › e2e/tests/styles.spec.ts:62:3 › R02 fails when broken (452ms)
+  ✓   41 [chromium] › e2e/tests/styles.spec.ts:56:3 › R03 holds (440ms)
+  ✓   42 [chromium] › e2e/tests/styles.spec.ts:62:3 › R03 fails when broken (441ms)
+  ✓   43 [chromium] › e2e/tests/styles.spec.ts:56:3 › R04 holds (432ms)
+  ✓   44 [chromium] › e2e/tests/styles.spec.ts:62:3 › R04 fails when broken (424ms)
+  ✓   45 [chromium] › e2e/tests/styles.spec.ts:56:3 › R05 holds (442ms)
+  ✓   46 [chromium] › e2e/tests/styles.spec.ts:62:3 › R05 fails when broken (449ms)
+  ✓   47 [chromium] › e2e/tests/styles.spec.ts:56:3 › R06 holds (441ms)
+  ✓   48 [chromium] › e2e/tests/styles.spec.ts:62:3 › R06 fails when broken (468ms)
+  ✓   36 [chromium] › e2e/tests/stale_claim.spec.ts:5:1 › stale claim (3.2s)
+  ✓   51 [chromium] › e2e/tests/styles.spec.ts:56:3 › R08 holds (2.2s)
+  ✓   52 [chromium] › e2e/tests/styles.spec.ts:62:3 › R08 fails when broken (2.2s)
+  ✓   49 [chromium] › e2e/tests/styles.spec.ts:56:3 › R07 holds (2.7s)
+  ✓   50 [chromium] › e2e/tests/styles.spec.ts:62:3 › R07 fails when broken (2.7s)
+  ✓   53 [chromium] › e2e/tests/styles.spec.ts:56:3 › R09 holds (469ms)
+  ✓   54 [chromium] › e2e/tests/styles.spec.ts:62:3 › R09 fails when broken (487ms)
+  ✓   55 [chromium] › e2e/tests/styles.spec.ts:56:3 › R10 holds (524ms)
+  ✓   56 [chromium] › e2e/tests/styles.spec.ts:62:3 › R10 fails when broken (533ms)
+  ✓   57 [chromium] › e2e/tests/styles.spec.ts:56:3 › R11 holds (510ms)
+  ✓   58 [chromium] › e2e/tests/styles.spec.ts:62:3 › R11 fails when broken (526ms)
+  ✓   59 [chromium] › e2e/tests/styles.spec.ts:56:3 › R12 holds (555ms)
+  ✓   60 [chromium] › e2e/tests/styles.spec.ts:62:3 › R12 fails when broken (538ms)
+  ✓   61 [chromium] › e2e/tests/styles.spec.ts:56:3 › R13 holds (530ms)
+  ✓   62 [chromium] › e2e/tests/styles.spec.ts:62:3 › R13 fails when broken (528ms)
+  ✓   63 [chromium] › e2e/tests/styles.spec.ts:56:3 › R14 holds (538ms)
+  ✓   64 [chromium] › e2e/tests/styles.spec.ts:62:3 › R14 fails when broken (531ms)
+  ✓   65 [chromium] › e2e/tests/styles.spec.ts:56:3 › R15 holds (704ms)
+  ✓   66 [chromium] › e2e/tests/styles.spec.ts:62:3 › R15 fails when broken (681ms)
+  ✓   67 [chromium] › e2e/tests/styles.spec.ts:56:3 › R16 holds (736ms)
+  ✓   68 [chromium] › e2e/tests/styles.spec.ts:62:3 › R16 fails when broken (714ms)
+  ✓   71 [chromium] › e2e/tests/styles.spec.ts:56:3 › R18 holds (796ms)
+  ✓   72 [chromium] › e2e/tests/styles.spec.ts:62:3 › R18 fails when broken (796ms)
+  ✓   73 [chromium] › e2e/tests/styles.spec.ts:56:3 › R19 holds (673ms)
+  ✓   74 [chromium] › e2e/tests/styles.spec.ts:62:3 › R19 fails when broken (673ms)
+  ✓   69 [chromium] › e2e/tests/styles.spec.ts:56:3 › R17 holds (2.3s)
+  ✓   70 [chromium] › e2e/tests/styles.spec.ts:62:3 › R17 fails when broken (2.3s)
+  ✓   76 [chromium] › e2e/tests/styles.spec.ts:62:3 › R20 fails when broken (704ms)
+  ✓   75 [chromium] › e2e/tests/styles.spec.ts:56:3 › R20 holds (704ms)
+  ✓   77 [chromium] › e2e/tests/styles.spec.ts:56:3 › R21 holds (2.6s)
+  ✓   78 [chromium] › e2e/tests/styles.spec.ts:62:3 › R21 fails when broken (2.6s)
+  ✓   80 [chromium] › e2e/tests/styles.spec.ts:62:3 › R22 fails when broken (2.8s)
+  ✓   79 [chromium] › e2e/tests/styles.spec.ts:56:3 › R22 holds (2.8s)
+  ✓   81 [chromium] › e2e/tests/styles.spec.ts:56:3 › R23 holds (731ms)
+  ✓   82 [chromium] › e2e/tests/styles.spec.ts:62:3 › R23 fails when broken (786ms)
+  ✓   84 [chromium] › e2e/tests/styles.spec.ts:62:3 › R24 fails when broken (722ms)
+  ✓   83 [chromium] › e2e/tests/styles.spec.ts:56:3 › R24 holds (723ms)
+  ✓   85 [chromium] › e2e/tests/styles.spec.ts:56:3 › R25 holds (699ms)
+  ✓   86 [chromium] › e2e/tests/styles.spec.ts:62:3 › R25 fails when broken (668ms)
+  ✓   88 [chromium] › e2e/tests/styles.spec.ts:62:3 › R26 fails when broken (744ms)
+  ✓   87 [chromium] › e2e/tests/styles.spec.ts:56:3 › R26 holds (744ms)
+  ✓   89 [chromium] › e2e/tests/styles.spec.ts:56:3 › R27 holds (669ms)
+  ✓   90 [chromium] › e2e/tests/styles.spec.ts:62:3 › R27 fails when broken (688ms)
+  ✓   92 [chromium] › e2e/tests/styles.spec.ts:62:3 › R28 fails when broken (723ms)
+  ✓   91 [chromium] › e2e/tests/styles.spec.ts:56:3 › R28 holds (725ms)
+  ✓   93 [chromium] › e2e/tests/styles.spec.ts:56:3 › R29 holds (677ms)
+  ✓   94 [chromium] › e2e/tests/styles.spec.ts:62:3 › R29 fails when broken (727ms)
+  ✓   95 [chromium] › e2e/tests/styles.spec.ts:56:3 › R30 holds (767ms)
+  ✓   96 [chromium] › e2e/tests/styles.spec.ts:62:3 › R30 fails when broken (766ms)
+  ✓   98 [chromium] › e2e/tests/styles.spec.ts:62:3 › R31 fails when broken (2.2s)
+  ✓   97 [chromium] › e2e/tests/styles.spec.ts:56:3 › R31 holds (2.8s)
+  ✓  101 [chromium] › e2e/tests/styles.spec.ts:56:3 › R33 holds (467ms)
+  ✓  100 [chromium] › e2e/tests/styles.spec.ts:62:3 › R32 fails when broken (2.2s)
+  ✓   99 [chromium] › e2e/tests/styles.spec.ts:56:3 › R32 holds (2.2s)
+  ✓  102 [chromium] › e2e/tests/styles.spec.ts:62:3 › R33 fails when broken (504ms)
+  ✓  105 [chromium] › e2e/tests/styles.spec.ts:56:3 › R35 holds (524ms)
+  ✓  106 [chromium] › e2e/tests/styles.spec.ts:62:3 › R35 fails when broken (507ms)
+  ✓  103 [chromium] › e2e/tests/styles.spec.ts:56:3 › R34 holds (2.6s)
+  ✓  104 [chromium] › e2e/tests/styles.spec.ts:62:3 › R34 fails when broken (2.7s)
+  ✓  109 [chromium] › e2e/tests/styles.spec.ts:56:3 › R37 holds (640ms)
+  ✓  110 [chromium] › e2e/tests/styles.spec.ts:62:3 › R37 fails when broken (657ms)
+  ✓  111 [chromium] › e2e/tests/styles.spec.ts:56:3 › R38 holds (689ms)
+  ✓  112 [chromium] › e2e/tests/styles.spec.ts:62:3 › R38 fails when broken (705ms)
+  ✓  107 [chromium] › e2e/tests/styles.spec.ts:56:3 › R36 holds (4.5s)
+  ✓  108 [chromium] › e2e/tests/styles.spec.ts:62:3 › R36 fails when broken (4.5s)
+  ✓  113 [chromium] › e2e/tests/styles.spec.ts:56:3 › R39 holds (2.6s)
+  ✓  114 [chromium] › e2e/tests/styles.spec.ts:62:3 › R39 fails when broken (2.6s)
+  ✓  115 [chromium] › e2e/tests/xss.spec.ts:8:1 › xss (2.9s)
+
+
+  1) [chromium] › e2e/tests/design_fixes.spec.ts:127:1 › history says the message number, not the internal id 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: locator('.tb-thread[data-id="t1"]').locator('.tb-msg.system').first()
+    Expected pattern: /^Restored to message \d+$/
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" locator('.tb-thread[data-id="t1"]').locator('.tb-msg.system').first() with timeout 5000ms
+      - waiting for locator('.tb-thread[data-id="t1"]').locator('.tb-msg.system').first()
+
+
+      130 |   const note = thread(page, id).locator(".tb-msg.system");
+      131 |   if ((await note.count()) === 0) await thread(page, id).locator(`[data-key="top-${id}"]`).first().click();
+    > 132 |   await expect(thread(page, id).locator(".tb-msg.system").first()).toHaveText(/^Restored to message \d+$/);
+          |                                                                    ^
+      133 |   await page.locator('[data-key="history"]').click();
+      134 |   await page.locator(".tb-thread-top").first().click();
+      135 |   await expect(page.locator(".tb-msg.system").first()).toHaveText(/^Restored to message \d+$/);
+        at /Users/fiddlest/projects/tackboard-wt-b/e2e/tests/design_fixes.spec.ts:132:68
+
+    Error Context: test-results/design_fixes-history-says--60432--number-not-the-internal-id-chromium/error-context.md
+
+  1 failed
+    [chromium] › e2e/tests/design_fixes.spec.ts:127:1 › history says the message number, not the internal id 
+  114 passed (58.9s)
