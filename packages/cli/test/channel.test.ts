@@ -97,6 +97,33 @@ test("initialize answers with the channel capability and the instructions, and o
   });
 });
 
+test("initialize answers a supported protocol version as is, and any other with the newest supported one", async () => {
+  await with_stub(async (stub) => {
+    const cases: [string | undefined, string][] = [
+      ["2024-11-05", "2024-11-05"],
+      ["2025-06-18", "2025-06-18"],
+      ["2025-11-25", "2025-11-25"],
+      ["foo", "2025-11-25"],
+      ["2026-07-28", "2025-11-25"],
+      [undefined, "2025-11-25"],
+    ];
+    for (const [asked, answered] of cases) {
+      const c = start_channel(Number(new URL(stub.url).port), stub.token);
+      try {
+        c.send({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: asked, capabilities: {}, clientInfo: { name: "test", version: "0" } } });
+        await c.until(() => c.lines.some((l) => l.id === 1), "the initialize answer");
+        const r = c.lines.find((l) => l.id === 1)!.result;
+        assert.equal(r.protocolVersion, answered, `asked ${asked}`);
+        assert.deepEqual(r.capabilities, { experimental: { "claude/channel": {} } });
+        assert.ok(r.instructions.includes("Never resolve one."));
+      } finally {
+        c.child.stdin.end();
+        await c.exit;
+      }
+    }
+  });
+});
+
 test("a pending thread arrives once as a channel event and shows as received; a second one follows", async () => {
   await with_stub(async (stub) => {
     const c = start_channel(Number(new URL(stub.url).port), stub.token);
