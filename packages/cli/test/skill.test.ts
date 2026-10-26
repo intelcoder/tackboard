@@ -34,3 +34,13 @@ test("every command in the usage text appears in the skill", () => {
     assert.ok(text.includes(`${brand.cli} ${name}`), `skill is missing: ${name}`);
   }
 });
+
+test("the skill and the README give the same command to copy the config into a worktree", () => {
+  const README = join(import.meta.dirname, "../../../README.md");
+  const copy_line = /cp [^`\n]+\/\.tackboard\/config\.json [^\s`]+/;
+  const in_skill = copy_line.exec(readFileSync(SKILL, "utf8"));
+  const in_readme = copy_line.exec(readFileSync(README, "utf8"));
+  assert.ok(in_skill, "skill has no worktree copy command");
+  assert.ok(in_readme, "README has no worktree copy command");
+  assert.equal(in_readme[0], in_skill[0]);
+});

@@ -5,7 +5,7 @@ description: Use when the user leaves comments on their running dev site and you
 
 # Tackboard
 
-The user clicks things on their dev site and leaves comments. You read the comments with the `tackboard` command, change the code, and answer. Run every command in the project folder.
+The user clicks things on their dev site and leaves comments. You read the comments with the `tackboard` command, change the code, and answer. Run the commands in the project folder, or in a git worktree that has the project's config copied in (see "One agent per worktree" below).
 
 ## The loop
 
