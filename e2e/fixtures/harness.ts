@@ -9,6 +9,7 @@ import { extname, join, normalize } from "node:path";
 import { chromium, expect, test as base } from "@playwright/test";
 import type { Browser, Page } from "@playwright/test";
 import { brand } from "../../packages/shared/src/brand.ts";
+import { buildReactSite } from "./react-site/build.ts";
 
 const root = join(import.meta.dirname, "..", "..");
 const cli = join(root, "packages", "cli", "src", "main.ts");
@@ -66,7 +67,7 @@ function run(args: string[], cwd: string, env: Record<string, string> = {}): Pro
 }
 
 export async function startHarness(opts: HarnessOptions = {}): Promise<Harness> {
-  if ((opts.site ?? "plain") !== "plain") throw new Error(`site "${opts.site}" is added in a later task`);
+  const site = opts.site ?? "plain";
   const repo = mkdtempSync(join(tmpdir(), "tb-e2e-"));
   const sitePort = await freePort();
   let daemonPort = await freePort();
@@ -82,8 +83,10 @@ export async function startHarness(opts: HarnessOptions = {}): Promise<Harness> 
   const init = await run(["init", "--origin", siteUrl, "--port", String(daemonPort), "--user", "sam"], repo);
   if (init.code !== 0) throw new Error(`init failed: ${init.stdout}`);
 
-  const page_html = readFileSync(join(import.meta.dirname, "site", "index.html"), "utf8").replace("{{BUNDLE_URL}}", `${daemonUrl}/${brand.bundle}`);
+  const page_file = site === "plain" ? join("site", "index.html") : join("react-site", "index.html");
+  const page_html = readFileSync(join(import.meta.dirname, page_file), "utf8").replace("{{BUNDLE_URL}}", `${daemonUrl}/${brand.bundle}`);
   writeFileSync(join(repo, "index.html"), page_html);
+  if (site !== "plain") await buildReactSite(repo, site === "react-plugin");
   git(["add", "-A"]);
   git(["commit", "-q", "-m", "first page"]);
 
@@ -157,9 +160,10 @@ export async function startHarness(opts: HarnessOptions = {}): Promise<Harness> 
 }
 
 /** A Playwright test whose `harness` starts and stops the whole stack, and fails on browser problems. */
-export const test = base.extend<{ harness: Harness }>({
-  harness: async ({}, use) => {
-    const harness = await startHarness();
+export const test = base.extend<{ harness: Harness; site: NonNullable<HarnessOptions["site"]> }>({
+  site: ["plain", { option: true }],
+  harness: async ({ site }, use) => {
+    const harness = await startHarness({ site });
     try {
       await use(harness);
       expect(harness.problems, "console errors and failed requests").toEqual([]);
