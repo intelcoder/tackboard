@@ -1,0 +1,8 @@
+origin-before-host: exit=1 failing=['wrong Host plus foreign Origin plus no token is forbidden_host']
+token-before-host: exit=1 failing=['allowed Origin gets CORS headers and preflight succeeds without a token', 'wrong Host plus foreign Origin plus no token is forbidden_host', 'foreign Origin plus no token is forbidden_origin']
+token-before-origin: exit=1 failing=['allowed Origin gets CORS headers and preflight succeeds without a token', 'foreign Origin plus no token is forbidden_origin']
+skip-token-check: exit=1 failing=['missing token is 401 on POST, allowed on GET /health', 'a wrong token is 401', 'right Host and Origin with a bad token is 401', 'a token that is only a prefix, or longer than the real one, is 401 and never an error', 'POST to a token-free path needs the token and its body is not read first']
+open-all-methods: exit=1 failing=['POST to a token-free path needs the token and its body is not read first']
+prefix-compare: exit=1 failing=['a token that is only a prefix, or longer than the real one, is 401 and never an error']
+no-vary: exit=1 failing=['an allowed Origin gets Vary: Origin']
+no-json-branch: exit=1 failing=['malformed JSON is 400 invalid with a message about JSON']

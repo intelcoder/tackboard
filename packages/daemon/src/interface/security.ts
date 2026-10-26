@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type { Context, MiddlewareHandler } from "hono";
 import { brand, ERROR_STATUS, LIMITS } from "@app/shared";
 import type { ErrorCode } from "@app/shared";
@@ -10,8 +11,16 @@ export type SecurityOptions = {
   port(): number;
 };
 
-/** Paths that need no token. */
+/** Paths that need no token, for GET only. */
 const open_paths = new Set(["/health", `/${brand.bundle}`]);
+
+/** Compares in constant time. A different length is a plain mismatch. */
+function same_token(given: string | undefined, real: string): boolean {
+  if (given === undefined) return false;
+  const a = Buffer.from(given);
+  const b = Buffer.from(real);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 function refuse(c: Context, code: ErrorCode, message: string): Response {
   return c.json({ error: code, message }, ERROR_STATUS[code] as 400);
@@ -56,7 +65,8 @@ export function security(opts: SecurityOptions): MiddlewareHandler {
       return c.body(null, 204);
     }
 
-    if (!open_paths.has(c.req.path) && c.req.header(brand.tokenHeader) !== opts.token) {
+    const needs_token = !(c.req.method === "GET" && open_paths.has(c.req.path));
+    if (needs_token && !same_token(c.req.header(brand.tokenHeader), opts.token)) {
       return refuse(c, "unauthorized", "missing or wrong token");
     }
 

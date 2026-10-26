@@ -1,0 +1,63 @@
+--- -H x-tackboard-token:  http://127.0.0.1:55712/threads
+{"error":"unauthorized","message":"missing or wrong token"}401
+--- -H x-tackboard-token: x http://127.0.0.1:55712/threads
+{"error":"unauthorized","message":"missing or wrong token"}401
+--- -H x-tackboard-token: 1ac9ee6b795b261882dca4f049bd72b77ad11e7b9374dd6 http://127.0.0.1:55712/threads
+{"error":"unauthorized","message":"missing or wrong token"}401
+--- -H x-tackboard-token: 1ac9ee6b795b261882dca4f049bd72b77ad11e7b9374dd6ex http://127.0.0.1:55712/threads
+{"error":"unauthorized","message":"missing or wrong token"}401
+--- -H x-tackboard-token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+{"error":"unauthorized","message":"missing or wrong token"}401
+--- http://127.0.0.1:55712/threads
+{"error":"unauthorized","message":"missing or wrong token"}401
+--- -H x-tackboard-token: 1ac9ee6b795b261882dca4f049bd72b77ad11e7b9374dd6e http://127.0.0.1:55712/th
+{"branch":"main","threads":[],"history":[],"agent":{"name":null,"online":false},"restoreBlocked":nul
+--- http://127.0.0.1:55712/health
+{"ok":true}200
+--- http://127.0.0.1:55712/tackboard.js -o /dev/nu
+})();
+200
+== POST /health no token
+401
+== POST /health token
+400
+== POST /tackboard.js no token
+401
+== POST /tackboard.js token
+400
+== PUT /health no token
+401
+== PUT /health token
+404
+== PUT /tackboard.js no token
+401
+== PUT /tackboard.js token
+404
+== DELETE /health no token
+401
+== DELETE /health token
+404
+== DELETE /tackboard.js no token
+401
+== DELETE /tackboard.js token
+404
+== PATCH /health no token
+401
+== PATCH /health token
+404
+== PATCH /tackboard.js no token
+401
+== PATCH /tackboard.js token
+404
+== HEAD /health no token
+== HEAD /health token
+200
+== HEAD /tackboard.js no token
+== HEAD /tackboard.js token
+200
+== OPTIONS
+204
+== malformed json with token
+{"error":"invalid","message":"body is not valid JSON"} 400
+== bad origin
+{"error":"forbidden_origin","message":"this origin is not allowed"} 403

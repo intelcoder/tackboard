@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brand, paths } from "@app/shared";
 import type { ElementRef, HistoryEvent, ListThreadsResponse, ThreadDto } from "@app/shared";
-import { git, make_plain_folder, make_repo, remove, start_daemon } from "./daemon_setup.ts";
+import { git, make_plain_folder, make_repo, ORIGIN, remove, start_daemon } from "./daemon_setup.ts";
 import type { Running } from "./daemon_setup.ts";
 
 const folders: string[] = [];
@@ -115,7 +115,7 @@ test("claim-next with a branch only returns that branch", () =>
   with_daemon(async (d) => {
     const a = (await (await d.call("POST", paths.threads, post_body("on main"))).json()) as ThreadDto;
     git(d.dir, "checkout", "-q", "-b", "other");
-    const none = await (await d.call("POST", paths.claimNext, { agent: "claude", branch: "main-2" })).json();
+    const none = await (await d.call("POST", paths.claimNext, { agent: "claude", branch: "no-such-branch" })).json();
     assert.equal(none.thread, null);
     const got = await (await d.call("POST", paths.claimNext, { agent: "claude", branch: "main" })).json();
     assert.equal(got.thread.id, a.id);
@@ -155,12 +155,32 @@ test("GET /history returns the claimed snapshot", () =>
     assert.ok(one.events.every((e) => e.threadId === t.id));
   }));
 
+test("malformed JSON is 400 invalid with a message about JSON", () =>
+  with_daemon(async (d) => {
+    const r = await fetch(d.url + paths.threads, {
+      method: "POST",
+      headers: { "content-type": "application/json", [brand.tokenHeader]: d.token },
+      body: "{nope",
+    });
+    assert.equal(r.status, 400);
+    const body = (await r.json()) as { error: string; message: string };
+    assert.equal(body.error, "invalid");
+    assert.match(body.message, /JSON/);
+  }));
+
+test("an allowed Origin gets Vary: Origin", () =>
+  with_daemon(async (d) => {
+    const r = await d.call("GET", paths.health, undefined, { origin: ORIGIN });
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get("vary"), "Origin");
+  }));
+
 test("daemon binds 127.0.0.1 only", () =>
   with_daemon(async (d) => {
     assert.equal(d.daemon.address()?.address, "127.0.0.1");
   }));
 
-test("restore over HTTP rewinds and reports ids as threadId/messageId", () =>
+test("restore over HTTP rewinds and reports discarded ids as threadId/messageId", () =>
   with_daemon(async (d) => {
     const t = (await (await d.call("POST", paths.threads, post_body("one"))).json()) as ThreadDto;
     await d.call("POST", paths.claimNext, { agent: "claude" });
@@ -170,12 +190,15 @@ test("restore over HTTP rewinds and reports ids as threadId/messageId", () =>
     assert.equal(blocked.status, 409);
     assert.equal((await blocked.json()).error, "restore_blocked");
     await d.call("POST", paths.release(t.id));
+    // A later message gives the restore something to discard.
+    const replied = (await (await d.call("POST", paths.messages(t.id), { author: "user", text: "and this" })).json()) as ThreadDto;
     const m1 = t.messages[0]!.id;
+    const later = replied.messages[1]!.id;
     const ok = await d.call("POST", paths.restore, { threadId: t.id, messageId: m1 });
     assert.equal(ok.status, 200);
     const result = await ok.json();
-    assert.ok(result.restoredTo);
-    assert.ok(Array.isArray(result.discardedMessageIds));
+    assert.equal(result.restoredTo, m1);
+    assert.deepEqual(result.discardedMessageIds, [`${t.id}/${later}`]);
   }));
 
 test("invalid input is 400 invalid and a missing JSON body is handled", () =>
