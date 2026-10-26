@@ -194,7 +194,7 @@ export function createPanel(o: PanelOptions): Panel {
   const queuedView = (item: OutboxItem<Job>, label: string | null): QueuedView => ({
     label,
     text: item.job.text.length > 300 ? `${item.job.text.slice(0, 299)}…` : item.job.text,
-    status: item.state === "sending" ? "Sending…" : item.state === "retry" ? "Waiting to retry" : `Not sent: ${item.reason}`,
+    status: item.state === "failed" ? `Not sent: ${item.reason}` : outbox.inflight(item) ? "Sending…" : "Waiting to retry",
     failed: item.state === "failed",
     onRetry: () => outbox.retry(item),
     onRemove: () => outbox.remove(item),
