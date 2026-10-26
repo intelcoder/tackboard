@@ -6,7 +6,7 @@ Priority: **P1** can lose or confuse a user's data or work. **P2** is a visible 
 
 ## Not verified at wrap-up
 
-- **P1: the last full check was not finished.** The final gate was run in rounds. In the last round one reviewer passed (280 unit tests, 132 browser tests, a real Claude Code session) and the second, adversarial one was stopped before it returned. These were not repeated in that round: 100 refused agent resolves, queue attacks while sampling the item labels, performance and memory stress on a 40 000-element page, margin/padding/gap strips on odd elements, `init` and skill-copy edge cases, and the security checks. Each fix since the previous round was verified on its own. Run the full checks again before publishing a release.
+- **P1: the last full check was not finished.** The final gate was run in rounds. In the last round one reviewer passed (280 unit tests, 132 browser tests, a real Claude Code session) and the second, adversarial one was stopped before it returned. These were not repeated in that round: 100 refused agent resolves, queue attacks while sampling the item labels, performance and memory stress on a 40 000-element page, margin/padding/gap strips on odd elements, `init` and skill-copy edge cases, and the security checks. Each fix since the previous round was verified on its own, and so were the later features (drafts and Send all, the new comment box layout, the plain-names rename), but no full two-reviewer round has run over them. Run the full checks again before publishing a release.
 - **P2: Cursor is untested.** The README says so. Cursor's docs say it reads `.claude/skills/`, but nobody has run it. If the skill is not picked up, have `tackboard init` also write one `.cursor/rules/tackboard.mdc` (frontmatter `alwaysApply: true`). Also untested there: a blocking `tackboard wait` of up to 60 seconds, and whether Cursor's sandbox lets the agent reach `127.0.0.1`.
 - **P3: the "Comment N resolved" toast after your own Resolve click** was not seen by one reviewer (the green pin and the Resolved tab were right). It is built from poll changes, so it may not fire for the user's own click. Check `packages/overlay/src/toast.ts`.
 
@@ -22,7 +22,8 @@ Priority: **P1** can lose or confuse a user's data or work. **P2** is a visible 
 ## Overlay
 
 - **P2: a retried send can be stored twice.** After "The daemon did not answer" the message may already have arrived, and Retry then posts it again. The README says so. A fix needs an id the daemon can recognise (an idempotency key); it was left out to keep the change small.
-- **P2: the send queue lives in the page.** It is lost on reload. No persistence by design.
+- **P2: the send queue and the drafts live in the page.** Both are lost on reload. No persistence by design; drafts kept in the daemon would survive a reload but add a draft state to threads, the API and the CLI.
+- **P3: drafts are minimal.** They show only in the panel (no pins on the page), cannot be edited (remove and add again), and Send all creates one ordinary thread per draft. The agent may start on the first before the last has arrived. A batch id on the threads, so the agent takes them as one task, would need a daemon change. After Send all the panel switches to View mode and opens the last thread, which interrupts a batch flow.
 - **P2: Resolve (and the reply box) can need a scroll in the short panel**, for example with the notification banner showing and a long thread. A sticky action row would fix it.
 - **P3: the margin, padding and gap strips** are drawn outside a scroll container for an element partly scrolled out of it, are wrong for `transform: scale()` (they use CSS pixels around the scaled box), and show vertical margins on inline elements. On macOS holding Control then clicking opens the browser's context menu, so release Control before picking. `packages/overlay/src/spacing.ts`.
 - **P3: two comments on the same element** put their pins at the same spot; one covers the other. Both are reachable from the panel.
@@ -46,6 +47,10 @@ Priority: **P1** can lose or confuse a user's data or work. **P2** is a visible 
 - **P3: a comment is delivered once** only until its claim goes stale (30 minutes); then it can be claimed and sent again.
 - **P3: idea, tools for the agent.** A channel with tools (reply, comment) instead of shell commands. Not needed: the CLI works with every agent.
 - **P3: idea, WebSocket or Server-Sent Events** between the daemon and the page instead of polling. Browsers cannot set a header on either, so the token would have to move into the URL or a first message. Left out because the page cost was the real problem, and that is fixed.
+
+## Names (the rule: easy everyday words, no jargon)
+
+- **P3: names left after the plain-names pass.** Kept on purpose: `h`, `H` and `createH` (`h` is also a height in many places, so a blind rename is unsafe), the CSS classes `tb-crumbs` and `tb-convo` (browser tests select them), the `job` field on queue items. Cryptic names a reviewer still found, with a plainer one: `crumbs2` and `chain` (hover.ts) -> `parents`, `kept` and `finder` (element_ref.ts) -> `foundElements`, `snap`, `lit`, `lastLook`, `settle`, `poller` in tests and helpers -> `savedState`, `highlighted`, `lastSeen`, `waitUntilStill`, `pollTimer`, `evil` and `fakeSend` and `withStub` in tests -> `badInput`, `pretendSend`, `withFakeDaemon`, `px` -> `pixels`, and the `box` variable in `thread_view.test.ts` -> `replyBox`. The `fiber` names in `source_map.ts` are React's own word and may stay.
 
 ## How the work was checked (for whoever continues)
 
