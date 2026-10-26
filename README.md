@@ -8,7 +8,7 @@ Follow these steps in order. Do them once.
 
 ### 1. What you need
 
-Node 22.22 (tested on 22.22.2; newer versions are untested) and git.
+Node 22.22 (tested on 22.22.2; newer versions are untested). Git is optional, but restore and per-branch comments need it. Without git, comments are kept on a branch called `no-git`.
 
 ### 2. Install and build
 
@@ -50,7 +50,7 @@ Add this to your dev site, then run: tackboard start
 installed skill .claude/skills/tackboard/SKILL.md
 ```
 
-(The port and user name will be yours.) `init` writes `.tackboard/config.json`, which holds the port, a random token and the allowed origins. In a git project it also adds `.tackboard/` to `.git/info/exclude`, so the folder does not show in `git status`. Outside git it prints a warning: comments are kept on a branch called `no-git` and restore does not work. The last line is the agent skill, see "Give your coding agent the loop" below.
+(The port and user name will be yours.) `init` writes `.tackboard/config.json`, which holds the port, a random token and the allowed origins. In a git project it also adds `.tackboard/` to `.git/info/exclude`, so the folder does not show in `git status`. Outside git it prints a warning: comments are kept on a branch called `no-git` and restore does not work. The last line is about the agent skill (see "Give your coding agent the loop" below). The first run prints `installed skill .claude/skills/tackboard/SKILL.md`. Later runs print `skill already there, left as is`.
 
 To add an address later, run `init` again and give every address you want, old and new, for example `tackboard init --origin http://localhost:3000 --origin http://localhost:4000`. The port and token stay the same. Then stop `tackboard start` and run it again.
 
@@ -81,7 +81,6 @@ It shows the branch, `agent: claude-main (online)` and `no threads`. Now reload 
 - `tackboard: command not found`: step 3 did not run. Run it again from the clone. Or run the file directly: `node /path/to/this/clone/packages/cli/src/main.ts`.
 - A build error: run `npm install` first, then `npm run build` again.
 - `cannot reach the daemon on port <port>; run tackboard start`: the daemon is not running. Run `tackboard start` in your project.
-- `no tackboard project found here; run tackboard init`: you are in the wrong folder, or have not run `init` yet.
 - The page shows no bar, or a comment never shows up: the address of your dev site is not allowed. Run `init` again with `--origin` for that address, then restart `tackboard start`.
 
 ## Comment on the page
