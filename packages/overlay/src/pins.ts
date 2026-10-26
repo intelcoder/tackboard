@@ -1,4 +1,4 @@
-import { findElement } from "./element_ref.ts";
+import { createFinder } from "./element_ref.ts";
 import type { H } from "./dom.ts";
 import type { Store } from "./store.ts";
 
@@ -21,6 +21,7 @@ const SIZE = 22;
 export function createPins(o: PinsOptions): { render(): void; destroy(): void } {
   const { document: doc, window: win, layer, h, store } = o;
   const pins = new Map<string, HTMLElement>();
+  const finder = createFinder(doc, win, store);
 
   const render = () => {
     const s = store.get();
@@ -29,7 +30,7 @@ export function createPins(o: PinsOptions): { render(): void; destroy(): void } 
       const vp = o.viewport();
       for (const t of s.threads) {
         if (t.discarded) continue;
-        const el = findElement(t.element, doc);
+        const el = finder.find(t);
         if (!el) continue;
         const r = el.getBoundingClientRect();
         if (r.width === 0 && r.height === 0) continue;

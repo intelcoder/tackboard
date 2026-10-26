@@ -1,6 +1,7 @@
-import type { ElementRef } from "@app/shared";
+import type { ElementRef, ThreadDto } from "@app/shared";
 import { LIMITS } from "@app/shared";
 import { readSourceInfo } from "./source_map.ts";
+import type { Store } from "./store.ts";
 
 const norm = (s: string | null | undefined): string => (s ?? "").replace(/\s+/g, " ").trim();
 
@@ -53,8 +54,33 @@ export function buildElementRef(el: Element): ElementRef {
   };
 }
 
+/** The elements whose normalised text is one of `wanted`, by tag and text, in one pass over the page. The first in document order wins. */
+function indexByText(doc: Document, wanted: Set<string>): Map<string, Element> {
+  const limit = LIMITS.elementText + 2;
+  const all = doc.querySelectorAll("*");
+  const done: (string | null)[] = [];
+  const index = new Map<string, Element>();
+  // Children come after their parent in `all`, so going backwards has each child's text ready on `done`, first child on top.
+  for (let i = all.length - 1; i >= 0; i--) {
+    const el = all[i]!;
+    let text: string | null = "";
+    for (let node = el.firstChild; node; node = node.nextSibling) {
+      const part = node.nodeType === 3 ? (node as Text).data : node.nodeType === 1 ? (done.pop() ?? null) : "";
+      text = text === null || part === null ? null : text + part;
+    }
+    if (text !== null) {
+      text = text.replace(/\s+/g, " ");
+      if (text.length > limit) text = null;
+    }
+    done.push(text);
+    const trimmed = text?.trim();
+    if (trimmed && wanted.has(trimmed)) index.set(`${el.tagName.toLowerCase()}\0${trimmed}`, el);
+  }
+  return index;
+}
+
 /** Selector first, then the same tag with exactly the same text, else null (the thread is "detached"). */
-export function findElement(ref: ElementRef, doc: Document): Element | null {
+export function findElement(ref: ElementRef, doc: Document, byText: () => Map<string, Element> = () => indexByText(doc, new Set([ref.text]))): Element | null {
   try {
     const hit = doc.querySelector(ref.selector);
     if (hit && hit.tagName.toLowerCase() === ref.tag) return hit;
@@ -62,10 +88,49 @@ export function findElement(ref: ElementRef, doc: Document): Element | null {
     // an invalid stored selector falls through to the text match
   }
   if (!ref.text) return null;
-  for (const el of Array.from(doc.getElementsByTagName(ref.tag))) {
-    if (norm(el.textContent) === ref.text) return el;
+  return byText().get(`${ref.tag}\0${ref.text}`) ?? null;
+}
+
+const pageOf = (url: string): string => {
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname;
+  } catch {
+    return url;
   }
-  return null;
+};
+
+/**
+ * Finds the element of a thread on this page and keeps it. Threads from other pages are never looked up.
+ * A thread with no element is searched again only when the thread list or the page url changes (once per poll).
+ */
+export function createFinder(doc: Document, win: Window, store: Store): { find(t: Pick<ThreadDto, "id" | "url" | "element">): Element | null } {
+  const kept = new Map<string, Element | null>();
+  let list: ThreadDto[] = [];
+  let page = "";
+  let byText: Map<string, Element> | null = null;
+  return {
+    find(t) {
+      const here = win.location.href;
+      if (pageOf(t.url) !== pageOf(here)) return null;
+      const threads = store.get().threads;
+      if (threads !== list || here !== page) {
+        for (const [id, el] of kept) if (!el || here !== page) kept.delete(id);
+        list = threads;
+        page = here;
+        byText = null;
+      }
+      let el = kept.get(t.id);
+      if (el === undefined) {
+        el = findElement(t.element, doc, () => (byText ??= indexByText(doc, new Set(threads.map((x) => x.element.text)))));
+        kept.set(t.id, el);
+      } else if (el && !el.isConnected) {
+        el = null;
+        kept.set(t.id, null);
+      }
+      return el;
+    },
+  };
 }
 
 /** Innermost first, ending below `root`. `root` and `<html>` are never included. */

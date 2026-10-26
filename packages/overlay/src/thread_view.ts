@@ -3,7 +3,6 @@
 import { statusLabel } from "@app/shared";
 import type { ElementRef, MessageDto, ThreadDto, ThreadStatus } from "@app/shared";
 import type { H } from "./dom.ts";
-import { findElement } from "./element_ref.ts";
 import { isSubmitKey } from "./panel_logic.ts";
 
 export function statusChip(h: H, status: ThreadStatus | "discarded"): HTMLElement {
@@ -168,14 +167,6 @@ export function threadItem(h: H, thread: ThreadDto, o: ThreadItemOptions): HTMLE
   else actions.append(h("button", { type: "button", class: "tb-btn", "data-key": `resolve-${thread.id}`, onclick: o.onResolve }, "Resolve"));
   root.append(actions);
   return root;
-}
-
-/** Splits threads by whether their element can be found on the page right now. */
-export function splitByElement(threads: ThreadDto[], doc: Document): { placed: ThreadDto[]; detached: ThreadDto[] } {
-  const placed: ThreadDto[] = [];
-  const detached: ThreadDto[] = [];
-  for (const t of threads) (findElement(t.element, doc) ? placed : detached).push(t);
-  return { placed, detached };
 }
 
 export function detachedList(h: H, threads: ThreadDto[], makeItem: (t: ThreadDto) => HTMLElement): HTMLElement {
