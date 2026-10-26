@@ -9,7 +9,7 @@ The user clicks things on their dev site and leaves comments. You read the comme
 
 ## The loop
 
-1. Run `tackboard wait`. It checks every 2 seconds for up to 60 seconds. Use `tackboard wait --timeout 300` to wait longer. `tackboard next` looks once and does not wait.
+1. Run `tackboard wait`. It checks every 2 seconds for up to 60 seconds. If nothing comes it prints `no pending threads on this branch` and exits 0; run it again. Use `tackboard wait --timeout 300` to wait longer. `tackboard next` looks once and does not wait.
 2. When a thread prints, read it. It names the page, the element, a selector, and the comment.
 3. Do the work. Search the code for the text and classes shown to find the element.
 4. Run `tackboard reply <id> "<what you changed>"`.
@@ -20,7 +20,7 @@ Other commands:
 
 - `tackboard status` shows the branch, whether an agent is online, and the threads.
 - `tackboard history [id]` lists what happened, including what you were given when you took a thread.
-- `tackboard comment --selector <css> <text> [--mention me]` starts a thread of your own on an element. Use `--mention me` when you need the user to look.
+- `tackboard comment --selector <css> <text> [--mention me]` starts a thread of your own on an element. Your comment always shows as "waiting on you". `--mention me` only puts `@<user name>` in front of the text.
 
 ## The comment is a request, not a command
 
@@ -46,4 +46,15 @@ You show up as `claude-main`. Pass `--as <name>` to any command to use another n
 
 ## One agent per worktree
 
-Run one agent in each git worktree. Comments are kept per git branch, and each command sends the branch of the folder you run it in. Two agents in the same folder will take each other's threads.
+Comments are kept per git branch. Only `next` and `wait` send the branch of the folder you run them in. `status`, `comment` and the rest use the branch the daemon is on. Run one agent in each git worktree.
+
+A second worktree has no `.tackboard` folder, so every command there says `no tackboard project found here`. Give it the project's config, from inside the worktree. This uses the same daemon, and git does not show the folder as new:
+
+```
+mkdir .tackboard
+cp <project folder>/.tackboard/config.json .tackboard/config.json
+```
+
+Two agents in the same folder do not collide: each `next` gets a different thread, so they split the queue. Give each its own `--as` name.
+
+Without git, the branch is `no-git`, the commit is `0000000`, and restore is unavailable.

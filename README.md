@@ -81,7 +81,7 @@ It shows the branch, `agent: claude-main (online)` and `no threads`. Now reload 
 - `tackboard: command not found`: step 3 did not run. Run it again from the clone. Or run the file directly: `node /path/to/this/clone/packages/cli/src/main.ts`.
 - A build error: run `npm install` first, then `npm run build` again.
 - `cannot reach the daemon on port <port>; run tackboard start`: the daemon is not running. Run `tackboard start` in your project.
-- The page shows no bar, or a comment never shows up: the address of your dev site is not allowed. Run `init` again with `--origin` for that address, then restart `tackboard start`.
+- The bar shows, but sending a comment fails with `Cannot reach the daemon`: the address of your dev site is not in the `origins` list in `.tackboard/config.json` (as well as the daemon not running, above). Run `init` again with `--origin` once for every address you want (it replaces the list), then restart `tackboard start`.
 
 ## Comment on the page
 
@@ -108,6 +108,8 @@ If you are not sure, run `tackboard reply <id> "<question>" --ask` and stop.
 ## The agent loop
 
 The agent runs these in the project folder. The agent name is `claude-main`; change it with `--as <name>` or the `TACKBOARD_AGENT` environment variable.
+
+To run an agent in a second git worktree, copy the config into it first: `mkdir .tackboard && cp <project folder>/.tackboard/config.json .tackboard/`. It talks to the same daemon, and `next` and `wait` there only see threads made on the worktree's branch.
 
 | Command | What it does |
 |---|---|

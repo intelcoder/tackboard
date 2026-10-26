@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
-import { mkdtempSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brand, findConfig, statusLabel, writeConfig } from "@app/shared";
@@ -258,4 +258,28 @@ test("init outside git still copies the skill", async () => {
   const r = await cli(dir, ["init"]);
   assert.match(r.stdout, /not a git repository/);
   assert.ok(existsSync(join(dir, SKILL_COPY)));
+});
+
+test("init says why the skill could not be copied when the target path is a file", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cli-test-"));
+  mkdirSync(join(dir, ".claude", "skills"), { recursive: true });
+  writeFileSync(join(dir, ".claude", "skills", brand.cli), "in the way\n");
+  const r = await cli(dir, ["init"]);
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /could not install the skill: \S/);
+  assert.ok(findConfig(dir), "config must still be written");
+});
+
+test("init says why the skill could not be copied when .claude is read-only", { skip: process.getuid?.() === 0 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cli-test-"));
+  mkdirSync(join(dir, ".claude"));
+  chmodSync(join(dir, ".claude"), 0o555);
+  try {
+    const r = await cli(dir, ["init"]);
+    assert.equal(r.code, 0);
+    assert.match(r.stdout, /could not install the skill: \S/);
+    assert.ok(findConfig(dir), "config must still be written");
+  } finally {
+    chmodSync(join(dir, ".claude"), 0o755);
+  }
 });

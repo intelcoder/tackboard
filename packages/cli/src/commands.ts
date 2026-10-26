@@ -107,8 +107,13 @@ function install_skill(cwd: string): void {
     console.log(`warning: skill file not found: ${source}`);
     return;
   }
-  mkdirSync(join(target, ".."), { recursive: true });
-  copyFileSync(source, target);
+  try {
+    mkdirSync(join(target, ".."), { recursive: true });
+    copyFileSync(source, target);
+  } catch (err) {
+    console.log(`could not install the skill: ${err instanceof Error ? err.message : String(err)}`);
+    return;
+  }
   console.log(`installed skill ${shown}`);
 }
 
