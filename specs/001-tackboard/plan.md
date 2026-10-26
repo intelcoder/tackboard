@@ -27,6 +27,7 @@ Sources (the authority; this plan converts them into the orchestrator template):
 - A bundler-cache isolation setup: N/A. The only bundler is esbuild's API, which keeps no persistent cache, and no component workshop or second dev server is added.
 
 ## Conventions
+- **Naming (user rule, applies to all code from T6 on and to any code touched later):** every variable, function, class, type, file and CSS class uses short, plain, everyday English that says what the thing is or does (`pending_threads`, `claim_next`, `panel_is_open`, `.thread-row`). No jargon or buzzword names: avoid words like manager, helper, util, handler-factory, orchestrator, engine, processor, payload, context, wrapper, adapter-of-adapter, robust, seamless, enhanced, advanced, smart. Names the plan already fixes (the frozen contract in `packages/shared`, `Thread`, `Handler` classes required by the DDD layout) stay as they are. If a plan-fixed name is hard to read, keep it and say so in DEVIATIONS; do not silently rename a contract. Prefer a longer plain name over a short clever one. Comments are plain sentences too.
 Sources: no CLAUDE.md exists in the repo yet; these rules come from the task statement, spec §6, §10, §13, §14 and the source plan "Global Constraints".
 
 Language and runtime
@@ -563,11 +564,11 @@ Conflict resolutions: T4 and T6 both write `sqlite_thread_repository.ts` and `th
 | T1 | verified | 1 | sonnet | PASS #1 |
 | T2 | verified | 1 | sonnet | PASS #1 |
 | T3 | verified | 2 | sonnet | PASS #2 |
-| T4 | in-progress | 1 | sonnet | — |
+| T4 | in-progress | 2 | sonnet | FAIL #1 |
 | T5 | pending | 0 | sonnet | — |
 | T6 | pending | 0 | sonnet | — |
 | T7 | pending | 0 | sonnet | — |
-| T8 | in-progress | 1 | sonnet | — |
+| T8 | verified | 1 | sonnet | PASS #1 |
 | T9 | pending | 0 | sonnet | — |
 | T10 | pending | 0 | sonnet | — |
 | T11 | verified | 1 | sonnet | PASS #1 |
@@ -584,6 +585,7 @@ Statuses: `pending` · `in-progress` · `verified` · `flagged` · `paused` (wai
 |---|---|---|
 | 2026-10-25 | Initial plan converted from the design spec and the source plan | First draft; deviations from the source plan are listed in Conventions |
 | 2026-10-25 | T4 also owns `packages/daemon/src/domain/thread.ts`: add `Thread.toState(): ThreadState` and `static fromState(state: ThreadState): Thread` (rehydration for SqliteThreadRepository; fromState must not re-run invariants or record events; round-trip test required) | T2 implementer CONFLICT: Thread has a private constructor and no rehydration entry point; T4 is the first consumer |
+| 2026-10-25 | Added a Naming convention (plain everyday names, no jargon) under Conventions; applies from T6 on; a naming pass runs in the lean review | User: "Make sure that your variable styles, class should be easy to read and easy keyword not the jargon ai slop keywords" |
 
 ## Open questions and assumptions
 Open questions (only the user can answer)
