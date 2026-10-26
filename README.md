@@ -179,7 +179,7 @@ claude --dangerously-load-development-channels server:tackboard
 
 From then on every comment you leave on the page reaches the session by itself, as a line like `← tackboard: THREAD t1 ...`, and the thread shows `received` on the page. If Claude is busy, comments wait and arrive together on its next turn. Claude is told to make the change, then run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask`. Only you close a thread. Say nothing special to Claude: no `tackboard wait` is needed.
 
-Claude Code asks you to confirm a few things the first time; what it asks, and what an account needs for channels, is described on https://code.claude.com/docs/en/channels.md. Channels are a research preview, so the flag may change; if it stops working or is not available to you, use `tackboard wait` instead.
+Claude Code asks you to confirm a few things the first time; what it asks, and what an account needs for channels, is described on https://code.claude.com/docs/en/channels.md. Channels are a research preview, so the flag may change; if it stops working or is not available to you, use `tackboard wait` instead. `tackboard channel` answers MCP protocol revisions up to 2025-11-25; if Claude Code starts asking for the newer 2026-07-28 revision and the channel stops arriving, set `MCP_PROTOCOL_NEGOTIATION=legacy` as described on https://code.claude.com/docs/en/mcp.md.
 
 `tackboard channel` checks the daemon every 2 seconds, takes the oldest pending thread of the current branch the same way `tackboard next` does, and sends it. A thread that was claimed and never answered can be claimed and sent again after 30 minutes. If the daemon is not running it keeps trying and writes one line to stderr. `--as <name>` or `TACKBOARD_AGENT` sets the agent name, as for the other commands.
 
@@ -203,7 +203,7 @@ The agent finds out on its next command: the output starts with a `NOTICE` block
 
 - One daemon watches one working tree, and page comments are stamped with the branch of that folder. An agent in another worktree needs its own `init` and `start` (see "The agent loop"). Restore always acts on the daemon's project folder and is refused (`wrong_branch`) if the thread's branch is not the one checked out there.
 - Undo of a restore is the safety snapshot above. Messages already removed by a restore stay removed.
-- A message you send waits in the page until the daemon takes it, and the page tries again every 3 seconds if the daemon cannot be reached. The waiting messages are lost if you reload the page.
+- A message you send waits in the page until the daemon takes it, and the page tries again every 3 seconds if the daemon cannot be reached. After "The daemon did not answer" the message may already have arrived, so Retry can store it twice. The waiting messages are lost if you reload the page.
 - Only you close a thread, with Resolve in the panel, also while it is `waiting on you`. The agent cannot resolve: the daemon refuses an agent resolve request.
 - "History" in the panel lists threads removed by a restore and threads whose branch is no longer a local git branch. Branches named `HEAD` (detached) and `no-git` are never treated this way.
 - Restore resets git's staging area to HEAD, so changes you had staged but not committed are not kept as staged. Ignored files are left alone.

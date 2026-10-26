@@ -13,6 +13,9 @@ const INSTRUCTIONS = [
   "These events are one-way. There is no reply tool; use the commands above.",
 ].join("\n");
 
+// MCP lifecycle: answer the client's version if we support it, else our latest. The newer 2026-07-28 revision cannot carry channel messages, so it stays out.
+const PROTOCOL_VERSIONS = ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"];
+
 function send(message: object): void {
   process.stdout.write(`${JSON.stringify(message)}\n`);
 }
@@ -48,7 +51,7 @@ export async function channel(c: Client, claim_thread: () => Promise<ThreadDto |
         jsonrpc: "2.0",
         id: m.id,
         result: {
-          protocolVersion: m.params?.protocolVersion,
+          protocolVersion: PROTOCOL_VERSIONS.find((v) => v === m.params?.protocolVersion) ?? PROTOCOL_VERSIONS.at(-1),
           capabilities: { experimental: { "claude/channel": {} } },
           serverInfo: { name: brand.cli, version: "0.0.0" },
           instructions: INSTRUCTIONS,
