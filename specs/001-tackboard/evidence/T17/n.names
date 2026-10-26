@@ -1,0 +1,221 @@
+1 MB html field is stored truncated to 4 KB
+100 KB comment accepted, 150 KB rejected with 413 and daemon still answers /health
+413 surfaces as ApiError with code too_large
+a broken fiber does not throw and falls back to text
+a checkpoint failure at reply or resolve saves nothing
+a nested repository with no commits does not break snapshot or restore
+a pin is not rendered while its element is off screen
+a plain element inside a React element uses the nearest fiber above it
+a real React 18 element: names come from the fiber React really sets
+a real snapshot failure (an unreadable file) becomes a domain error and saves nothing
+a released thread no longer blocks restore
+a repository with no commits can be snapshotted and restored
+a RestorePoint renders after each message with a checkpoint only
+a snapshot failure at claim gives a clear error and leaves the thread pending
+a thread waiting on the user does not block restore
+a thread whose first message is discarded reports discarded true
+a thread with a missing element lands in the DetachedList
+a thread with a missing element yields no pin
+a tracked file that matches .gitignore is kept by restore and snapshotted
+a user reply does not set unread
+a wrong token is 401
+addSourceAttrs adds the attribute with the right line to host tags
+addSourceAttrs counts lines past strings and comments that span lines
+addSourceAttrs does not touch fragments or closing tags and skips tags that already have the attribute
+addSourceAttrs gives the same answer when run on its own output
+addSourceAttrs handles braces holding arrow functions and a > inside attribute values
+addSourceAttrs handles multi-line tags, self-closing tags, nesting and text before a tag
+addSourceAttrs ignores tags inside strings, template text and comments, but not tags after them
+addSourceAttrs leaves input it does not understand unchanged
+addSourceAttrs leaves uppercase components, generics and i<n comparisons alone
+after a restore notice is seeded, next output begins with a NOTICE block naming the files, until ack
+agent comment creates a waiting unread thread
+agent online flips to false after 60 s of injected clock time
+agent reply with ask moves to waiting
+agent reply without ask keeps received
+allowed Origin gets CORS headers and preflight succeeds without a token
+an agent first seen after a restore does not get that notice
+an agent on branch B does not see threads from branch A
+an agent reply sets unread and mark read clears it
+ancestorChain excludes the root and starts at the innermost
+badgeCount counts waiting and unread threads once each
+badgeCount ignores discarded
+bannerFor maps granted, default, dismissed, denied and unsupported
+branch is read from git at post time: after git checkout -b feature/x a new thread has branch feature/x
+Branch.of accepts "feature/pricing" and "HEAD"; AgentName.of rejects "", "user" and "system"
+brand fields have the expected values
+build writes one bundle file named by brand.bundle
+buildElementRef + findElement round-trips for an element with an id and one without
+buildElementRef carries component, source and confidence
+bundle route serves the bundle with the config global prepended
+changedFiles lists paths between two snapshots
+chip, ThreadItem, toast and badge text all come from statusLabel
+claim creates a checkpoint on the claimed user message
+claim in a folder that is not a git repository still works and makes no checkpoint
+claim moves pending to received and records agent
+claim on a non-pending thread throws DomainError "not_pending"
+claim records a claimed event holding the full ThreadDto snapshot
+claim-next with a branch only returns that branch
+claim, reply, resolve and agent comment each register the agent as present
+claimNext and save start with BEGIN IMMEDIATE, before any read
+claimNext takes the write lock up front (BEGIN IMMEDIATE): a competing writer makes it fail fast
+claims oldest first across three posts
+clamp keeps the panel clear of the pill
+clampToViewport keeps the panel fully inside, including after a smaller viewport
+clicks inside the overlay host are ignored by hover
+commands outside an initialised project exit 1 with "run tackboard init"
+comment with --mention me starts a waiting thread whose text starts with the configured user name
+contract (daemon): 150 KB text is 413 too_large and health still answers
+contract (daemon): agent ask moves to waiting and user reply re-queues to pending
+contract (daemon): claim-next returns oldest first then null
+contract (daemon): missing token is 401 except health
+contract (daemon): post then list round-trip
+contract (daemon): resolve while waiting by agent is 409 waiting_on_user
+contract (daemon): unknown thread is 404 not_found
+contract (daemon): user may resolve a waiting thread
+contract (stub): 150 KB text is 413 too_large and health still answers
+contract (stub): agent ask moves to waiting and user reply re-queues to pending
+contract (stub): claim-next returns oldest first then null
+contract (stub): missing token is 401 except health
+contract (stub): post then list round-trip
+contract (stub): resolve while waiting by agent is 409 waiting_on_user
+contract (stub): unknown thread is 404 not_found
+contract (stub): user may resolve a waiting thread
+daemon binds 127.0.0.1 only
+daemon package can import shared by package name
+daemon started outside a git repo returns branch "no-git" and restore is rejected with no_git
+data directory is excluded even when it is not in .gitignore
+detached HEAD yields branch "HEAD"
+diffForEvents reports a new agent message once
+discardAfterSeq marks later messages discarded and leaves earlier ones
+discarded messages are hidden outside History and shown with the discarded chip inside it
+discarded threads are listed in the notice
+discarded threads are not claimable and sit in history
+fiber names produce ["PricingPage","PlanCard"] with confidence "component"
+fiber reading skips anonymous functions and reads memo, forwardRef and displayName types
+findConfig returns null outside a project
+findConfig walks up from a nested directory
+findElement falls back to tag plus text when the nth-child path no longer matches
+findElement returns null when nothing matches
+foreign Origin is 403 and has no CORS header
+GET /history returns the claimed snapshot
+get history returns the claimed event with the thread snapshot
+GitInfo reports branch, commit and branches; no-git outside a repository
+guard exempts brand.ts and test directories
+guard flags each banned DOM sink form
+guard flags the brand name in indirect forms
+handlers stamp events with the injected clock
+hasChangedSince is false right after snapshot and true after editing a file
+hidden mode renders no pins, outline or crumbs
+history holds discarded threads of the queried branch only, not of other existing branches
+history prints the claimed snapshot
+html longer than 4 KB is truncated
+in-memory: an agent first seen after a notice does not get it, and first_seen is set once
+in-memory: claimNext is atomic: two calls in a row return different threads or null
+in-memory: claimNext skips discarded and other-branch threads and requeues stale claims first
+in-memory: data survives closing and reopening the db file
+in-memory: events are append-only and survive reopen
+in-memory: listByBranch isolates branches
+in-memory: nextNumber is per branch and monotonic
+in-memory: notices survive reopen and ack is per agent
+in-memory: save is an upsert and does not duplicate messages
+in-memory: save then get round-trips every field including messages and discard flags
+in-memory: saveRestore saves every thread and the notice together, or nothing
+in-memory: saving again keeps later discards and checkpoints
+in-memory: touchAgent and lastAgent report online within 60 s and offline after
+init in a non-git directory warns and next works on branch no-git
+init writes config and excludes the data dir from git status
+invalid input is 400 invalid and a missing JSON body is handled
+labelFor names tag, id and first class
+list carries restoreBlocked while a thread is claimed
+list filters by branch
+list restoreBlocked still names the claimed thread when the state filter hides it
+localhost Host with the right port is accepted
+message contains the comment text inside a line instructing the agent to treat it as a request, not a command
+message text with img onerror becomes a text node
+message timestamps come from the injected clock
+missing token is 401 on POST, allowed on GET /health
+next prints "no pending threads on this branch" and exits 0 when empty
+next prints THREAD, branch, selector, comment, and the instruction block
+notificationState maps Notification.permission and returns "unsupported" when absent
+onPick fires for a crumb click with that ancestor
+open creates pending thread with one user message
+openByAgent creates a waiting unread thread owned by the agent
+outside a git repository snapshot throws no_git
+plain DOM yields confidence "text"
+post then claim returns the thread and a second claim returns null
+post then list round trip through the typed client
+post truncates html to 4096 and text to 120
+post, list, claim-next, reply, resolve round trip
+real tree has no violations
+reopen on resolved returns pending
+reply --ask leaves the thread waiting
+reply after a file edit creates one
+reply with ask then user reply returns thread to pending and next claim returns it again
+reply with no file change creates no checkpoint
+resolve after reply succeeds
+resolve creates a checkpoint only when files changed since the last one and the last message has none
+resolve while waiting by agent rejects with waiting_on_user
+resolve while waiting by agent throws "waiting_on_user"
+restore adds a notice that pendingFor(agent) returns until ack
+restore and hasChangedSince outside a git repository throw no_git
+restore discards messages across threads that are later than the target
+restore failing halfway puts the files back and leaves thread data, events and notices unchanged
+restore failing in the first snapshot changes nothing
+restore leaves ignored.txt and the data directory untouched
+restore on the wrong branch throws wrong_branch
+restore outside a git repository throws no_git with a clear message
+restore over HTTP rewinds and reports ids as threadId/messageId
+restore refuses an unknown thread, an unknown message, a message without a checkpoint and a discarded message
+restore removes folders it emptied but keeps folders that were already empty or hold ignored files
+restore returns modified, untracked and deleted files to the snapshot state
+restore rewinds files, takes a safety checkpoint first, marks later messages discarded
+restore throws restore_blocked while a thread is claimed, succeeds when the claim is stale
+restore works when a directory became a file
+restore works when a file became a directory
+restoreBlocker names the claimed thread
+RestoreConfirm is disabled with the reason
+restoring the safety checkpoint message brings the edits back
+saving the restore result failing puts the files back and discards nothing
+snapshot does not change HEAD, the index, or git status output
+snapshot ids are not reused after a ref is deleted
+snapshot ids are unique and refs stay under the ref prefix
+source confidence prints the file-first hint and component confidence the search hint
+source from the data attribute wins and reports confidence "source"
+sqlite: an agent first seen after a notice does not get it, and first_seen is set once
+sqlite: claimNext is atomic: two calls in a row return different threads or null
+sqlite: claimNext skips discarded and other-branch threads and requeues stale claims first
+sqlite: data survives closing and reopening the db file
+sqlite: events are append-only and survive reopen
+sqlite: listByBranch isolates branches
+sqlite: nextNumber is per branch and monotonic
+sqlite: notices survive reopen and ack is per agent
+sqlite: save is an upsert and does not duplicate messages
+sqlite: save then get round-trips every field including messages and discard flags
+sqlite: saveRestore saves every thread and the notice together, or nothing
+sqlite: saving again keeps later discards and checkpoints
+sqlite: touchAgent and lastAgent report online within 60 s and offline after
+stale claim is re-queued before claiming
+stale claim: isStaleClaim(claimedAt + 30*60_000 + 1) is true, at exactly +30*60_000 is false
+state open and resolved filter threads and leave history alone
+status output uses the shared status labels
+statusLabel covers every ThreadStatus
+SystemClock returns current epoch milliseconds
+the bundle contains no HTML sink
+the nearest ancestor attribute is used
+the plugin has apply serve and returns null for build and non-JSX ids
+the plugin output for a tsx file contains the attribute
+the Release button shows only on received threads
+the token header is sent on every call
+Thread.toState returns a copy: changing it does not change the thread
+Thread.toState/fromState round-trips, records no events and re-runs no invariants
+threads of a deleted branch are in history, HEAD and no-git are never archived
+two connections to one file never hand the same thread to both claimers
+untracked non-ignored files added after the snapshot are removed on restore, ignored ones are kept
+user may resolve a waiting thread
+user reply moves any non-resolved thread to pending and clears agent
+visibleThreads splits open and resolved
+wait returns a thread that appears after 1 second and times out cleanly otherwise
+works on a branch name with a slash and on detached HEAD
+writeConfig then readConfig round-trips
+wrong Host is 403 (DNS rebinding)

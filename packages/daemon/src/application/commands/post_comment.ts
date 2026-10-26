@@ -1,3 +1,4 @@
+import { LIMITS } from "@app/shared";
 import type { ElementRef, ThreadDto } from "@app/shared";
 import type { Clock, GitInfo, ThreadRepository } from "../../domain/repositories.ts";
 import { Thread } from "../../domain/thread.ts";
@@ -29,7 +30,7 @@ export class PostCommentHandler {
       commit: this.git.commit(),
       url: cmd.url,
       viewport: cmd.viewport,
-      element: { ...cmd.element, html: cmd.element.html.slice(0, 4096), text: cmd.element.text.slice(0, 120) },
+      element: { ...cmd.element, html: cmd.element.html.slice(0, LIMITS.html), text: cmd.element.text.slice(0, LIMITS.elementText) },
       text: cmd.text,
       now,
       seq: this.repo.nextSeq(),

@@ -253,14 +253,14 @@ export async function startStubDaemon(opts: { token?: string } = {}): Promise<St
     throw new HttpError("not_found", `no route ${method} ${path}`);
   }
 
-  function send(res: ServerResponse, status: number, payload: unknown, type = "application/json") {
+  function send(res: ServerResponse, status: number, body: unknown, type = "application/json") {
     res.writeHead(status, {
       "content-type": type,
       "access-control-allow-origin": "*",
       "access-control-allow-headers": `content-type, ${brand.tokenHeader}`,
       "access-control-allow-methods": "GET, POST, OPTIONS",
     });
-    res.end(typeof payload === "string" ? payload : JSON.stringify(payload));
+    res.end(typeof body === "string" ? body : JSON.stringify(body));
   }
 
   async function readBody(req: IncomingMessage): Promise<string> {
@@ -297,8 +297,8 @@ export async function startStubDaemon(opts: { token?: string } = {}): Promise<St
           }
         }
       }
-      const [status, payload] = route(req.method ?? "GET", u.pathname, u.searchParams, body);
-      send(res, status, payload);
+      const [status, reply_body] = route(req.method ?? "GET", u.pathname, u.searchParams, body);
+      send(res, status, reply_body);
     } catch (e) {
       if (e instanceof HttpError) {
         send(res, ERROR_STATUS[e.code], { error: e.code, message: e.message });

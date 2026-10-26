@@ -1,0 +1,13 @@
+ok 117 - sqlite: save then get round-trips every field including messages and discard flags
+ok 118 - sqlite: saving again keeps later discards and checkpoints
+ok 119 - sqlite: save is an upsert and does not duplicate messages
+ok 120 - sqlite: claimNext is atomic: two calls in a row return different threads or null
+ok 121 - sqlite: claimNext skips discarded and other-branch threads and requeues stale claims first
+ok 122 - sqlite: data survives closing and reopening the db file
+ok 123 - sqlite: listByBranch isolates branches
+ok 124 - sqlite: nextNumber is per branch and monotonic
+ok 125 - sqlite: events are append-only and survive reopen
+ok 126 - sqlite: touchAgent and lastAgent report online within 60 s and offline after
+ok 127 - sqlite: notices survive reopen and ack is per agent
+ok 128 - sqlite: an agent first seen after a notice does not get it, and first_seen is set once
+ok 129 - sqlite: saveRestore saves every thread and the notice together, or nothing

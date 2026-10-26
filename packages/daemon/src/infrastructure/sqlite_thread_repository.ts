@@ -132,10 +132,6 @@ export class SqliteThreadRepository implements ThreadRepository {
     });
   }
 
-  add(n: Notice): void {
-    this.insertNotice(n);
-  }
-
   pendingFor(agent: string): Notice[] {
     const rows = this.db
       .prepare(

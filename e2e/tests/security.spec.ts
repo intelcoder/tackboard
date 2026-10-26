@@ -67,8 +67,8 @@ test("security", async ({ harness: h }) => {
     res.end(`<!doctype html><title>foreign</title><body><p id="target">foreign page</p><script src="${h.daemonUrl}/${brand.bundle}"></script>`);
   });
   await new Promise<void>((done) => foreign_site.listen(other_port, "127.0.0.1", () => done()));
-  const other_context = await h.page.context().browser()!.newContext({ viewport: { width: 1280, height: 800 } });
-  const other = await other_context.newPage();
+  const foreign_browser = await h.page.context().browser()!.newContext({ viewport: { width: 1280, height: 800 } });
+  const other = await foreign_browser.newPage();
   try {
     await other.goto(`http://127.0.0.1:${other_port}/`);
     await other.waitForFunction((name) => Boolean((globalThis as any)[name]), brand.configGlobal);
@@ -112,7 +112,7 @@ test("security", async ({ harness: h }) => {
     await expect(other.locator(".tb-composer .tb-error")).toBeVisible();
     expect(await count_threads()).toBe(0);
   } finally {
-    await other_context.close();
+    await foreign_browser.close();
     await new Promise<void>((done) => foreign_site.close(() => done()));
   }
 });

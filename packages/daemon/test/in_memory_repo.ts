@@ -68,11 +68,6 @@ export class InMemoryThreadRepository implements ThreadRepository {
     this.notices.push(notice);
   }
 
-  add(n: Notice): void {
-    if (this.notices.some((x) => x.id === n.id)) throw new Error(`notice ${n.id} already exists`);
-    this.notices.push(n);
-  }
-
   pendingFor(agent: string): Notice[] {
     const seen = this.agents.get(agent);
     if (!seen) return [];

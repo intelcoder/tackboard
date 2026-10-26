@@ -2,16 +2,7 @@ import type { HistoryEvent, Notice } from "@app/shared";
 import type { Thread } from "./thread.ts";
 import type { AgentName, Branch, CommitSha } from "./value_objects.ts";
 
-/** Restore notices for agents. An agent only gets notices that came after it was first seen (see touchAgent). */
-export interface NoticeRepository {
-  add(n: Notice): void;
-  /** Notices later than the agent's first_seen that it has not acked, oldest first. Unknown agent: none. */
-  pendingFor(agent: string): Notice[];
-  /** Acks every notice saved so far for this agent. */
-  ack(agent: string): void;
-}
-
-export interface ThreadRepository extends NoticeRepository {
+export interface ThreadRepository {
   nextId(): string;
   nextNumber(branch: Branch): number;
   nextSeq(): number;
@@ -22,6 +13,10 @@ export interface ThreadRepository extends NoticeRepository {
   claimNext(branch: Branch, agent: AgentName, now: number): Thread | null;
   /** Saves all the threads and the notice in one operation: either all of it is stored or none. */
   saveRestore(threads: Thread[], notice: Notice): void;
+  /** Restore notices later than the agent's first_seen that it has not acked, oldest first. Unknown agent: none. */
+  pendingFor(agent: string): Notice[];
+  /** Acks every notice saved so far for this agent. */
+  ack(agent: string): void;
   listByBranch(branch: Branch): Thread[];
   listAll(): Thread[];
   history(threadId?: string): HistoryEvent[];

@@ -209,7 +209,7 @@ export function runContract(label: string, makeRepo: () => RepoHarness): void {
   test(`${label}: notices survive reopen and ack is per agent`, withRepo((h) => {
     h.repo.touchAgent("claude", 1_000);
     h.repo.touchAgent("codex", 1_000);
-    h.repo.add(notice("n1", 2_000));
+    h.repo.saveRestore([], notice("n1", 2_000));
     assert.deepEqual(h.repo.pendingFor("claude"), [notice("n1", 2_000)]);
     assert.deepEqual(h.repo.pendingFor("codex"), [notice("n1", 2_000)]);
 
@@ -217,7 +217,7 @@ export function runContract(label: string, makeRepo: () => RepoHarness): void {
     assert.deepEqual(h.repo.pendingFor("claude"), []);
     assert.equal(h.repo.pendingFor("codex").length, 1, "another agent still has it");
 
-    h.repo.add(notice("n2", 3_000, ["b.txt"]));
+    h.repo.saveRestore([], notice("n2", 3_000, ["b.txt"]));
     assert.deepEqual(h.repo.pendingFor("claude").map((n) => n.id), ["n2"], "a new notice is pending again after ack");
     assert.deepEqual(h.repo.pendingFor("codex").map((n) => n.id), ["n1", "n2"]);
 
@@ -228,11 +228,11 @@ export function runContract(label: string, makeRepo: () => RepoHarness): void {
   }));
 
   test(`${label}: an agent first seen after a notice does not get it, and first_seen is set once`, withRepo((h) => {
-    h.repo.add(notice("old", 2_000));
+    h.repo.saveRestore([], notice("old", 2_000));
     assert.deepEqual(h.repo.pendingFor("newcomer"), [], "unknown agent has no notices");
     h.repo.touchAgent("newcomer", 5_000);
     assert.deepEqual(h.repo.pendingFor("newcomer"), []);
-    h.repo.add(notice("later", 6_000));
+    h.repo.saveRestore([], notice("later", 6_000));
     h.repo.touchAgent("newcomer", 9_000);
     assert.deepEqual(h.repo.pendingFor("newcomer").map((n) => n.id), ["later"], "touching again keeps the first time");
     assert.deepEqual(h.reopen().pendingFor("newcomer").map((n) => n.id), ["later"]);
@@ -244,7 +244,7 @@ export function runContract(label: string, makeRepo: () => RepoHarness): void {
     h.repo.save(a);
     h.repo.save(b);
     h.repo.touchAgent("claude", 1);
-    h.repo.add(notice("n1", 2_000));
+    h.repo.saveRestore([], notice("n1", 2_000));
 
     const a2 = h.repo.get(a.id)!;
     const b2 = h.repo.get(b.id)!;

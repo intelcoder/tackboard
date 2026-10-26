@@ -1,6 +1,5 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -21,24 +20,13 @@ import { GetHistoryHandler } from "../src/application/queries/get_history.ts";
 import { RestoreToMessageHandler } from "../src/application/commands/restore_to_message.ts";
 import { AckNoticesHandler } from "../src/application/commands/ack_notices.ts";
 import { GetNoticesHandler } from "../src/application/queries/get_notices.ts";
+import { git } from "./daemon_setup.ts";
 
 const MIN = 60_000;
 const folders: string[] = [];
 after(() => {
   for (const f of folders) rmSync(f, { recursive: true, force: true });
 });
-
-const git_env = {
-  ...process.env,
-  GIT_AUTHOR_NAME: "t",
-  GIT_AUTHOR_EMAIL: "t@example.com",
-  GIT_COMMITTER_NAME: "t",
-  GIT_COMMITTER_EMAIL: "t@example.com",
-};
-
-function git(dir: string, ...args: string[]): string {
-  return execFileSync("git", args, { cwd: dir, env: git_env, encoding: "utf8" });
-}
 
 function write(dir: string, name: string, text: string): void {
   const full = join(dir, name);

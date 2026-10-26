@@ -2,7 +2,7 @@ import type { ElementRef, HistoryEventType, MessageDto, ThreadDto, ThreadStatus 
 import { DomainError } from "./errors.ts";
 import type { AgentName, Branch, CommitSha } from "./value_objects.ts";
 
-export const STALE_CLAIM_MS = 30 * 60_000;
+const STALE_CLAIM_MS = 30 * 60_000;
 
 export type DomainEvent = { type: HistoryEventType; at: number; data: unknown };
 
