@@ -35,6 +35,46 @@ test("messages are sent one at a time, oldest first", async (t) => {
   assert.deepEqual(box.items(), []);
 });
 
+test("only the item whose request is in flight is sending; one behind a waiting item is not", async (t) => {
+  t.after(() => mock.timers.reset());
+  const { calls, box } = setup();
+  box.add("one");
+  box.add("two");
+  await settle();
+  const [one, two] = box.items();
+  assert.equal(box.inflight(one), true);
+  assert.equal(box.inflight(two), false);
+  calls[0].fail(new TypeError("Failed to fetch"));
+  await settle();
+  assert.equal(box.inflight(one), false);
+  assert.equal(box.inflight(two), false);
+  mock.timers.tick(3000);
+  await settle();
+  assert.equal(box.inflight(one), true);
+  assert.equal(box.inflight(two), false);
+});
+
+test("when one item finishes or fails, the next is already in flight when the view is redrawn", async (t) => {
+  t.after(() => mock.timers.reset());
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const { calls, send } = fakeSend();
+  let seen: string[] = [];
+  const box: ReturnType<typeof createOutbox<string>> = createOutbox<string>({
+    send,
+    onChange: () => { seen = box.items().filter((i) => box.inflight(i)).map((i) => i.job); },
+  });
+  box.add("a");
+  box.add("b");
+  box.add("c");
+  await settle();
+  calls[0].ok();
+  await settle();
+  assert.deepEqual(seen, ["b"]);
+  calls[1].fail(new ApiError("invalid", "bad", 400));
+  await settle();
+  assert.deepEqual(seen, ["c"]);
+});
+
 test("a request that never answers is aborted after 8 seconds, shows Not sent, and the next one is sent", async (t) => {
   t.after(() => mock.timers.reset());
   const { calls, box } = setup();

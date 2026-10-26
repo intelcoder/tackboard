@@ -92,6 +92,8 @@ test("an unreachable daemon queues a comment and a reply, and both arrive once i
   await reply.press("Enter");
   await expect(reply).toHaveValue("");
   await expect(thread(page, id).locator(".tb-queued")).toContainText("reply while offline");
+  await expect(thread(page, id).locator(".tb-queued")).toContainText("Waiting to retry");
+  await expect(thread(page, id).locator(".tb-queued")).not.toContainText("Sending");
   await reply.fill("still usable");
   await expect(reply).toHaveValue("still usable");
   h.problems.length = 0;

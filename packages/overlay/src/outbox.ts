@@ -24,6 +24,7 @@ export function createOutbox<Job>(o: OutboxOptions<Job>) {
   let busy = false;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
   let sending: AbortController | undefined;
+  let inflight: OutboxItem<Job> | undefined;
 
   const first = () => items.find((i) => i.state !== "failed");
 
@@ -31,6 +32,7 @@ export function createOutbox<Job>(o: OutboxOptions<Job>) {
     const item = first();
     if (busy || !item || item.state === "retry") return;
     busy = true;
+    inflight = item;
     const abort = new AbortController();
     sending = abort;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -54,29 +56,32 @@ export function createOutbox<Job>(o: OutboxOptions<Job>) {
     }
     clearTimeout(timer);
     busy = false;
-    o.onChange();
+    inflight = undefined;
     pump();
+    o.onChange();
   };
 
   const tryAgain = () => {
     const item = first();
     if (item?.state === "retry") item.state = "sending";
-    o.onChange();
     pump();
+    o.onChange();
   };
 
   return {
     items: (): readonly OutboxItem<Job>[] => items,
     add(job: Job) {
       items = [...items, { job, state: "sending", reason: "" }];
-      o.onChange();
       pump();
+      o.onChange();
     },
     retry(item: OutboxItem<Job>) {
       item.state = "sending";
-      o.onChange();
       pump();
+      o.onChange();
     },
+    /** True only while this item's request is on its way to the daemon. */
+    inflight: (item: OutboxItem<Job>) => item === inflight,
     remove(item: OutboxItem<Job>) {
       items = items.filter((i) => i !== item);
       o.onChange();
