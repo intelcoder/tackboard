@@ -8,9 +8,10 @@ $ ack  [exit 1]
 cannot reach the daemon on port 62816; run tackboard start
 
 $ status  [exit 1]
-ch: main  commit: 0000000
-page: http://localhost:3000/  viewport: 1000x700
-element: <div>  selector: #hero
+cannot reach the daemon on port 62816; run tackboard start
+
+$ reply bogus hi  [exit 1]
+v>  selector: #hero
   visible text: Hello
   size: 3x4 at (1, 2)
   html: <div>Hello</div>

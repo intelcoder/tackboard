@@ -566,10 +566,10 @@ Conflict resolutions: T4 and T6 both write `sqlite_thread_repository.ts` and `th
 | T3 | verified | 2 | sonnet | PASS #2 |
 | T4 | verified | 2 | sonnet | PASS #2 |
 | T5 | verified | 2 | sonnet | PASS #2 |
-| T6 | pending | 0 | sonnet | — |
+| T6 | in-progress | 1 | sonnet | — |
 | T7 | pending | 0 | sonnet | — |
 | T8 | verified | 1 | sonnet | PASS #1 |
-| T9 | in-progress | 1 | sonnet | — |
+| T9 | verified | 1 | sonnet | PASS #1 |
 | T10 | pending | 0 | sonnet | — |
 | T11 | verified | 1 | sonnet | PASS #1 |
 | T12 | pending | 0 | sonnet | — |
