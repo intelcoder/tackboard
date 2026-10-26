@@ -8,16 +8,24 @@ import { createModeSwitch } from "./modes.ts";
 import { createPins } from "./pins.ts";
 import { createStore } from "./store.ts";
 import type { Store } from "./store.ts";
+import { createPanel } from "./panel.ts";
+import { badgeLabel } from "./panel_logic.ts";
+import { notifyReply } from "./notifications.ts";
+import { createPoller } from "./poller.ts";
 import { baseCss } from "./styles_base.ts";
+import { panelCss } from "./styles_panel.ts";
+import { createToast, toastText } from "./toast.ts";
 
 export type MountOptions = {
   document?: Document;
   window?: Window;
   config: { base: string; token: string };
   viewport?: () => { w: number; h: number };
-  /** Called when the user picks an element in comment mode. T9 wires this to the Composer. */
+  /** Milliseconds between polls of the daemon (default 1500). */
+  pollEvery?: number;
+  /** Called when the user picks an element in comment mode. The panel opens its comment box either way. */
   onPick?: (ref: ElementRef, el: Element) => void;
-  /** Called when a pin is clicked. T9 wires this to the panel. */
+  /** Called when a pin is clicked. The panel opens that thread either way. */
   onPin?: (threadId: string) => void;
 };
 
@@ -46,21 +54,62 @@ export function mountOverlay(opts: MountOptions): Overlay {
   const Sheet = (win as any).CSSStyleSheet;
   if (Sheet && "adoptedStyleSheets" in root) {
     const sheet = new Sheet();
-    sheet.replaceSync(baseCss);
+    sheet.replaceSync(baseCss + panelCss);
     (root as any).adoptedStyleSheets = [sheet];
   } else {
-    root.append(h("style", null, baseCss));
+    root.append(h("style", null, baseCss + panelCss));
   }
 
   const pinLayer = h("div", { class: "tb-pins" });
   const hoverLayer = h("div", { class: "tb-hover" });
   const dock = h("div", { class: "tb-dock" }, createModeSwitch(h, store));
-  root.append(pinLayer, hoverLayer, dock);
+  const panelLayer = h("div", { class: "tb-panel-layer" });
+  root.append(pinLayer, hoverLayer, panelLayer, dock);
   // After <body>, so the host never shifts the nth-child paths of the page's own elements.
   doc.documentElement.append(host);
 
-  const pins = createPins({ document: doc, window: win, layer: pinLayer, h, store, viewport, onPin: opts.onPin ?? (() => {}) });
-  const hover = createHover({ document: doc, window: win, host, layer: hoverLayer, h, store, onPick: opts.onPick ?? (() => {}) });
+  const toast = createToast(h, panelLayer);
+  const poller = createPoller({
+    store,
+    api,
+    every: opts.pollEvery ?? 1500,
+    onEvents: (events) => {
+      for (const event of events) {
+        toast.show(toastText(event));
+        notifyReply(event);
+      }
+    },
+  });
+  const panel = createPanel({
+    document: doc, window: win, layer: panelLayer, h, store, api, viewport,
+    refresh: poller.now, showToast: toast.show,
+  });
+  const pins = createPins({
+    document: doc, window: win, layer: pinLayer, h, store, viewport,
+    onPin: (id) => {
+      panel.openThread(id);
+      opts.onPin?.(id);
+    },
+  });
+  const hover = createHover({
+    document: doc, window: win, host, layer: hoverLayer, h, store,
+    onPick: (ref, el) => {
+      panel.compose(ref, el);
+      opts.onPick?.(ref, el);
+    },
+  });
+
+  // The pill is built in modes.ts; its label follows the count here.
+  const toggle = root.querySelector("[data-panel]");
+  const relabel = () => {
+    const s = store.get();
+    const text = badgeLabel(s.panelOpen ? 0 : s.badge);
+    toggle?.setAttribute("aria-label", text);
+    toggle?.setAttribute("title", text);
+    if (s.mode === "hidden") toast.clear();
+  };
+  const stopLabels = store.subscribe(relabel);
+  relabel();
 
   return {
     host,
@@ -68,8 +117,12 @@ export function mountOverlay(opts: MountOptions): Overlay {
     store,
     api,
     destroy() {
+      stopLabels();
       hover.destroy();
       pins.destroy();
+      panel.destroy();
+      poller.destroy();
+      toast.clear();
       host.remove();
     },
   };
