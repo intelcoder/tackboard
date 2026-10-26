@@ -152,7 +152,7 @@ CLI exit codes: 0 success including "no pending threads"; 1 for any error, print
 | T1 | A | — | `package.json`, `tsconfig.base.json`, `tsconfig.json`, `.gitignore`, `scripts/build.ts`, `scripts/guard.ts`, `packages/shared/package.json`, `packages/shared/src/index.ts`, `packages/shared/src/brand.ts`, `packages/shared/src/types.ts`, `packages/shared/src/status.ts`, `packages/shared/src/api.ts`, `packages/shared/src/config.ts`, `packages/shared/test-support/stub_daemon.ts`, `packages/shared/test-support/api_contract.ts`, `packages/shared/test/brand.test.ts`, `packages/shared/test/status.test.ts`, `packages/shared/test/config.test.ts`, `packages/shared/test/guard.test.ts`, `packages/shared/test/stub_contract.test.ts`, `packages/daemon/package.json`, `packages/daemon/test/workspace_import.test.ts`, `packages/cli/package.json`, `packages/overlay/package.json`, `packages/vite-plugin/package.json` | provides `Brand`; provides `Shared DTOs`; provides `HTTP API v1`; provides `ProjectConfig`; provides `Daemon entry`; provides `Stub daemon`; provides `ApiContractSuite`; provides `Guard script`; provides `Build runner` | — |
 | T2 | A | T1 | `packages/daemon/src/domain/value_objects.ts`, `packages/daemon/src/domain/errors.ts`, `packages/daemon/src/domain/thread.ts`, `packages/daemon/test/thread.test.ts` | provides `Thread aggregate`; consumes `Shared DTOs` | — |
 | T3 | A | T2 | `packages/daemon/src/domain/repositories.ts`, `packages/daemon/src/application/commands/post_comment.ts`, `packages/daemon/src/application/commands/post_agent_comment.ts`, `packages/daemon/src/application/commands/claim_next_thread.ts`, `packages/daemon/src/application/commands/reply_to_thread.ts`, `packages/daemon/src/application/commands/resolve_thread.ts`, `packages/daemon/src/application/commands/reopen_thread.ts`, `packages/daemon/src/application/commands/release_thread.ts`, `packages/daemon/src/application/commands/mark_read.ts`, `packages/daemon/src/application/queries/get_thread.ts`, `packages/daemon/src/application/queries/list_threads.ts`, `packages/daemon/src/application/queries/get_history.ts`, `packages/daemon/test/in_memory_repo.ts`, `packages/daemon/test/handlers.test.ts` | provides `Repository ports`; provides `Handlers`; consumes `Thread aggregate` | T6 |
-| T4 | A | T3 | `packages/daemon/src/infrastructure/sqlite_thread_repository.ts`, `packages/daemon/src/infrastructure/clock.ts`, `packages/daemon/test/thread_repository.contract.ts`, `packages/daemon/test/sqlite_thread_repository.test.ts` | provides `SqliteThreadRepository`; consumes `Repository ports` | T6 |
+| T4 | A | T3 | `packages/daemon/src/domain/thread.ts`, `packages/daemon/src/infrastructure/sqlite_thread_repository.ts`, `packages/daemon/src/infrastructure/clock.ts`, `packages/daemon/test/thread_repository.contract.ts`, `packages/daemon/test/sqlite_thread_repository.test.ts` | provides `SqliteThreadRepository`; consumes `Repository ports` | T6 |
 | T5 | A | T3 | `packages/daemon/src/domain/checkpoint_store.ts`, `packages/daemon/src/infrastructure/git_checkpoint_store.ts`, `packages/daemon/src/infrastructure/git_info.ts`, `packages/daemon/test/git_checkpoint_store.test.ts`, `packages/daemon/test/git_info.test.ts` | provides `CheckpointStore`; provides `GitInfo adapter`; consumes `Repository ports` | — |
 | T6 | A | T4, T5 | `packages/daemon/src/domain/notice.ts`, `packages/daemon/src/application/commands/restore_to_message.ts`, `packages/daemon/src/application/commands/ack_notices.ts`, `packages/daemon/src/application/queries/get_notices.ts`, `packages/daemon/src/application/commands/claim_next_thread.ts`, `packages/daemon/src/application/commands/reply_to_thread.ts`, `packages/daemon/src/application/commands/resolve_thread.ts`, `packages/daemon/src/domain/repositories.ts`, `packages/daemon/src/infrastructure/sqlite_thread_repository.ts`, `packages/daemon/test/in_memory_repo.ts`, `packages/daemon/test/thread_repository.contract.ts`, `packages/daemon/test/restore.test.ts` | provides `Restore and notices`; consumes `CheckpointStore`; consumes `SqliteThreadRepository`; consumes `Handlers` | T3, T4 |
 | T7 | A | T6 | `packages/daemon/src/interface/security.ts`, `packages/daemon/src/interface/http.ts`, `packages/daemon/src/interface/main.ts`, `packages/daemon/src/index.ts`, `packages/daemon/test/http.test.ts`, `packages/daemon/test/security.test.ts`, `packages/daemon/test/api_contract.test.ts` | provides `Real daemon`; consumes `HTTP API v1`; consumes `ApiContractSuite`; consumes `Restore and notices` | — |
@@ -560,17 +560,17 @@ Conflict resolutions: T4 and T6 both write `sqlite_thread_repository.ts` and `th
 ## Status
 | Task | Status | Attempts | Model | Last verdict |
 |---|---|---|---|---|
-| T1 | pending | 0 | sonnet | — |
-| T2 | pending | 0 | sonnet | — |
+| T1 | verified | 1 | sonnet | PASS #1 |
+| T2 | verified | 1 | sonnet | PASS #1 |
 | T3 | pending | 0 | sonnet | — |
 | T4 | pending | 0 | sonnet | — |
 | T5 | pending | 0 | sonnet | — |
 | T6 | pending | 0 | sonnet | — |
 | T7 | pending | 0 | sonnet | — |
-| T8 | pending | 0 | sonnet | — |
+| T8 | in-progress | 1 | sonnet | — |
 | T9 | pending | 0 | sonnet | — |
 | T10 | pending | 0 | sonnet | — |
-| T11 | pending | 0 | sonnet | — |
+| T11 | in-progress | 1 | sonnet | — |
 | T12 | pending | 0 | sonnet | — |
 | T13 | pending | 0 | sonnet | — |
 | T14 | pending | 0 | sonnet | — |
@@ -583,6 +583,7 @@ Statuses: `pending` · `in-progress` · `verified` · `flagged` · `paused` (wai
 | Date | Change | Why (user pushback / verifier finding) |
 |---|---|---|
 | 2026-10-25 | Initial plan converted from the design spec and the source plan | First draft; deviations from the source plan are listed in Conventions |
+| 2026-10-25 | T4 also owns `packages/daemon/src/domain/thread.ts`: add `Thread.toState(): ThreadState` and `static fromState(state: ThreadState): Thread` (rehydration for SqliteThreadRepository; fromState must not re-run invariants or record events; round-trip test required) | T2 implementer CONFLICT: Thread has a private constructor and no rehydration entry point; T4 is the first consumer |
 
 ## Open questions and assumptions
 Open questions (only the user can answer)
