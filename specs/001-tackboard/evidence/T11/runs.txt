@@ -1,0 +1,17 @@
+# tests 14
+# pass 14
+# fail 0
+---
+tc=0
+build=0
+guard=0
+nospike=0
+ M packages/cli/package.json
+D  spike/check.mjs
+D  spike/cli.mjs
+D  spike/demo.html
+D  spike/overlay.js
+D  spike/server.mjs
+?? packages/cli/build.ts
+?? packages/cli/src/
+?? packages/cli/test/

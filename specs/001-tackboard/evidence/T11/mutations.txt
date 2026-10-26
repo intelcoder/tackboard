@@ -1,0 +1,20 @@
+== no notices printed: # fail 1 ; failed: after a restore notice is seeded, next output begins with a NOTICE block naming the files, until ack|
+== notice after output: # fail 1 ; failed: after a restore notice is seeded, next output begins with a NOTICE block naming the files, until ack|
+== branch not sent: # fail 1 ; failed: an agent on branch B does not see threads from branch A|
+== comment framing removed: # fail 1 ; failed: payload contains the comment text inside a line instructing the agent to treat it as a request, not a command|
+== hints swapped: # fail 1 ; failed: source confidence prints the file-first hint and component confidence the search hint|
+== raw status instead of label: # fail 1 ; failed: status output uses the shared status labels|
+== init no git exclude: # fail 1 ; failed: init writes config and excludes the data dir from git status|
+== ask dropped: # fail 1 ; failed: reply --ask leaves the thread waiting|
+== mention ignored: # fail 1 ; failed: comment with --mention me starts a waiting thread whose text starts with the configured user name|
+== outside-project msg changed: # fail 1 ; failed: commands outside an initialised project exit 1 with "run tackboard init"|
+bash: mut2.sh: No such file or directory
+== outside-project exit 0: # fail 1 ; failed: commands outside an initialised project exit 1 with "run tackboard init"|
+== wait timeout msg: # fail 1 ; failed: wait returns a thread that appears after 1 second and times out cleanly otherwise|
+== agent default changed: # fail 1 ; failed: reply --ask leaves the thread waiting|
+== history claimed snapshot not printed: # fail 1 ; failed: history prints the claimed snapshot|
+== notice drops file list: # fail 1 ; failed: after a restore notice is seeded, next output begins with a NOTICE block naming the files, until ack|
+== notice drops do-not-continue: # fail 1 ; failed: after a restore notice is seeded, next output begins with a NOTICE block naming the files, until ack|
+== html not truncated: # fail 0 ; failed: 
+== earlier messages dropped: # fail 0 ; failed: 
+== no-git warning dropped: # fail 1 ; failed: init in a non-git directory warns and next works on branch no-git|
