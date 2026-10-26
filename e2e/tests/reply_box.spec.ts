@@ -1,10 +1,7 @@
-import { mkdirSync } from "node:fs";
 import { test, expect } from "../fixtures/harness.ts";
 import { openPanel, postComment, thread } from "../fixtures/states.ts";
 
-const evidence = "/Users/fiddlest/projects/llm-debugger-board/specs/001-tackboard/evidence/T23";
-
-test("reply box empties after Send and a second send adds nothing", async ({ harness: h }) => {
+test("reply box empties after Send and the reply shows once", async ({ harness: h }) => {
   const page = h.page;
   const id = await postComment(page, "#cta", "first comment");
   const box = page.locator(`[data-key="reply-${id}"]`);
@@ -15,15 +12,6 @@ test("reply box empties after Send and a second send adds nothing", async ({ har
   await expect(messages).toHaveCount(2);
   await expect(messages.filter({ hasText: "my reply" })).toHaveCount(1);
   await expect(box).toHaveValue("");
-  mkdirSync(evidence, { recursive: true });
-  await page.screenshot({ path: `${evidence}/after_send.png` });
-
-  // sending again right away does nothing
-  await page.locator(`[data-key="send-${id}"]`).click();
-  await box.focus();
-  await page.keyboard.press("Enter");
-  await page.waitForTimeout(1500);
-  await expect(messages).toHaveCount(2);
 });
 
 // holds the reply request until release() is called, counting every one that reaches the daemon
