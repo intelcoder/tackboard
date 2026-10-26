@@ -1,5 +1,5 @@
 import { spawn, execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import { userInfo } from "node:os";
@@ -91,7 +91,25 @@ async function init(cwd: string, a: Args): Promise<number> {
   console.log(`initialised ${brand.dataDir}/${brand.configFile} (port ${port}, user ${config.userName})`);
   console.log(`Add this to your dev site, then run: ${brand.cli} start`);
   console.log(`<script src="http://127.0.0.1:${port}/${brand.bundle}"></script>`);
+  install_skill(cwd);
   return 0;
+}
+
+function install_skill(cwd: string): void {
+  const source = resolve(import.meta.dirname, `../../../skills/${brand.cli}/SKILL.md`);
+  const shown = join(".claude", "skills", brand.cli, "SKILL.md");
+  const target = join(cwd, shown);
+  if (existsSync(target)) {
+    console.log("skill already there, left as is");
+    return;
+  }
+  if (!existsSync(source)) {
+    console.log(`warning: skill file not found: ${source}`);
+    return;
+  }
+  mkdirSync(join(target, ".."), { recursive: true });
+  copyFileSync(source, target);
+  console.log(`installed skill ${shown}`);
 }
 
 function start(cwd: string): Promise<number> {

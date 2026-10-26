@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
-import { mkdtempSync, existsSync } from "node:fs";
+import { mkdtempSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brand, findConfig, statusLabel, writeConfig } from "@app/shared";
@@ -74,7 +74,8 @@ test("init writes config and excludes the data dir from git status", async () =>
   assert.deepEqual(found.config.origins, ["http://localhost:3000"]);
   assert.match(found.config.token, /^[0-9a-f]{48}$/);
   assert.ok(existsSync(join(dir, brand.dataDir)));
-  assert.equal(execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" }), "");
+  // Only the installed skill shows up, so the user can commit it.
+  assert.equal(execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" }), "?? .claude/\n");
 });
 
 test("init in a non-git directory warns and next works on branch no-git", async () => {
@@ -227,4 +228,34 @@ test("status output uses the shared status labels", async () => {
     assert.ok(r.stdout.includes(statusLabel("waiting")));
     assert.ok(r.stdout.includes("branch: main"));
   });
+});
+
+const SKILL_SOURCE = join(import.meta.dirname, `../../../skills/${brand.cli}/SKILL.md`);
+const SKILL_COPY = join(".claude", "skills", brand.cli, "SKILL.md");
+
+test("init copies the skill into the project and says so", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cli-test-"));
+  execFileSync("git", ["init", "-q"], { cwd: dir });
+  const r = await cli(dir, ["init"]);
+  assert.equal(r.code, 0);
+  assert.ok(r.stdout.includes(`installed skill ${SKILL_COPY}`), r.stdout);
+  assert.equal(readFileSync(join(dir, SKILL_COPY), "utf8"), readFileSync(SKILL_SOURCE, "utf8"));
+});
+
+test("a second init leaves a hand-edited skill as it is", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cli-test-"));
+  await cli(dir, ["init"]);
+  writeFileSync(join(dir, SKILL_COPY), "my own notes\n");
+  const r = await cli(dir, ["init"]);
+  assert.equal(r.code, 0);
+  assert.ok(r.stdout.includes("skill already there, left as is"), r.stdout);
+  assert.ok(!r.stdout.includes("installed skill"));
+  assert.equal(readFileSync(join(dir, SKILL_COPY), "utf8"), "my own notes\n");
+});
+
+test("init outside git still copies the skill", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cli-test-"));
+  const r = await cli(dir, ["init"]);
+  assert.match(r.stdout, /not a git repository/);
+  assert.ok(existsSync(join(dir, SKILL_COPY)));
 });

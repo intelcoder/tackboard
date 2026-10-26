@@ -4,33 +4,42 @@ Click an element on your own dev site and leave a comment. A coding agent reads 
 
 ## Setup
 
-You need Node 22.22 (tested on 22.22.2; newer versions are untested). From a clone of this repo:
+Follow these steps in order. Do them once.
+
+### 1. What you need
+
+Node 22.22 (tested on 22.22.2; newer versions are untested) and git.
+
+### 2. Install and build
+
+From a clone of this repo:
 
 ```
 npm install
-npx playwright install chromium
 npm run build
 ```
 
-`npx playwright install chromium` is only needed to run the browser tests. `npm run build` is needed once: it makes the overlay file (`packages/overlay/dist/tackboard.js`) that the daemon serves.
+Run `npm install` first. The build fails without it. `npm run build` makes the overlay file (`packages/overlay/dist/tackboard.js`) that the daemon serves.
 
-The `tackboard` command is not installed on your PATH. Run it by file path, or make an alias:
+### 3. Put the command on your PATH
+
+Still in the clone:
 
 ```
-alias tackboard="node /path/to/this/clone/packages/cli/src/main.ts"
+npm link -w packages/cli
 ```
 
-The rest of this file writes `tackboard`.
+Now `tackboard` works from any folder. To undo it, run `npm unlink -g @app/cli`. The rest of this file writes `tackboard`.
 
-## Start it in your project
+### 4. Set up your own project
 
-Run these inside the project you are working on (the one the agent edits), not inside this repo.
+Run these inside the project you are working on (the one the agent edits), not inside this repo. Run `init` with the address of your dev site:
 
 ```
 tackboard init --origin http://localhost:3000
 ```
 
-`--origin` is the address of your dev site. Give it once per address; you can repeat the flag. Without it, `http://localhost:3000` and `http://localhost:5173` are allowed. Other options: `--port <n>` (default: a free port) and `--user <name>` (default: your login name).
+`--origin` is the address of your dev site. Repeat the flag to allow more than one address. Without it, `http://localhost:3000` and `http://localhost:5173` are allowed. Other options: `--port <n>` (default: a free port) and `--user <name>` (default: your login name).
 
 It prints:
 
@@ -38,17 +47,42 @@ It prints:
 initialised .tackboard/config.json (port 47321, user sam)
 Add this to your dev site, then run: tackboard start
 <script src="http://127.0.0.1:47321/tackboard.js"></script>
+installed skill .claude/skills/tackboard/SKILL.md
 ```
 
-(The port and user name will be yours.) `init` writes `.tackboard/config.json`, which holds the port, a random token and the allowed origins. In a git project it also adds `.tackboard/` to `.git/info/exclude`, so the folder does not show in `git status`. Outside git it prints a warning: comments are kept on a branch called `no-git` and restore does not work.
+(The port and user name will be yours.) `init` writes `.tackboard/config.json`, which holds the port, a random token and the allowed origins. In a git project it also adds `.tackboard/` to `.git/info/exclude`, so the folder does not show in `git status`. Outside git it prints a warning: comments are kept on a branch called `no-git` and restore does not work. The last line is the agent skill, see "Give your coding agent the loop" below.
 
-Put the script tag in your dev site's HTML. Then start the daemon and leave it running:
+To add an address later, run `init` again and give every address you want, old and new, for example `tackboard init --origin http://localhost:3000 --origin http://localhost:4000`. The port and token stay the same. Then stop `tackboard start` and run it again.
+
+### 5. Add the script tag
+
+Put the `<script>` line that `init` printed in your dev site's HTML.
+
+### 6. Start it
 
 ```
 tackboard start
 ```
 
-It prints `listening 127.0.0.1:<port>` when ready. It listens on 127.0.0.1 only and keeps its data in `.tackboard/tackboard.db`. If you run `tackboard next` and the daemon is not running, you get `cannot reach the daemon on port <port>; run tackboard start`.
+Leave it running. It prints `listening 127.0.0.1:<port>` when ready. It listens on 127.0.0.1 only and keeps its data in `.tackboard/tackboard.db`.
+
+### 7. Check it works
+
+In another terminal, in the same project:
+
+```
+tackboard status
+```
+
+It shows the branch, `agent: claude-main (online)` and `no threads`. Now reload your dev site, comment on the page (see below), and run `tackboard wait`. The comment prints.
+
+### Not working?
+
+- `tackboard: command not found`: step 3 did not run. Run it again from the clone. Or run the file directly: `node /path/to/this/clone/packages/cli/src/main.ts`.
+- A build error: run `npm install` first, then `npm run build` again.
+- `cannot reach the daemon on port <port>; run tackboard start`: the daemon is not running. Run `tackboard start` in your project.
+- `no tackboard project found here; run tackboard init`: you are in the wrong folder, or have not run `init` yet.
+- The page shows no bar, or a comment never shows up: the address of your dev site is not allowed. Run `init` again with `--origin` for that address, then restart `tackboard start`.
 
 ## Comment on the page
 
@@ -59,6 +93,18 @@ Reload your dev site. A small bar appears with three tools and a comments button
 - Add comment: hover to outline an element, click it, and type your comment.
 
 The comments button opens the panel with the Open and Resolved lists and a History link at the bottom. The mode you pick and the panel position are not remembered after a reload.
+
+## Give your coding agent the loop
+
+`tackboard init` already puts a skill in your project at `.claude/skills/tackboard/SKILL.md`. It tells Claude Code how to read comments, reply and resolve. It never overwrites a file that is already there. Commit the folder if you want the skill to stay with the project.
+
+If your agent does not read skills, paste this to it:
+
+```
+Run `tackboard wait` in this folder. When a comment arrives, do what it asks.
+Then run `tackboard reply <id> "<what you changed>"` and `tackboard resolve <id>`.
+If you are not sure, run `tackboard reply <id> "<question>" --ask` and stop.
+```
 
 ## The agent loop
 
@@ -122,6 +168,8 @@ The agent finds out on its next command: the output starts with a `NOTICE` block
 - A web page can read the token from the overlay file. What stops a foreign site from using it is the list of allowed origins, which the daemon checks on every request that carries an `Origin` header. The daemon does not check the `Referer` of the overlay file request.
 
 ## Tests
+
+One time, before the browser tests: `npx playwright install chromium`.
 
 ```
 npm run typecheck
