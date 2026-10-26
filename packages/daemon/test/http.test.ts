@@ -72,6 +72,22 @@ test("a refused resolve by the agent leaves no resolved event in the history", (
     assert.equal(events.some((e) => e.type === "resolved"), false);
   }));
 
+test("refused resolves by the agent leave no checkpoint ref in the repo", () =>
+  with_daemon(async (d) => {
+    const refs = () => git(d.dir, "for-each-ref", "--format=%(refname)", brand.refPrefix).trim().split("\n").filter(Boolean).length;
+    const t = (await (await d.call("POST", paths.threads, post_body("fix this"))).json()) as ThreadDto;
+    await d.call("POST", paths.claimNext, { agent: "claude" });
+    await d.call("POST", paths.messages(t.id), { author: "claude", text: "done" });
+    writeFileSync(join(d.dir, "a.txt"), "changed after the reply\n");
+    const before = refs();
+    for (let i = 0; i < 5; i++) {
+      assert.equal((await d.call("POST", paths.resolve(t.id), { by: "agent" })).status, 409);
+    }
+    assert.equal(refs(), before);
+    assert.equal((await d.call("POST", paths.resolve(t.id), { by: "user" })).status, 200);
+    assert.equal(refs(), before + 1);
+  }));
+
 test("100 KB comment accepted, 150 KB rejected with 413 and daemon still answers /health", () =>
   with_daemon(async (d) => {
     const ok = await d.call("POST", paths.threads, post_body("x".repeat(100 * 1024)));

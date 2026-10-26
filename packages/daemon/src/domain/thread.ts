@@ -152,9 +152,6 @@ export class Thread {
 
   resolve(by: "user" | "agent", now: number = Date.now()): void {
     if (this._status === "resolved") throw new DomainError("invalid", `thread ${this.n} is already resolved`);
-    if (by === "agent") {
-      throw new DomainError("waiting_on_user", `only the user closes thread ${this.n}; ask with reply --ask`);
-    }
     this._status = "resolved";
     this._claimedAt = undefined;
     this.record("resolved", now, { by });

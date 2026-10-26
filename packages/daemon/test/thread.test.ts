@@ -107,19 +107,6 @@ test("user reply moves any non-resolved thread to pending and clears agent", () 
   assert.equal(t.status, "pending");
 });
 
-test('resolve by agent always throws "waiting_on_user"', () => {
-  const t = open();
-  t.claim(AgentName.of("claude"), 2000);
-  t.reply("claude", "done", 2100, 2);
-  t.pullEvents();
-  throwsCode(() => t.resolve("agent"), "waiting_on_user");
-  assert.equal(t.status, "received");
-  assert.equal(t.pullEvents().length, 0);
-  t.reply("claude", "which blue?", 2200, 3, { ask: true });
-  throwsCode(() => t.resolve("agent"), "waiting_on_user");
-  assert.equal(t.status, "waiting");
-});
-
 test("user may resolve a waiting thread", () => {
   const t = open();
   t.claim(AgentName.of("claude"), 2000);

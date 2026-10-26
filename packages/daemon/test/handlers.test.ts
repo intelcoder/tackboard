@@ -32,7 +32,20 @@ const element: ElementRef = {
   rect: { x: 1, y: 2, w: 3, h: 4 }, confidence: "text",
 };
 
-function setup() {
+/** A checkpoint store that counts snapshots. Files count as changed only while `changed` is true. */
+function countingStore() {
+  const store = {
+    snapshots: 0,
+    changed: false,
+    snapshot() { this.snapshots += 1; return `cp-${this.snapshots}`; },
+    restore() {},
+    changedFiles() { return []; },
+    hasChangedSince() { return this.changed; },
+  };
+  return store satisfies CheckpointStore;
+}
+
+function setup(store: CheckpointStore = noCheckpoints) {
   const repo = new InMemoryThreadRepository();
   const clock = { t: 1_000_000, now() { return this.t; } };
   const git = {
@@ -48,9 +61,9 @@ function setup() {
     repo, clock, git,
     post: new PostCommentHandler(repo, c, g),
     postAgent: new PostAgentCommentHandler(repo, c, g),
-    claim: new ClaimNextThreadHandler(repo, c, g, noCheckpoints),
-    reply: new ReplyToThreadHandler(repo, c, noCheckpoints),
-    resolve: new ResolveThreadHandler(repo, c, noCheckpoints),
+    claim: new ClaimNextThreadHandler(repo, c, g, store),
+    reply: new ReplyToThreadHandler(repo, c, store),
+    resolve: new ResolveThreadHandler(repo, c, store),
     reopen: new ReopenThreadHandler(repo, c),
     release: new ReleaseThreadHandler(repo, c),
     markRead: new MarkReadHandler(repo, c),
@@ -309,4 +322,21 @@ test("list restoreBlocked still names the claimed thread when the state filter h
   const resolvedOnly = s.list.handle({ state: "resolved" });
   assert.deepEqual(resolvedOnly.threads.map((t) => t.messages[0]!.text), ["done"]);
   assert.match(resolvedOnly.restoreBlocked ?? "", /claimed by claude/);
+});
+
+test("a refused resolve by the agent takes no checkpoint and changes nothing", () => {
+  const store = countingStore();
+  const s = setup(store);
+  const posted = s.post.handle(postArgs());
+  s.claim.handle({ agent: "claude" });
+  s.reply.handle({ id: posted.id, author: "claude", text: "done" });
+  store.changed = true;
+  const before = { snapshots: store.snapshots, thread: s.get.handle({ id: posted.id }), history: s.history.handle({}) };
+  for (let i = 0; i < 3; i++) {
+    assert.throws(() => s.resolve.handle({ id: posted.id, by: "agent" }), (e) => e instanceof DomainError && e.code === "waiting_on_user");
+  }
+  assert.equal(store.snapshots, before.snapshots);
+  assert.deepEqual(s.get.handle({ id: posted.id }), before.thread);
+  assert.deepEqual(s.history.handle({}), before.history);
+  assert.equal(s.resolve.handle({ id: posted.id, by: "user" }).status, "resolved");
 });

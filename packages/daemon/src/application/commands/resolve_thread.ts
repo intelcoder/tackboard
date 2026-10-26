@@ -1,6 +1,7 @@
 import type { ThreadDto } from "@app/shared";
 import type { CheckpointStore } from "../../domain/checkpoint_store.ts";
 import type { Clock, ThreadRepository } from "../../domain/repositories.ts";
+import { DomainError } from "../../domain/errors.ts";
 import { loadThread } from "../load_thread.ts";
 import { checkpointIfChanged } from "../save_checkpoint.ts";
 
@@ -17,6 +18,10 @@ export class ResolveThreadHandler {
   handle(cmd: { id: string; by: "user" | "agent" }): ThreadDto {
     const now = this.clock.now();
     const thread = loadThread(this.repo, cmd.id);
+    // Only the user closes a thread. Refuse before the checkpoint, so a refused call has no side effect.
+    if (cmd.by === "agent") {
+      throw new DomainError("waiting_on_user", `only the user closes thread ${thread.n}; ask with reply --ask`);
+    }
     // Resolve adds no message, so the checkpoint goes on the last one, and only if that message has none yet.
     const last = thread.messages[thread.messages.length - 1]!;
     const checkpoint = last.checkpointId === undefined
