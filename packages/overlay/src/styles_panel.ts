@@ -92,9 +92,17 @@ export const panelCss = `
 .tb-drafts{--dash:color-mix(in srgb,var(--tb-accent) 25%,var(--tb-bg));flex:none;margin:10px;border:1px dashed color-mix(in srgb,var(--tb-accent) 45%,var(--tb-bg));border-radius:8px;background:color-mix(in srgb,var(--tb-accent) 5%,var(--tb-bg))}
 .tb-drafts .tb-section,.tb-drafts .tb-queued{border-bottom:1px dashed var(--dash)}
 .tb-drafts .tb-queued .tb-btn{padding:1px 8px}
+.tb-drafts-title{font:600 13px var(--body);color:var(--tb-fg)}
+.tb-draft-top{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:0}
+.tb-draft-top .tb-thread-top{flex:1}
+.tb-drafts .tb-queued .text{opacity:1;background:none;border:0;border-radius:0;padding:0;max-width:100%;color:var(--tb-fg)}
 
 /* Composer and RestoreConfirm */
 .tb-composer{display:flex;flex-direction:column;gap:8px;padding:10px 12px;min-width:0;overflow:auto}
+.tb-composer-top{display:flex;align-items:center;gap:6px;min-width:0}
+.tb-composer .tb-composer-top .target{align-self:center}
+.tb-composer-top .tb-hint{margin-left:auto;flex:none;white-space:nowrap}
+.tb-composer .tb-row{padding-top:4px}
 .tb-composer .target{font:500 11px var(--mono);color:var(--tb-accent);background:var(--tb-accent-soft);padding:2px 6px;border-radius:3px;align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tb-composer textarea{width:100%;min-height:64px;resize:vertical;border:1px solid var(--tb-line);border-radius:6px;padding:7px 9px;background:var(--tb-bg);color:var(--tb-fg);font:inherit}
 .tb-confirm-title{font:600 13px var(--display)}

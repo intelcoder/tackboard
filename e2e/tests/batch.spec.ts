@@ -248,3 +248,86 @@ for (const size of [{ width: 1280, height: 800 }, { width: 320, height: 640 }]) 
     expect(after.height).toBeGreaterThanOrEqual(120);
   });
 }
+
+for (const size of [{ width: 1280, height: 800 }, { width: 320, height: 640 }]) {
+  test(`the new comment box keeps the chip, the agent and the ✕ above the box and two buttons below it at ${size.width}px`, async ({ harness: h }) => {
+    const page = h.page;
+    const posts = countPosts(h);
+    await page.setViewportSize(size);
+    await pick(page, "#cta");
+
+    const rect = async (selector: string) => page.locator(selector).first().evaluate((e) => {
+      const r = e.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+    });
+    const box = await rect('[data-key="composer"]');
+    const chip = await rect(".tb-composer .target");
+    const agent = await rect(".tb-composer .tb-hint");
+    const cross = await rect('.tb-composer [data-key="cancel"]');
+    const sendNow = await rect('.tb-composer [data-key="send"]');
+    const addDraftBox = await rect('.tb-composer [data-key="draft"]');
+    const panel = await rect(".tb-panel");
+
+    await expect(page.locator(".tb-composer .tb-hint")).toHaveText(/^to \S/);
+    for (const above of [chip, agent, cross]) expect(above.bottom).toBeLessThanOrEqual(box.top + 0.5);
+    // one top row: chip on the left, then the agent text, then the ✕ at the right end
+    expect(Math.abs(chip.top - cross.top)).toBeLessThan(12);
+    expect(Math.abs((chip.top + chip.bottom) / 2 - (cross.top + cross.bottom) / 2)).toBeLessThan(1);
+    expect(chip.right).toBeLessThanOrEqual(agent.left + 0.5);
+    expect(agent.right).toBeLessThanOrEqual(cross.left + 0.5);
+    expect(cross.right).toBeGreaterThan(panel.right - 20);
+    // the ✕ is a small plain icon button with a name and a tooltip, not a text button
+    expect(cross.width).toBeCloseTo(24, 0);
+    expect(cross.height).toBeCloseTo(24, 0);
+    await expect(page.locator('[data-key="cancel"]')).toHaveAttribute("aria-label", "Cancel");
+    await expect(page.locator('[data-key="cancel"]')).toHaveAttribute("title", "Cancel");
+    await expect(page.locator('[data-key="cancel"]')).toHaveText("✕");
+    await expect(page.locator(".tb-composer button", { hasText: "Cancel" })).toHaveCount(0);
+
+    // the action row holds only Send now and Add draft: below the box, on one line, right-aligned
+    await expect(page.locator(".tb-composer button")).toHaveCount(3);
+    expect(sendNow.top).toBeGreaterThanOrEqual(box.bottom - 0.5);
+    expect(addDraftBox.top).toBeGreaterThanOrEqual(box.bottom - 0.5);
+    expect(Math.abs(sendNow.top - addDraftBox.top)).toBeLessThan(2);
+    expect(sendNow.right).toBeLessThanOrEqual(addDraftBox.left + 0.5);
+    expect(Math.abs(addDraftBox.right - box.right)).toBeLessThan(2);
+
+    // the ✕ closes the box and adds nothing
+    await composer(page).fill("not kept");
+    await page.locator('[data-key="cancel"]').click();
+    await expect(composer(page)).toHaveCount(0);
+    await expect(draftRows(page)).toHaveCount(0);
+    await expect(draftBadge(page)).toBeHidden();
+    expect(posts()).toBe(0);
+
+    // nothing else about sending changed: Enter adds a draft, Send now sends
+    await pick(page, "#cta");
+    await composer(page).fill("kept as a draft");
+    await composer(page).press("Enter");
+    await expect(draftRows(page)).toHaveCount(1);
+    expect(posts()).toBe(0);
+    await pick(page, "#l2");
+    await composer(page).fill("sent now");
+    await page.locator('[data-key="send"]').click();
+    await expect(page.locator(".tb-thread")).toHaveCount(1);
+    expect(posts()).toBe(1);
+  });
+
+  test(`a draft row has the label and Remove on one line, plain text, and a bold title at ${size.width}px`, async ({ harness: h }) => {
+    const page = h.page;
+    await page.setViewportSize(size);
+    await addDraft(page, "#cta", "Make this button blue and bigger.");
+    const row = draftRows(page).first();
+    const label = (await row.locator(".tb-target").boundingBox())!;
+    const remove = (await row.locator('[data-key="remove-draft"]').boundingBox())!;
+    const text = (await row.locator(".text").boundingBox())!;
+    expect(label.y + label.height / 2).toBeGreaterThan(remove.y);
+    expect(label.y + label.height / 2).toBeLessThan(remove.y + remove.height);
+    expect(label.x + label.width).toBeLessThanOrEqual(remove.x + 0.5);
+    expect(text.y).toBeGreaterThanOrEqual(Math.max(label.y + label.height, remove.y + remove.height) - 0.5);
+    expect(await row.locator(".text").evaluate((e) => getComputedStyle(e).opacity)).toBe("1");
+    const title = drafts(page).locator(".tb-drafts-title");
+    await expect(title).toHaveText("Drafts (1)");
+    expect(Number(await title.evaluate((e) => getComputedStyle(e).fontWeight))).toBeGreaterThanOrEqual(600);
+  });
+}

@@ -271,20 +271,20 @@ export function createPanel(o: PanelOptions): Panel {
   const draftsBlock = (): HTMLElement =>
     h("div", { class: "tb-queue tb-drafts", "data-key": "drafts" },
       h("div", { class: "tb-section tb-row" },
-        h("span", { class: "tb-hint" }, `Drafts (${drafts.length})`),
+        h("b", { class: "tb-drafts-title" }, `Drafts (${drafts.length})`),
         h("button", { type: "button", class: "tb-btn primary", "data-key": "send-all", onclick: sendAll }, `Send all (${drafts.length})`)),
       ...drafts.map((d) => {
         return h("div", { class: "tb-queued" },
-          h("button", {
-            type: "button", class: "tb-thread-top", "data-key": "draft-target",
-            onclick: () => {
-              const el = finder.find({ id: d.id, url: d.job.url, element: d.job.ref });
-              if (el) showElement(el);
-            },
-          }, h("span", { class: "tb-target" }, targetLabel(d.job.ref))),
-          h("span", { class: "text" }, d.job.text.length > 300 ? `${d.job.text.slice(0, 299)}…` : d.job.text),
-          h("div", { class: "tb-row" },
-            h("button", { type: "button", class: "tb-btn", "data-key": "remove-draft", onclick: () => { drafts = drafts.filter((x) => x !== d); showDraftCount(); draw(); } }, "Remove")));
+          h("div", { class: "tb-draft-top" },
+            h("button", {
+              type: "button", class: "tb-thread-top", "data-key": "draft-target",
+              onclick: () => {
+                const el = finder.find({ id: d.id, url: d.job.url, element: d.job.ref });
+                if (el) showElement(el);
+              },
+            }, h("span", { class: "tb-target" }, targetLabel(d.job.ref))),
+            h("button", { type: "button", class: "tb-btn", "data-key": "remove-draft", onclick: () => { drafts = drafts.filter((x) => x !== d); showDraftCount(); draw(); } }, "Remove")),
+          h("span", { class: "text" }, d.job.text.length > 300 ? `${d.job.text.slice(0, 299)}…` : d.job.text));
       }));
 
   // ---- drawing ----
@@ -337,11 +337,12 @@ export function createPanel(o: PanelOptions): Panel {
     }) as HTMLTextAreaElement;
     box.value = composerDraft;
     return h("div", { class: "tb-composer" },
-      h("span", { class: "target" }, targetLabel(composer!.ref)),
+      h("div", { class: "tb-composer-top" },
+        h("span", { class: "target" }, targetLabel(composer!.ref)),
+        h("span", { class: "tb-hint" }, `to ${s.agent.name ?? "the agent"}`),
+        h("button", { type: "button", class: "tb-x", "aria-label": "Cancel", title: "Cancel", "data-key": "cancel", onclick: closeComposer }, "✕")),
       box,
       h("div", { class: "tb-row" },
-        h("span", { class: "tb-hint" }, `Goes to ${s.agent.name ?? "the agent"}`),
-        h("button", { type: "button", class: "tb-btn", "data-key": "cancel", onclick: closeComposer }, "Cancel"),
         h("button", { type: "button", class: "tb-btn", "data-key": "send", onclick: send }, "Send now"),
         h("button", { type: "button", class: "tb-btn primary", "data-key": "draft", onclick: addDraft }, "Add draft")));
   };
