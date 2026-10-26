@@ -32,6 +32,8 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
 
   const buttons = [tool("hidden", "Hidden"), tool("view", "View comments"), tool("comment", "Add comment")];
   const badge = h("span", { class: "badge", hidden: true });
+  // the panel keeps this one up to date: how many drafts are not sent yet
+  const draftBadge = h("span", { class: "draft-count", hidden: true });
   const toggle = h("button", {
     type: "button",
     "data-panel": "",
@@ -39,7 +41,7 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
     title: "Comments",
     "aria-pressed": "false",
     onclick: () => store.set({ panelOpen: !store.get().panelOpen }),
-  }, icon("panel"), badge);
+  }, icon("panel"), badge, draftBadge);
 
   const pill = h("div", { class: "tb-modes", role: "group", "aria-label": "Mode" },
     ...buttons, h("span", { class: "div" }), toggle);

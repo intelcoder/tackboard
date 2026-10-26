@@ -25,7 +25,7 @@ async function unreachable(page: Page, path: string) {
   return () => page.unroute(match, handler);
 }
 
-test("Enter sends in the new comment box and Shift+Enter adds a line", async ({ harness: h }) => {
+test("Ctrl+Enter sends in the new comment box and Shift+Enter adds a line", async ({ harness: h }) => {
   const page = h.page;
   await openComposer(page, "#cta");
   await composer(page).fill("a");
@@ -35,7 +35,7 @@ test("Enter sends in the new comment box and Shift+Enter adds a line", async ({ 
   await expect(composer(page)).toHaveValue("a\nb");
   await expect(page.locator(".tb-thread")).toHaveCount(0);
 
-  await composer(page).press("Enter");
+  await composer(page).press("Control+Enter");
   await expect(composer(page)).toHaveCount(0);
   await expect(page.locator(".tb-thread.active .tb-msg .text")).toHaveText("a\nb");
 });
@@ -79,7 +79,7 @@ test("an unreachable daemon queues a comment and a reply, and both arrive once i
 
   await openComposer(page, "#l4");
   await composer(page).fill("new while offline");
-  await composer(page).press("Enter");
+  await composer(page).press("Control+Enter");
   await expect(composer(page)).toHaveCount(0);
   const waiting = page.locator(".tb-queue .tb-queued");
   await expect(waiting).toHaveCount(1);
@@ -149,10 +149,10 @@ for (const [width, height] of [[1280, 800], [320, 640]]) {
 
     await openComposer(page, "#l4");
     await composer(page).fill("x".repeat(150 * 1024));
-    await composer(page).press("Enter");
+    await composer(page).press("Control+Enter");
     await openComposer(page, "#l2");
     await composer(page).fill("second refused comment");
-    await composer(page).press("Enter");
+    await composer(page).press("Control+Enter");
     await expect(page.locator(".tb-banner")).toBeVisible();
     await expect(page.locator(".tb-queued .tb-btn")).toHaveCount(4);
     const squeezed = await rect(page.locator(".tb-list"));

@@ -68,7 +68,7 @@ export const rows: StyleRow[] = [
   row({ id: "R30", state: "panelOpen", selector: ".tb-tabs button.on", prop: "border-bottom-color", expected: { cssVar: "--tb-accent" }, breakCss: css(".tb-tabs button.on", "border-bottom-color", WRONG) }),
   row({ id: "R31", state: "conversation", selector: ".tb-msg.me .text", prop: "background-color", expected: { cssVar: "--tb-soft" }, breakCss: css(".tb-msg.me .text", "background-color", WRONG) }),
   row({ id: "R32", state: "conversation", selector: ".tb-msg.agent .text", prop: "background-color", expected: { cssVar: "--agent-bg" }, breakCss: css(".tb-msg.agent .text", "background-color", WRONG) }),
-  row({ id: "R33", state: "composerOpen", selector: '[data-key="send"]', prop: "background-color", expected: { cssVar: "--tb-accent" }, breakCss: css('[data-key="send"]', "background-color", WRONG) }),
+  row({ id: "R33", state: "composerOpen", selector: '[data-key="draft"]', prop: "background-color", expected: { cssVar: "--tb-accent" }, breakCss: css('[data-key="draft"]', "background-color", WRONG) }),
   // In this state the thread is claimed, so Rewind is blocked and wears the grey disabled look.
   row({ id: "R34", state: "restoreConfirm", selector: ".tb-confirm .tb-btn.danger", prop: "background-color", expected: { cssVar: "--tb-soft" }, breakCss: css(".tb-confirm .tb-btn.danger", "background-color", WRONG) }),
   row({ id: "R35", state: "notificationsDenied", selector: ".tb-banner.blocked", prop: "background-color", expected: { cssVar: "--st-waiting-bg" }, breakCss: css(".tb-banner.blocked", "background-color", WRONG) }),

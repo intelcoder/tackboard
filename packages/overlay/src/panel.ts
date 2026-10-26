@@ -40,6 +40,8 @@ type Job =
   | { kind: "comment"; ref: ElementRef; url: string; viewport: { w: number; h: number }; text: string }
   | { kind: "reply"; threadId: string; text: string };
 
+type CommentJob = Extract<Job, { kind: "comment" }>;
+
 const FLASH_MS = 1800;
 const SAVED_KEY = `${brand.configGlobal}:notify-later`;
 const BLOCKED_KEY = `${brand.configGlobal}:blocked-hint-hidden`;
@@ -69,6 +71,9 @@ export function createPanel(o: PanelOptions): Panel {
   let blockedHidden = permissionAsked(storage, BLOCKED_KEY);
   let moved: { x: number; y: number } | null = null;
   const replyDrafts = new Map<string, string>();
+  // Comments added to the batch. They live in the page only and are lost on reload.
+  let drafts: { id: string; job: CommentJob }[] = [];
+  let draftNumber = 0;
   const timers = new Set<ReturnType<typeof setTimeout>>();
 
   const later = (fn: () => void, ms: number) => {
@@ -127,6 +132,15 @@ export function createPanel(o: PanelOptions): Panel {
     }
   };
 
+  const showElement = (el: Element) => {
+    try {
+      el.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
+    } catch {
+      // not every environment can scroll
+    }
+    flash(el);
+  };
+
   const openThread = (id: string, scroll = false) => {
     const t = store.get().threads.find((x) => x.id === id);
     if (!t) return;
@@ -136,12 +150,7 @@ export function createPanel(o: PanelOptions): Panel {
     if (!scroll) return;
     const el = finder.find(t);
     if (!el) return;
-    try {
-      el.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
-    } catch {
-      // not every environment can scroll
-    }
-    flash(el);
+    showElement(el);
     store.set({ pulseThreadId: id });
     later(() => {
       if (store.get().pulseThreadId === id) store.set({ pulseThreadId: null });
@@ -235,6 +244,49 @@ export function createPanel(o: PanelOptions): Panel {
     closeComposer();
   };
 
+  const showDraftCount = () => {
+    const badge = (panel.getRootNode() as ShadowRoot).querySelector?.(".tb-modes .draft-count");
+    if (!badge) return;
+    badge.textContent = drafts.length ? String(drafts.length) : "";
+    if (drafts.length) badge.removeAttribute("hidden");
+    else badge.setAttribute("hidden", "");
+  };
+
+  const addDraft = () => {
+    const text = composerDraft.trim();
+    if (!composer || !text) return;
+    drafts.push({ id: `draft-${++draftNumber}`, job: { kind: "comment", ref: composer.ref, url: win.location.href, viewport: o.viewport(), text } });
+    showDraftCount();
+    o.showToast(`Draft added (${drafts.length})`);
+    closeComposer();
+  };
+
+  const sendAll = () => {
+    const all = drafts;
+    drafts = [];
+    showDraftCount();
+    for (const d of all) outbox.add(d.job);
+  };
+
+  const draftsBlock = (): HTMLElement =>
+    h("div", { class: "tb-queue tb-drafts", "data-key": "drafts" },
+      h("div", { class: "tb-section tb-row" },
+        h("span", { class: "tb-hint" }, `Drafts (${drafts.length})`),
+        h("button", { type: "button", class: "tb-btn primary", "data-key": "send-all", onclick: sendAll }, `Send all (${drafts.length})`)),
+      ...drafts.map((d) => {
+        return h("div", { class: "tb-queued" },
+          h("button", {
+            type: "button", class: "tb-thread-top", "data-key": "draft-target",
+            onclick: () => {
+              const el = finder.find({ id: d.id, url: d.job.url, element: d.job.ref });
+              if (el) showElement(el);
+            },
+          }, h("span", { class: "tb-target" }, targetLabel(d.job.ref))),
+          h("span", { class: "text" }, d.job.text.length > 300 ? `${d.job.text.slice(0, 299)}…` : d.job.text),
+          h("div", { class: "tb-row" },
+            h("button", { type: "button", class: "tb-btn", "data-key": "remove-draft", onclick: () => { drafts = drafts.filter((x) => x !== d); showDraftCount(); draw(); } }, "Remove")));
+      }));
+
   // ---- drawing ----
 
   const header = (): HTMLElement => {
@@ -278,7 +330,9 @@ export function createPanel(o: PanelOptions): Panel {
       onkeydown: (ev: Event) => {
         if (!isSubmitKey(ev as KeyboardEvent)) return;
         ev.preventDefault();
-        send();
+        // Enter adds a draft; Ctrl or Cmd plus Enter sends this one comment now
+        if ((ev as KeyboardEvent).ctrlKey || (ev as KeyboardEvent).metaKey) send();
+        else addDraft();
       },
     }) as HTMLTextAreaElement;
     box.value = composerDraft;
@@ -288,7 +342,8 @@ export function createPanel(o: PanelOptions): Panel {
       h("div", { class: "tb-row" },
         h("span", { class: "tb-hint" }, `Goes to ${s.agent.name ?? "the agent"}`),
         h("button", { type: "button", class: "tb-btn", "data-key": "cancel", onclick: closeComposer }, "Cancel"),
-        h("button", { type: "button", class: "tb-btn primary", "data-key": "send", onclick: send }, "Send")));
+        h("button", { type: "button", class: "tb-btn", "data-key": "send", onclick: send }, "Send now"),
+        h("button", { type: "button", class: "tb-btn primary", "data-key": "draft", onclick: addDraft }, "Add draft")));
   };
 
   const itemFor = (t: ThreadDto, history: boolean): HTMLElement => {
@@ -403,7 +458,7 @@ export function createPanel(o: PanelOptions): Panel {
     const detachedIds = s.threads.filter((t) => !finder.find(t)).map((t) => t.id);
     const look = JSON.stringify([
       s.threads, s.history, s.branch, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
-      tab, showHistory, historyOpenId, composer?.ref.selector ?? null, outbox.items(), confirming, notice,
+      tab, showHistory, historyOpenId, composer?.ref.selector ?? null, outbox.items(), drafts, confirming, notice,
       notificationState(), dismissed, blockedHidden, detachedIds,
     ]);
     if (look === lastLook) return;
@@ -437,12 +492,13 @@ export function createPanel(o: PanelOptions): Panel {
         if (s.loaded && s.threads.length) panel.append(tabs());
         const list = listView();
         const comments = outbox.items().flatMap((item) => (item.job.kind === "comment" ? [queuedView(item, targetLabel(item.job.ref))] : []));
-        // the waiting comments scroll with the list, so they can never squeeze it
+        // the drafts and the waiting comments scroll with the list, so they can never squeeze it
         if (comments.length) {
           list.insertBefore(h("div", { class: "tb-queue" },
             h("div", { class: "tb-section" }, "Waiting to send"),
             ...comments.map((q) => queuedItem(h, q))), list.firstChild);
         }
+        if (tab === "open" && drafts.length) list.insertBefore(draftsBlock(), list.firstChild);
         panel.append(list);
         panel.append(h("div", { class: "tb-foot" },
           h("button", { type: "button", class: "tb-link", "data-key": "history", onclick: () => { showHistory = true; draw(); } },

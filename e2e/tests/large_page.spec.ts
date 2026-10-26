@@ -81,7 +81,7 @@ test("a queued message shows at most 300 characters and does not slow layout", a
   await outline(page).waitFor();
   await page.click("#cta");
   await page.locator('[data-key="composer"]').fill("x".repeat(150 * 1024));
-  await page.locator('[data-key="composer"]').press("Enter");
+  await page.locator('[data-key="composer"]').press("Control+Enter");
   const item = page.locator(".tb-queued .text");
   await expect(item).toBeVisible();
   expect((await item.textContent())!.length).toBeLessThanOrEqual(300);

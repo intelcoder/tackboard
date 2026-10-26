@@ -26,6 +26,10 @@ export const panelCss = `
 .tb-agent.off{color:var(--tb-muted);background:var(--tb-soft)}
 .tb-agent.off .dot{background:transparent;border:1.5px solid var(--tb-muted)}
 
+/* the draft count on the toolbar's comments button sits below the other badge */
+.draft-count{position:absolute;bottom:2px;right:1px;min-width:16px;height:16px;border-radius:8px;background:#7c3aed;color:#fff;font:600 9.5px var(--mono);display:grid;place-items:center;padding:0 4px;border:2px solid #23262c;box-sizing:content-box}
+.draft-count[hidden]{display:none}
+
 /* tabs */
 .tb-tabs{display:flex;gap:6px;padding:0 14px;border-bottom:1px solid var(--tb-line);flex:none}
 .tb-tabs button{border:0;background:none;padding:8px 4px;color:var(--tb-muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px}
@@ -75,13 +79,19 @@ export const panelCss = `
 
 /* messages waiting to be sent: faded, with their status under them */
 .tb-queued{display:flex;flex-direction:column;gap:2px;align-items:flex-start;min-width:0}
-.tb-queued .text{white-space:pre-wrap;overflow-wrap:anywhere;padding:6px 10px;max-width:92%;background:var(--tb-soft);border-radius:10px 10px 2px 10px;opacity:.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tb-queued .text{white-space:pre-wrap;overflow-wrap:anywhere;padding:0 10px;border:solid var(--tb-soft);border-width:6px 0;max-width:92%;background:var(--tb-soft);border-radius:10px 10px 2px 10px;opacity:.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .tb-queued .tb-row{justify-content:flex-start}
 .tb-thread .tb-queued{align-items:flex-end}
 .tb-thread .tb-queued .tb-row{justify-content:flex-end}
 .tb-queue{flex:none;border-bottom:1px solid var(--tb-line)}
 .tb-queue .tb-queued{padding:6px 14px;border-bottom:1px solid var(--tb-line)}
 .tb-queue .tb-queued:last-child{border-bottom:0}
+.tb-queue>.tb-section.tb-row{flex-wrap:nowrap;justify-content:space-between;padding:6px 14px}
+.tb-queue .tb-thread-top{width:auto;max-width:100%}
+/* the drafts block is a card that stands apart from the thread list */
+.tb-drafts{--dash:color-mix(in srgb,var(--tb-accent) 25%,var(--tb-bg));flex:none;margin:10px;border:1px dashed color-mix(in srgb,var(--tb-accent) 45%,var(--tb-bg));border-radius:8px;background:color-mix(in srgb,var(--tb-accent) 5%,var(--tb-bg))}
+.tb-drafts .tb-section,.tb-drafts .tb-queued{border-bottom:1px dashed var(--dash)}
+.tb-drafts .tb-queued .tb-btn{padding:1px 8px}
 
 /* Composer and RestoreConfirm */
 .tb-composer{display:flex;flex-direction:column;gap:8px;padding:10px 12px;min-width:0;overflow:auto}
