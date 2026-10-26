@@ -18,3 +18,5 @@ bash: mut2.sh: No such file or directory
 == html not truncated: # fail 0 ; failed: 
 == earlier messages dropped: # fail 0 ; failed: 
 == no-git warning dropped: # fail 1 ; failed: init in a non-git directory warns and next works on branch no-git|
+== token header dropped: # fail 10 ; failed: init in a non-git directory warns and next works on branch no-git|next prints THREAD, branch, selector, comment, and the instruction block|next prints "no pending threads on this branch" and exits 0 w
+== notices not sent agent: # fail 10 ; failed: init in a non-git directory warns and next works on branch no-git|next prints THREAD, branch, selector, comment, and the instruction block|next prints "no pending threads on this branch" and exits 0 w
