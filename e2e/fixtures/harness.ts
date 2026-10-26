@@ -66,8 +66,8 @@ function run(args: string[], cwd: string, env: Record<string, string> = {}): Pro
   });
 }
 
-export async function startHarness(opts: HarnessOptions = {}): Promise<Harness> {
-  const site = opts.site ?? "plain";
+export async function startHarness(options: HarnessOptions = {}): Promise<Harness> {
+  const site = options.site ?? "plain";
   const repo = mkdtempSync(join(tmpdir(), "tb-e2e-"));
   const sitePort = await freePort();
   let daemonPort = await freePort();
@@ -95,7 +95,7 @@ export async function startHarness(opts: HarnessOptions = {}): Promise<Harness> 
     new Promise((done, fail) => {
       const child = spawn("node", [cli, "start"], {
         cwd: repo,
-        env: { ...process.env, NODE_ENV: "test", ...opts.env, ...env },
+        env: { ...process.env, NODE_ENV: "test", ...options.env, ...env },
         stdio: ["ignore", "pipe", "ignore"],
       });
       daemon = child;

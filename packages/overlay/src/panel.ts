@@ -5,9 +5,9 @@ import type { Api } from "./api.ts";
 import type { H } from "./dom.ts";
 import { createFinder } from "./element_ref.ts";
 import { notificationState, permissionAsked, permissionBanner, rememberNotNow } from "./notifications.ts";
-import { createOutbox } from "./outbox.ts";
-import type { OutboxItem } from "./outbox.ts";
-import { badgeCount, clampToViewport, errorText, isSubmitKey, restoreDisabledReason, visibleThreads } from "./panel_logic.ts";
+import { createSendQueue } from "./send_queue.ts";
+import type { QueueItem } from "./send_queue.ts";
+import { badgeCount, clampToViewport, errorText, isSendKey, restoreDisabledReason, visibleThreads } from "./panel_logic.ts";
 import type { Tab } from "./panel_logic.ts";
 import type { Store } from "./store.ts";
 import { toastText } from "./toast.ts";
@@ -36,11 +36,11 @@ export type Panel = {
   destroy(): void;
 };
 
-type Job =
+type ToSend =
   | { kind: "comment"; ref: ElementRef; url: string; viewport: { w: number; h: number }; text: string }
   | { kind: "reply"; threadId: string; text: string };
 
-type CommentJob = Extract<Job, { kind: "comment" }>;
+type CommentToSend = Extract<ToSend, { kind: "comment" }>;
 
 const FLASH_MS = 1800;
 const SAVED_KEY = `${brand.configGlobal}:notify-later`;
@@ -72,7 +72,7 @@ export function createPanel(o: PanelOptions): Panel {
   let moved: { x: number; y: number } | null = null;
   const replyDrafts = new Map<string, string>();
   // Comments added to the batch. They live in the page only and are lost on reload.
-  let drafts: { id: string; job: CommentJob }[] = [];
+  let drafts: { id: string; job: CommentToSend }[] = [];
   let draftNumber = 0;
   const timers = new Set<ReturnType<typeof setTimeout>>();
 
@@ -181,7 +181,7 @@ export function createPanel(o: PanelOptions): Panel {
     );
   };
 
-  const deliver = async (job: Job, signal: AbortSignal) => {
+  const deliver = async (job: ToSend, signal: AbortSignal) => {
     if (job.kind === "reply") {
       saveThread(await api.postMessage(job.threadId, { author: "user", text: job.text }, signal));
       tab = "open";
@@ -193,20 +193,20 @@ export function createPanel(o: PanelOptions): Panel {
     store.set({ mode: "view", activeThreadId: t.id, panelOpen: true });
     o.refresh();
   };
-  const outbox = createOutbox<Job>({ send: deliver, onChange: () => draw() });
+  const sendQueue = createSendQueue<ToSend>({ send: deliver, onChange: () => draw() });
 
   const reply = (t: ThreadDto, text: string) => {
     replyDrafts.delete(t.id);
-    outbox.add({ kind: "reply", threadId: t.id, text });
+    sendQueue.add({ kind: "reply", threadId: t.id, text });
   };
 
-  const queuedView = (item: OutboxItem<Job>, label: string | null): QueuedView => ({
+  const queuedView = (item: QueueItem<ToSend>, label: string | null): QueuedView => ({
     label,
     text: item.job.text.length > 300 ? `${item.job.text.slice(0, 299)}…` : item.job.text,
-    status: item.state === "failed" ? `Not sent: ${item.reason}` : outbox.inflight(item) ? "Sending…" : "Waiting to retry",
+    status: item.state === "failed" ? `Not sent: ${item.reason}` : sendQueue.beingSent(item) ? "Sending…" : "Waiting to retry",
     failed: item.state === "failed",
-    onRetry: () => outbox.retry(item),
-    onRemove: () => outbox.remove(item),
+    onRetry: () => sendQueue.retry(item),
+    onRemove: () => sendQueue.remove(item),
   });
 
   const rewind = (t: ThreadDto, messageId: string, number: number) => {
@@ -240,7 +240,7 @@ export function createPanel(o: PanelOptions): Panel {
   const send = () => {
     const text = composerDraft.trim();
     if (!composer || !text) return;
-    outbox.add({ kind: "comment", ref: composer.ref, url: win.location.href, viewport: o.viewport(), text });
+    sendQueue.add({ kind: "comment", ref: composer.ref, url: win.location.href, viewport: o.viewport(), text });
     closeComposer();
   };
 
@@ -265,7 +265,7 @@ export function createPanel(o: PanelOptions): Panel {
     const all = drafts;
     drafts = [];
     showDraftCount();
-    for (const d of all) outbox.add(d.job);
+    for (const d of all) sendQueue.add(d.job);
   };
 
   const draftsBlock = (): HTMLElement =>
@@ -328,7 +328,7 @@ export function createPanel(o: PanelOptions): Panel {
       placeholder: "Comment on this element", "aria-label": "Comment", "data-key": "composer",
       oninput: (ev: Event) => { composerDraft = (ev.target as HTMLTextAreaElement).value; },
       onkeydown: (ev: Event) => {
-        if (!isSubmitKey(ev as KeyboardEvent)) return;
+        if (!isSendKey(ev as KeyboardEvent)) return;
         ev.preventDefault();
         // Enter adds a draft; Ctrl or Cmd plus Enter sends this one comment now
         if ((ev as KeyboardEvent).ctrlKey || (ev as KeyboardEvent).metaKey) send();
@@ -366,7 +366,7 @@ export function createPanel(o: PanelOptions): Panel {
       },
       onDraft: (text) => replyDrafts.set(t.id, text),
       onReply: (text) => reply(t, text),
-      queued: outbox.items().flatMap((item) => (item.job.kind === "reply" && item.job.threadId === t.id ? [queuedView(item, null)] : [])),
+      queued: sendQueue.items().flatMap((item) => (item.job.kind === "reply" && item.job.threadId === t.id ? [queuedView(item, null)] : [])),
       onResolve: () => run(() => api.resolve(t.id, { by: "user" })),
       onReopen: () => run(() => api.reopen(t.id), () => { tab = "open"; }),
       onRelease: () => run(() => api.release(t.id)),
@@ -459,7 +459,7 @@ export function createPanel(o: PanelOptions): Panel {
     const detachedIds = s.threads.filter((t) => !finder.find(t)).map((t) => t.id);
     const look = JSON.stringify([
       s.threads, s.history, s.branch, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
-      tab, showHistory, historyOpenId, composer?.ref.selector ?? null, outbox.items(), drafts, confirming, notice,
+      tab, showHistory, historyOpenId, composer?.ref.selector ?? null, sendQueue.items(), drafts, confirming, notice,
       notificationState(), dismissed, blockedHidden, detachedIds,
     ]);
     if (look === lastLook) return;
@@ -492,7 +492,7 @@ export function createPanel(o: PanelOptions): Panel {
       } else {
         if (s.loaded && s.threads.length) panel.append(tabs());
         const list = listView();
-        const comments = outbox.items().flatMap((item) => (item.job.kind === "comment" ? [queuedView(item, targetLabel(item.job.ref))] : []));
+        const comments = sendQueue.items().flatMap((item) => (item.job.kind === "comment" ? [queuedView(item, targetLabel(item.job.ref))] : []));
         // the drafts and the waiting comments scroll with the list, so they can never squeeze it
         if (comments.length) {
           list.insertBefore(h("div", { class: "tb-queue" },
@@ -607,7 +607,7 @@ export function createPanel(o: PanelOptions): Panel {
     openThread,
     destroy() {
       unsub();
-      outbox.destroy();
+      sendQueue.destroy();
       win.removeEventListener("resize", onResize);
       for (const t of timers) clearTimeout(t);
       panel.remove();

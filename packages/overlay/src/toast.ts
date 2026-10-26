@@ -20,22 +20,22 @@ export function toastText(event: ToastEvent): string {
 /** A short message that fades after a few seconds. One at a time. */
 export function createToast(h: H, layer: Element) {
   let current: HTMLElement | null = null;
-  let stamp = 0;
+  let latestToast = 0;
   return {
     show(text: string) {
       current?.remove();
-      const mine = ++stamp;
+      const mine = ++latestToast;
       current = h("div", { class: "tb-toast", role: "status" }, text);
       layer.append(current);
       setTimeout(() => {
-        if (mine === stamp) {
+        if (mine === latestToast) {
           current?.remove();
           current = null;
         }
       }, 3500);
     },
     clear() {
-      stamp++;
+      latestToast++;
       current?.remove();
       current = null;
     },

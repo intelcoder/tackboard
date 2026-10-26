@@ -28,11 +28,11 @@ function push(content: string, meta: Record<string, string>): void {
 export async function channel(c: Client, claim_thread: () => Promise<ThreadDto | null>): Promise<number> {
   let closed = false;
   let ready = false;
-  let wake: (() => void) | undefined;
+  let startAgain: (() => void) | undefined;
   const lines = createInterface({ input: process.stdin });
   lines.on("close", () => {
     closed = true;
-    wake?.();
+    startAgain?.();
   });
   lines.on("line", (line) => {
     let m: { id?: number | string; method?: string; params?: { protocolVersion?: string } };
@@ -43,7 +43,7 @@ export async function channel(c: Client, claim_thread: () => Promise<ThreadDto |
     }
     if (m.method === "notifications/initialized") {
       ready = true;
-      wake?.();
+      startAgain?.();
     } else if (m.id === undefined) {
       return;
     } else if (m.method === "initialize") {
@@ -64,7 +64,7 @@ export async function channel(c: Client, claim_thread: () => Promise<ThreadDto |
     }
   });
 
-  const told = new Set<string>();
+  const alreadySent = new Set<string>();
   let last_state = "";
   const say = (state: string) => {
     if (state !== last_state) process.stderr.write(`${brand.cli} channel: ${state}\n`);
@@ -76,8 +76,8 @@ export async function channel(c: Client, claim_thread: () => Promise<ThreadDto |
       try {
         const n = await c.get<NoticesResponse>(paths.notices, { agent: c.agent });
         for (const notice of n.notices) {
-          if (told.has(notice.id)) continue;
-          told.add(notice.id);
+          if (alreadySent.has(notice.id)) continue;
+          alreadySent.add(notice.id);
           push(formatNotice(notice), { notice_id: notice.id });
         }
         for (let t = await claim_thread(); t; t = await claim_thread()) {
@@ -91,7 +91,7 @@ export async function channel(c: Client, claim_thread: () => Promise<ThreadDto |
     if (closed) break;
     await new Promise<void>((done) => {
       const timer = setTimeout(done, 2000);
-      wake = () => {
+      startAgain = () => {
         clearTimeout(timer);
         done();
       };

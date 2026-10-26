@@ -16,7 +16,7 @@ const SINKS: { form: string; re: RegExp }[] = [
 ];
 
 const BRAND_FILE = "packages/shared/src/brand.ts";
-const norm = (p: string) => p.split("\\").join("/");
+const forwardSlashes = (p: string) => p.split("\\").join("/");
 const isTestDir = (p: string) => /(^|\/)(test|test-support)\//.test(p);
 
 function brandScope(p: string): boolean {
@@ -32,7 +32,7 @@ export function findViolations(files: { path: string; text: string }[]): Violati
   const out: Violation[] = [];
   const name = brand.name.toLowerCase();
   for (const f of files) {
-    const path = norm(f.path);
+    const path = forwardSlashes(f.path);
     if (isTestDir(path)) continue;
     if (path !== BRAND_FILE && brandScope(path)) {
       const squashed = f.text.toLowerCase().replace(/["'`+\s]/g, "");
@@ -73,7 +73,7 @@ export function scanTree(root: string): Violation[] {
   return findViolations(files);
 }
 
-if (process.argv[1] && norm(process.argv[1]).endsWith("scripts/guard.ts")) {
+if (process.argv[1] && forwardSlashes(process.argv[1]).endsWith("scripts/guard.ts")) {
   const v = scanTree(join(import.meta.dirname, ".."));
   for (const x of v) console.log(`${x.path}: ${x.rule} (${x.form})`);
   process.exit(v.length ? 1 : 0);

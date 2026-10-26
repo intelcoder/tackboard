@@ -37,13 +37,13 @@ export type Overlay = {
   destroy(): void;
 };
 
-export function mountOverlay(opts: MountOptions): Overlay {
-  const doc = opts.document ?? document;
-  const win = (opts.window ?? doc.defaultView ?? globalThis.window) as Window;
+export function mountOverlay(options: MountOptions): Overlay {
+  const doc = options.document ?? document;
+  const win = (options.window ?? doc.defaultView ?? globalThis.window) as Window;
   const h = createH(doc);
   const store = createStore();
-  const api = createApi(opts.config);
-  const viewport = opts.viewport ?? (() => ({ w: win.innerWidth, h: win.innerHeight }));
+  const api = createApi(options.config);
+  const viewport = options.viewport ?? (() => ({ w: win.innerWidth, h: win.innerHeight }));
 
   const host = h("div", { id: brand.hostId });
   host.style.cssText =
@@ -72,7 +72,7 @@ export function mountOverlay(opts: MountOptions): Overlay {
   const poller = createPoller({
     store,
     api,
-    every: opts.pollEvery ?? 1500,
+    every: options.pollEvery ?? 1500,
     onEvents: (events) => {
       for (const event of events) {
         toast.show(toastText(event));
@@ -88,14 +88,14 @@ export function mountOverlay(opts: MountOptions): Overlay {
     document: doc, window: win, layer: pinLayer, h, store, viewport,
     onPin: (id) => {
       panel.openThread(id);
-      opts.onPin?.(id);
+      options.onPin?.(id);
     },
   });
   const hover = createHover({
     document: doc, window: win, host, layer: hoverLayer, h, store,
     onPick: (ref, el) => {
       panel.compose(ref, el);
-      opts.onPick?.(ref, el);
+      options.onPick?.(ref, el);
     },
   });
 

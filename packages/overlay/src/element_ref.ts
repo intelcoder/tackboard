@@ -3,7 +3,7 @@ import { LIMITS } from "@app/shared";
 import { readSourceInfo } from "./source_map.ts";
 import type { Store } from "./store.ts";
 
-const norm = (s: string | null | undefined): string => (s ?? "").replace(/\s+/g, " ").trim();
+const cleanText = (s: string | null | undefined): string => (s ?? "").replace(/\s+/g, " ").trim();
 
 function cssEscape(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, (c) => `\\${c}`).replace(/^(\d)/, "\\3$1 ");
@@ -18,7 +18,7 @@ function hasUniqueId(el: Element): boolean {
   }
 }
 
-function nthChild(el: Element): number {
+function childPosition(el: Element): number {
   let n = 1;
   for (let s = el.previousElementSibling; s; s = s.previousElementSibling) n++;
   return n;
@@ -28,7 +28,7 @@ function selectorFor(el: Element): string {
   if (hasUniqueId(el)) return `#${cssEscape(el.id)}`;
   const doc = el.ownerDocument;
   if (el === doc.body || el === doc.documentElement) return el.tagName.toLowerCase();
-  const segs: string[] = [];
+  const segments: string[] = [];
   let cur: Element | null = el;
   let anchor = "body";
   while (cur && cur !== doc.body && cur !== doc.documentElement) {
@@ -36,10 +36,10 @@ function selectorFor(el: Element): string {
       anchor = `#${cssEscape(cur.id)}`;
       break;
     }
-    segs.unshift(`${cur.tagName.toLowerCase()}:nth-child(${nthChild(cur)})`);
+    segments.unshift(`${cur.tagName.toLowerCase()}:nth-child(${childPosition(cur)})`);
     cur = cur.parentElement;
   }
-  return `${anchor} > ${segs.join(" > ")}`;
+  return `${anchor} > ${segments.join(" > ")}`;
 }
 
 export function buildElementRef(el: Element): ElementRef {
@@ -47,7 +47,7 @@ export function buildElementRef(el: Element): ElementRef {
   return {
     selector: selectorFor(el),
     tag: el.tagName.toLowerCase(),
-    text: norm(el.textContent).slice(0, LIMITS.elementText),
+    text: cleanText(el.textContent).slice(0, LIMITS.elementText),
     html: el.outerHTML.slice(0, LIMITS.html),
     rect: { x: r.x ?? r.left, y: r.y ?? r.top, w: r.width, h: r.height },
     ...readSourceInfo(el),
@@ -55,7 +55,7 @@ export function buildElementRef(el: Element): ElementRef {
 }
 
 /** The elements whose normalised text is one of `wanted`, by tag and text, in one pass over the page. The first in document order wins. */
-function indexByText(doc: Document, wanted: Set<string>): Map<string, Element> {
+function elementsByText(doc: Document, wanted: Set<string>): Map<string, Element> {
   const limit = LIMITS.elementText + 2;
   const all = doc.querySelectorAll("*");
   const done: (string | null)[] = [];
@@ -80,7 +80,7 @@ function indexByText(doc: Document, wanted: Set<string>): Map<string, Element> {
 }
 
 /** Selector first (an agent thread has no tag, any element matches), then the same tag with exactly the same text, else null (the thread is "detached"). */
-function findElement(ref: ElementRef, doc: Document, byText: () => Map<string, Element>): Element | null {
+function findElement(ref: ElementRef, doc: Document, elementsByText: () => Map<string, Element>): Element | null {
   try {
     const hit = doc.querySelector(ref.selector);
     if (hit && (!ref.tag || hit.tagName.toLowerCase() === ref.tag)) return hit;
@@ -88,7 +88,7 @@ function findElement(ref: ElementRef, doc: Document, byText: () => Map<string, E
     // an invalid stored selector falls through to the text match
   }
   if (!ref.text) return null;
-  return byText().get(`${ref.tag}\0${ref.text}`) ?? null;
+  return elementsByText().get(`${ref.tag}\0${ref.text}`) ?? null;
 }
 
 const pageOf = (url: string): string => {
@@ -108,7 +108,7 @@ export function createFinder(doc: Document, win: Window, store: Store): { find(t
   const kept = new Map<string, Element | null>();
   let list: ThreadDto[] = [];
   let page = "";
-  let byText: Map<string, Element> | null = null;
+  let cachedElements: Map<string, Element> | null = null;
   return {
     find(t) {
       const here = win.location.href;
@@ -118,11 +118,11 @@ export function createFinder(doc: Document, win: Window, store: Store): { find(t
         for (const [id, el] of kept) if (!el || here !== page) kept.delete(id);
         list = threads;
         page = here;
-        byText = null;
+        cachedElements = null;
       }
       let el = kept.get(t.id);
       if (el === undefined) {
-        el = findElement(t.element, doc, () => (byText ??= indexByText(doc, new Set(threads.map((x) => x.element.text)))));
+        el = findElement(t.element, doc, () => (cachedElements ??= elementsByText(doc, new Set(threads.map((x) => x.element.text)))));
         kept.set(t.id, el);
       } else if (el && !el.isConnected) {
         el = null;
@@ -134,7 +134,7 @@ export function createFinder(doc: Document, win: Window, store: Store): { find(t
 }
 
 /** Innermost first, ending below `root`. `root` and `<html>` are never included. */
-export function ancestorChain(el: Element, root: Element): Element[] {
+export function parentsOf(el: Element, root: Element): Element[] {
   const out: Element[] = [];
   const html = el.ownerDocument.documentElement;
   for (let cur: Element | null = el; cur && cur !== root && cur !== html; cur = cur.parentElement) out.push(cur);

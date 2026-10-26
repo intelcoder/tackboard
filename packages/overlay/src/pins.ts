@@ -27,14 +27,14 @@ export function createPins(o: PinsOptions): { render(): void; destroy(): void } 
     const s = store.get();
     const wanted = new Set<string>();
     if (s.mode !== "hidden") {
-      const vp = o.viewport();
+      const viewport = o.viewport();
       for (const t of s.threads) {
         if (t.discarded) continue;
         const el = finder.find(t);
         if (!el) continue;
         const r = el.getBoundingClientRect();
         if (r.width === 0 && r.height === 0) continue;
-        if (r.bottom < 0 || r.top > vp.h || r.right < 0 || r.left > vp.w) continue;
+        if (r.bottom < 0 || r.top > viewport.h || r.right < 0 || r.left > viewport.w) continue;
         wanted.add(t.id);
         let pin = pins.get(t.id);
         if (!pin) {
@@ -48,8 +48,8 @@ export function createPins(o: PinsOptions): { render(): void; destroy(): void } 
         if (t.status === "waiting" || t.status === "resolved") pin.setAttribute("data-status", t.status);
         else pin.removeAttribute("data-status");
         pin.classList.toggle("pulse", s.pulseThreadId === t.id);
-        pin.style.left = `${Math.max(0, Math.min(vp.w - SIZE, r.right - SIZE / 2))}px`;
-        pin.style.top = `${Math.max(0, Math.min(vp.h - SIZE, r.top - SIZE / 2))}px`;
+        pin.style.left = `${Math.max(0, Math.min(viewport.w - SIZE, r.right - SIZE / 2))}px`;
+        pin.style.top = `${Math.max(0, Math.min(viewport.h - SIZE, r.top - SIZE / 2))}px`;
       }
     }
     for (const [id, pin] of pins) {

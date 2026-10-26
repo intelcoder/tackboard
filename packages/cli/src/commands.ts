@@ -139,7 +139,7 @@ function start(cwd: string): Promise<number> {
   if (!existsSync(entry)) throw new CliError(`daemon entry not found: ${entry}`);
   return new Promise((res) => {
     const child = spawn("node", [entry, found.dir], { stdio: "inherit" });
-    for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => child.kill(sig));
+    for (const signalName of ["SIGINT", "SIGTERM"] as const) process.on(signalName, () => child.kill(signalName));
     child.on("exit", (code) => res(code ?? 0));
   });
 }
@@ -152,7 +152,7 @@ async function claim(c: Client, cwd: string): Promise<ThreadDto | null> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function run1(cmd: string, c: Client, cwd: string, a: Args): Promise<number> {
+async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<number> {
   const [, ...pos] = a.positionals;
   switch (cmd) {
     case "next": {
@@ -248,7 +248,7 @@ export async function run(argv: string[], cwd: string): Promise<number> {
     const c = connect(cwd, a.values.as);
     const n = await c.get<NoticesResponse>(paths.notices, { agent: c.agent });
     for (const notice of n.notices) console.log(`${formatNotice(notice)}\n`);
-    return await run1(cmd, c, cwd, a);
+    return await runOnce(cmd, c, cwd, a);
   } catch (e) {
     console.log(e instanceof CliError ? e.message : `error: ${(e as Error).message}`);
     return 1;

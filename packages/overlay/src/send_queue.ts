@@ -5,34 +5,34 @@ const TIMEOUT_MS = 8000;
 const RETRY_MS = 3000;
 const timedOut = Symbol("timed out");
 
-export type OutboxItem<Job> = {
-  job: Job;
+export type QueueItem<ToSend> = {
+  job: ToSend;
   /** `retry` means the daemon could not be reached; `failed` means it needs the user. */
   state: "sending" | "retry" | "failed";
   /** Why a `failed` item was not sent. */
   reason: string;
 };
 
-type OutboxOptions<Job> = {
-  send(job: Job, signal: AbortSignal): Promise<void>;
+type SendQueueOptions<ToSend> = {
+  send(job: ToSend, signal: AbortSignal): Promise<void>;
   onChange(): void;
 };
 
 /** Sends one job at a time, oldest first. A job that never answers is aborted after 8 seconds. */
-export function createOutbox<Job>(o: OutboxOptions<Job>) {
-  let items: OutboxItem<Job>[] = [];
+export function createSendQueue<ToSend>(o: SendQueueOptions<ToSend>) {
+  let items: QueueItem<ToSend>[] = [];
   let busy = false;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
   let sending: AbortController | undefined;
-  let inflight: OutboxItem<Job> | undefined;
+  let beingSent: QueueItem<ToSend> | undefined;
 
   const first = () => items.find((i) => i.state !== "failed");
 
-  const pump = async () => {
+  const sendNext = async () => {
     const item = first();
     if (busy || !item || item.state === "retry") return;
     busy = true;
-    inflight = item;
+    beingSent = item;
     const abort = new AbortController();
     sending = abort;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -56,33 +56,33 @@ export function createOutbox<Job>(o: OutboxOptions<Job>) {
     }
     clearTimeout(timer);
     busy = false;
-    inflight = undefined;
-    pump();
+    beingSent = undefined;
+    sendNext();
     o.onChange();
   };
 
   const tryAgain = () => {
     const item = first();
     if (item?.state === "retry") item.state = "sending";
-    pump();
+    sendNext();
     o.onChange();
   };
 
   return {
-    items: (): readonly OutboxItem<Job>[] => items,
-    add(job: Job) {
+    items: (): readonly QueueItem<ToSend>[] => items,
+    add(job: ToSend) {
       items = [...items, { job, state: "sending", reason: "" }];
-      pump();
+      sendNext();
       o.onChange();
     },
-    retry(item: OutboxItem<Job>) {
+    retry(item: QueueItem<ToSend>) {
       item.state = "sending";
-      pump();
+      sendNext();
       o.onChange();
     },
     /** True only while this item's request is on its way to the daemon. */
-    inflight: (item: OutboxItem<Job>) => item === inflight,
-    remove(item: OutboxItem<Job>) {
+    beingSent: (item: QueueItem<ToSend>) => item === beingSent,
+    remove(item: QueueItem<ToSend>) {
       items = items.filter((i) => i !== item);
       o.onChange();
     },

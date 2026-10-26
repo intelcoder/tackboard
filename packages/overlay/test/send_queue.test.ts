@@ -1,7 +1,7 @@
 import { test, mock } from "node:test";
 import assert from "node:assert/strict";
 import { ApiError } from "../src/api.ts";
-import { createOutbox } from "../src/outbox.ts";
+import { createSendQueue } from "../src/send_queue.ts";
 
 // A send function the test controls: every call waits until the test settles it.
 function fakeSend() {
@@ -16,15 +16,15 @@ const settle = () => new Promise((done) => setImmediate(done));
 function setup() {
   mock.timers.enable({ apis: ["setTimeout"] });
   const fake = fakeSend();
-  const box = createOutbox<string>({ send: fake.send, onChange: () => {} });
-  return { ...fake, box };
+  const queue = createSendQueue<string>({ send: fake.send, onChange: () => {} });
+  return { ...fake, queue };
 }
 
 test("messages are sent one at a time, oldest first", async (t) => {
   t.after(() => mock.timers.reset());
-  const { calls, box } = setup();
-  box.add("one");
-  box.add("two");
+  const { calls, queue } = setup();
+  queue.add("one");
+  queue.add("two");
   await settle();
   assert.deepEqual(calls.map((c) => c.job), ["one"]);
   calls[0].ok();
@@ -32,26 +32,26 @@ test("messages are sent one at a time, oldest first", async (t) => {
   assert.deepEqual(calls.map((c) => c.job), ["one", "two"]);
   calls[1].ok();
   await settle();
-  assert.deepEqual(box.items(), []);
+  assert.deepEqual(queue.items(), []);
 });
 
 test("only the item whose request is in flight is sending; one behind a waiting item is not", async (t) => {
   t.after(() => mock.timers.reset());
-  const { calls, box } = setup();
-  box.add("one");
-  box.add("two");
+  const { calls, queue } = setup();
+  queue.add("one");
+  queue.add("two");
   await settle();
-  const [one, two] = box.items();
-  assert.equal(box.inflight(one), true);
-  assert.equal(box.inflight(two), false);
+  const [one, two] = queue.items();
+  assert.equal(queue.beingSent(one), true);
+  assert.equal(queue.beingSent(two), false);
   calls[0].fail(new TypeError("Failed to fetch"));
   await settle();
-  assert.equal(box.inflight(one), false);
-  assert.equal(box.inflight(two), false);
+  assert.equal(queue.beingSent(one), false);
+  assert.equal(queue.beingSent(two), false);
   mock.timers.tick(3000);
   await settle();
-  assert.equal(box.inflight(one), true);
-  assert.equal(box.inflight(two), false);
+  assert.equal(queue.beingSent(one), true);
+  assert.equal(queue.beingSent(two), false);
 });
 
 test("when one item finishes or fails, the next is already in flight when the view is redrawn", async (t) => {
@@ -59,13 +59,13 @@ test("when one item finishes or fails, the next is already in flight when the vi
   mock.timers.enable({ apis: ["setTimeout"] });
   const { calls, send } = fakeSend();
   let seen: string[] = [];
-  const box: ReturnType<typeof createOutbox<string>> = createOutbox<string>({
+  const queue: ReturnType<typeof createSendQueue<string>> = createSendQueue<string>({
     send,
-    onChange: () => { seen = box.items().filter((i) => box.inflight(i)).map((i) => i.job); },
+    onChange: () => { seen = queue.items().filter((i) => queue.beingSent(i)).map((i) => i.job); },
   });
-  box.add("a");
-  box.add("b");
-  box.add("c");
+  queue.add("a");
+  queue.add("b");
+  queue.add("c");
   await settle();
   calls[0].ok();
   await settle();
@@ -77,32 +77,32 @@ test("when one item finishes or fails, the next is already in flight when the vi
 
 test("a request that never answers is aborted after 8 seconds, shows Not sent, and the next one is sent", async (t) => {
   t.after(() => mock.timers.reset());
-  const { calls, box } = setup();
-  box.add("stuck");
-  box.add("after");
+  const { calls, queue } = setup();
+  queue.add("stuck");
+  queue.add("after");
   await settle();
   mock.timers.tick(7999);
   await settle();
-  assert.equal(box.items()[0].state, "sending");
+  assert.equal(queue.items()[0].state, "sending");
   assert.equal(calls[0].signal.aborted, false);
   mock.timers.tick(1);
   await settle();
   assert.equal(calls[0].signal.aborted, true);
-  assert.equal(box.items()[0].state, "failed");
-  assert.equal(box.items()[0].reason, "The daemon did not answer");
+  assert.equal(queue.items()[0].state, "failed");
+  assert.equal(queue.items()[0].reason, "The daemon did not answer");
   assert.deepEqual(calls.map((c) => c.job), ["stuck", "after"]);
 });
 
 test("an unreachable daemon is tried again every 3 seconds, in order, and the item goes away once delivered", async (t) => {
   t.after(() => mock.timers.reset());
-  const { calls, box } = setup();
-  box.add("one");
-  box.add("two");
+  const { calls, queue } = setup();
+  queue.add("one");
+  queue.add("two");
   await settle();
   calls[0].fail(new TypeError("Failed to fetch"));
   await settle();
-  assert.equal(box.items()[0].state, "retry");
-  assert.equal(box.items()[1].state, "sending");
+  assert.equal(queue.items()[0].state, "retry");
+  assert.equal(queue.items()[1].state, "sending");
   mock.timers.tick(2999);
   await settle();
   assert.equal(calls.length, 1);
@@ -119,15 +119,15 @@ test("an unreachable daemon is tried again every 3 seconds, in order, and the it
   assert.deepEqual(calls.map((c) => c.job), ["one", "one", "one", "two"]);
   calls[3].ok();
   await settle();
-  assert.deepEqual(box.items(), []);
+  assert.deepEqual(queue.items(), []);
 });
 
 test("a timeout, a 4xx and a 5xx are not tried again by themselves", async (t) => {
   t.after(() => mock.timers.reset());
-  const { calls, box } = setup();
-  box.add("slow");
-  box.add("bad");
-  box.add("broken");
+  const { calls, queue } = setup();
+  queue.add("slow");
+  queue.add("bad");
+  queue.add("broken");
   await settle();
   mock.timers.tick(8000);
   await settle();
@@ -138,7 +138,7 @@ test("a timeout, a 4xx and a 5xx are not tried again by themselves", async (t) =
   mock.timers.tick(60000);
   await settle();
   assert.equal(calls.length, 3);
-  assert.deepEqual(box.items().map((i) => [i.state, i.reason]), [
+  assert.deepEqual(queue.items().map((i) => [i.state, i.reason]), [
     ["failed", "The daemon did not answer"],
     ["failed", "text is empty"],
     ["failed", "boom"],
@@ -147,23 +147,23 @@ test("a timeout, a 4xx and a 5xx are not tried again by themselves", async (t) =
 
 test("Retry sends a Not sent item again and Remove drops it", async (t) => {
   t.after(() => mock.timers.reset());
-  const { calls, box } = setup();
-  box.add("bad");
-  box.add("other");
+  const { calls, queue } = setup();
+  queue.add("bad");
+  queue.add("other");
   await settle();
   calls[0].fail(new ApiError("invalid", "no", 400));
   await settle();
   calls[1].fail(new ApiError("invalid", "no", 400));
   await settle();
-  const [bad, other] = box.items();
-  box.retry(bad);
+  const [bad, other] = queue.items();
+  queue.retry(bad);
   await settle();
   assert.equal(calls.length, 3);
   assert.equal(calls[2].job, "bad");
   assert.equal(bad.state, "sending");
   calls[2].ok();
   await settle();
-  assert.deepEqual(box.items(), [other]);
-  box.remove(other);
-  assert.deepEqual(box.items(), []);
+  assert.deepEqual(queue.items(), [other]);
+  queue.remove(other);
+  assert.deepEqual(queue.items(), []);
 });

@@ -37,9 +37,9 @@ function codeForStatus(status: number): ErrorCode {
   return hit ? hit[0] : "internal";
 }
 
-export function createApi(opts: ApiOptions) {
-  const base = opts.base.replace(/\/+$/, "");
-  const doFetch: typeof fetch = opts.fetch ?? ((input, init) => globalThis.fetch(input, init));
+export function createApi(options: ApiOptions) {
+  const base = options.base.replace(/\/+$/, "");
+  const fetchFn: typeof fetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
 
   async function call<T>(
     method: "GET" | "POST",
@@ -51,9 +51,9 @@ export function createApi(opts: ApiOptions) {
     const params = new URLSearchParams();
     for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined) params.set(k, v);
     const qs = params.toString();
-    const headers: Record<string, string> = { [brand.tokenHeader]: opts.token };
+    const headers: Record<string, string> = { [brand.tokenHeader]: options.token };
     if (body !== undefined) headers["content-type"] = "application/json";
-    const res = await doFetch(base + path + (qs ? `?${qs}` : ""), {
+    const res = await fetchFn(base + path + (qs ? `?${qs}` : ""), {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),

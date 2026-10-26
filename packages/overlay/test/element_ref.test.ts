@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseHTML } from "linkedom";
-import { ancestorChain, buildElementRef, labelFor } from "../src/element_ref.ts";
+import { parentsOf, buildElementRef, labelFor } from "../src/element_ref.ts";
 import { createStore } from "../src/store.ts";
 import { createFinder } from "../src/element_ref.ts";
 
@@ -50,11 +50,11 @@ test("finder: returns null when nothing matches", () => {
   assert.equal(lookup(ref, doc), null);
 });
 
-test("ancestorChain excludes the root and starts at the innermost", () => {
+test("parentsOf excludes the root and starts at the innermost", () => {
   const doc = dom(`<div id="a"><div id="b"><span id="c">x</span></div></div>`);
-  const chain = ancestorChain(doc.getElementById("c")!, doc.body);
+  const chain = parentsOf(doc.getElementById("c")!, doc.body);
   assert.deepEqual(chain.map((e) => e.id), ["c", "b", "a"]);
-  assert.deepEqual(ancestorChain(doc.body, doc.body), []);
+  assert.deepEqual(parentsOf(doc.body, doc.body), []);
 });
 
 test("html longer than 4 KB is truncated", () => {

@@ -31,7 +31,7 @@ function nearestFiber(el: Element): Fiber | null {
 }
 
 /** A name for a component type: a function, a memo or forwardRef wrapper around one, or anything with a displayName. */
-function nameOfType(type: unknown, depth = 0): string | undefined {
+function componentName(type: unknown, depth = 0): string | undefined {
   if (typeof type === "function") {
     const fn = type as { displayName?: unknown; name?: unknown };
     const shown = typeof fn.displayName === "string" ? fn.displayName : "";
@@ -40,7 +40,7 @@ function nameOfType(type: unknown, depth = 0): string | undefined {
   if (type && typeof type === "object" && depth < 3) {
     const obj = type as { displayName?: unknown; type?: unknown; render?: unknown };
     if (typeof obj.displayName === "string" && obj.displayName) return obj.displayName;
-    return nameOfType(obj.type, depth + 1) ?? nameOfType(obj.render, depth + 1);
+    return componentName(obj.type, depth + 1) ?? componentName(obj.render, depth + 1);
   }
   return undefined;
 }
@@ -50,7 +50,7 @@ function componentNames(el: Element): string[] {
   const names: string[] = [];
   try {
     for (let fiber = nearestFiber(el); fiber; fiber = fiber.return ?? null) {
-      const name = nameOfType(fiber.type);
+      const name = componentName(fiber.type);
       if (name) names.push(name);
     }
   } catch {

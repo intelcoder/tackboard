@@ -10,8 +10,8 @@ const rectOf = (page: Page, selector: string): Promise<Box> =>
     return { x: r.x, y: r.y, w: r.width, h: r.height };
   });
 
-const bandsOf = (page: Page, kind: string): Promise<(Box & { text: string })[]> =>
-  page.locator(`.tb-band.${kind}`).evaluateAll((els) =>
+const stripsOf = (page: Page, kind: string): Promise<(Box & { text: string })[]> =>
+  page.locator(`.tb-strip.${kind}`).evaluateAll((els) =>
     els.map((e) => {
       const r = e.getBoundingClientRect();
       return { x: r.x, y: r.y, w: r.width, h: r.height, text: e.textContent ?? "" };
@@ -42,33 +42,33 @@ async function overCard(page: Page) {
   return card;
 }
 
-test("box_model", async ({ harness: h }) => {
+test("spacing", async ({ harness: h }) => {
   const page = h.page;
   await addFixture(page);
   const before = await page.evaluate(() => document.documentElement.outerHTML);
   await setMode(page, "comment");
   const card = await overCard(page);
-  const boxes = page.locator(".tb-box");
+  const boxes = page.locator(".tb-spacing");
 
   // without Control nothing shows
   await expect(boxes).toHaveCount(0);
 
   await page.keyboard.down("Control");
   await expect(boxes).toHaveCount(1);
-  const margin = await bandsOf(page, "margin");
+  const margin = await stripsOf(page, "margin");
   expect(margin.map((b) => b.text)).toEqual(["24", "16", "12", "40"]);
   expectBox(margin[0]!, { x: card.x - 40, y: card.y - 24, w: card.w + 56, h: 24 });
   expectBox(margin[1]!, { x: card.x + card.w, y: card.y, w: 16, h: card.h });
   expectBox(margin[2]!, { x: card.x - 40, y: card.y + card.h, w: card.w + 56, h: 12 });
   expectBox(margin[3]!, { x: card.x - 40, y: card.y, w: 40, h: card.h });
-  const padding = await bandsOf(page, "padding");
+  const padding = await stripsOf(page, "padding");
   expect(padding.map((b) => b.text)).toEqual(["10", "20", "30", "6"]);
   expectBox(padding[0]!, { x: card.x, y: card.y, w: card.w, h: 10 });
   expectBox(padding[1]!, { x: card.x + card.w - 20, y: card.y + 10, w: 20, h: card.h - 40 });
   expectBox(padding[2]!, { x: card.x, y: card.y + card.h - 30, w: card.w, h: 30 });
   expectBox(padding[3]!, { x: card.x, y: card.y + 10, w: 6, h: card.h - 40 });
 
-  // gap: the number is in the label, the bands sit between the three children in their single row
+  // gap: the number is in the label, the strips sit between the three children in their single row
   await expect(page.locator(".tb-outline-tag")).toContainText("gap 8 16");
   const parts = await page.locator(".part").evaluateAll((els) =>
     els.map((e) => {
@@ -76,20 +76,20 @@ test("box_model", async ({ harness: h }) => {
       return { x: r.x, y: r.y, w: r.width, h: r.height };
     }),
   );
-  const gaps = await bandsOf(page, "gap");
+  const gaps = await stripsOf(page, "gap");
   expect(gaps).toHaveLength(2);
   for (const [i, g] of gaps.entries()) expectBox(g, { x: parts[i]!.x + parts[i]!.w, y: parts[i]!.y, w: 16, h: parts[i]!.h });
 
   // the three kinds are three different colours: orange margin, green padding, blue gap
-  const colour = (kind: string) => page.locator(`.tb-band.${kind}`).first().evaluate((e) => getComputedStyle(e).backgroundColor);
+  const colour = (kind: string) => page.locator(`.tb-strip.${kind}`).first().evaluate((e) => getComputedStyle(e).backgroundColor);
   expect([await colour("margin"), await colour("padding"), await colour("gap")]).toEqual(["rgba(246, 178, 107, 0.5)", "rgba(147, 196, 125, 0.5)", "rgba(111, 168, 220, 0.5)"]);
 
   // it follows the pointer to another element, and off every element it goes away
   const first = parts[0]!;
   await page.mouse.move(first.x + first.w / 2, first.y + first.h / 2);
   await expect(page.locator(".tb-outline-tag")).toHaveText("div.part");
-  expect((await bandsOf(page, "padding")).map((b) => b.text)).toEqual(["4", "4", "4", "4"]);
-  expect(await bandsOf(page, "margin")).toHaveLength(0);
+  expect((await stripsOf(page, "padding")).map((b) => b.text)).toEqual(["4", "4", "4", "4"]);
+  expect(await stripsOf(page, "margin")).toHaveLength(0);
   const cta = await rectOf(page, "#cta");
   await page.mouse.move(1000, cta.y + cta.h / 2);
   await expect(outline(page)).toHaveCount(0);
@@ -107,14 +107,14 @@ test("box_model", async ({ harness: h }) => {
   const wrap = await rectOf(page, "#wrap");
   await page.mouse.move(wrap.x + wrap.w - 4, wrap.y + 4);
   await expect(page.locator(".tb-outline-tag")).toContainText("div#wrap  gap 8");
-  expect(await bandsOf(page, "gap")).toHaveLength(0);
+  expect(await stripsOf(page, "gap")).toHaveLength(0);
 
-  // an element with no box of its own (display: contents) gets no bands, even with margin and padding
+  // an element with no box of its own (display: contents) gets no strips, even with margin and padding
   await page.mouse.move(325, 715);
   await expect(page.locator(".tb-outline-tag")).toHaveText("div#inner");
   await page.keyboard.press("ArrowUp");
   await expect(page.locator(".tb-outline-tag")).toHaveText("div#contents");
-  await expect(page.locator(".tb-band")).toHaveCount(0);
+  await expect(page.locator(".tb-strip")).toHaveCount(0);
 
   // a window blur and a scroll clear it
   await overCard(page);
@@ -155,7 +155,7 @@ test("box_model", async ({ harness: h }) => {
   expect(await page.evaluate(() => document.documentElement.outerHTML)).toBe(before);
 });
 
-test("box_model stays cheap on a large page", async ({ harness: h }) => {
+test("spacing stays cheap on a large page", async ({ harness: h }) => {
   const page = h.page;
   await page.evaluate(() => {
     let html = "";
@@ -172,7 +172,7 @@ test("box_model stays cheap on a large page", async ({ harness: h }) => {
   await page.mouse.move(20, 20);
   await expect(outline(page)).toBeVisible();
   await page.keyboard.down("Control");
-  await expect(page.locator(".tb-box")).toHaveCount(1);
+  await expect(page.locator(".tb-spacing")).toHaveCount(1);
   const slowest = await page.evaluate(() => {
     const items = Array.from(document.querySelectorAll("body > div > div > div")).filter((_, i) => i % 997 === 0).slice(0, 15);
     const times: number[] = [];

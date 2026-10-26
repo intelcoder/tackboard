@@ -1,5 +1,5 @@
-import { drawBox } from "./box_model.ts";
-import { ancestorChain, buildElementRef, labelFor } from "./element_ref.ts";
+import { drawSpacingStrips } from "./spacing.ts";
+import { parentsOf, buildElementRef, labelFor } from "./element_ref.ts";
 import type { H } from "./dom.ts";
 import type { Store } from "./store.ts";
 import type { ElementRef } from "@app/shared";
@@ -64,7 +64,7 @@ export function createHover(o: HoverOptions): { destroy(): void } {
   };
 
   // Reads the outlined element once and shades it while Control is held; the gap text joins the outline label.
-  const drawBoxModel = () => {
+  const drawSpacing = () => {
     if (!control && !box) return;
     box?.remove();
     box = null;
@@ -75,7 +75,7 @@ export function createHover(o: HoverOptions): { destroy(): void } {
       tag.textContent = labelFor(el);
       return;
     }
-    const drawn = drawBox(el, win, h);
+    const drawn = drawSpacingStrips(el, win, h);
     box = drawn.node;
     layer.append(box);
     if (drawn.gap) tag.textContent = `${labelFor(el)}  ${drawn.gap}`;
@@ -111,7 +111,7 @@ export function createHover(o: HoverOptions): { destroy(): void } {
   const redraw = () => {
     if (!chain[index]) return;
     drawOutline(chain[index]!);
-    drawBoxModel();
+    drawSpacing();
     drawCrumbs();
   };
 
@@ -121,13 +121,13 @@ export function createHover(o: HoverOptions): { destroy(): void } {
     if (!t) return;
     if (t === last) return;
     last = t;
-    chain = ancestorChain(t, doc.body);
+    chain = parentsOf(t, doc.body);
     index = 0;
     if (!chain.length) return clearUi();
     redraw();
   };
 
-  const swallow = (e: Event) => {
+  const ignoreError = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
@@ -135,14 +135,14 @@ export function createHover(o: HoverOptions): { destroy(): void } {
 
   const onClick = (e: Event) => {
     if (inside(e)) return;
-    swallow(e);
+    ignoreError(e);
     const t = targetOf(e);
-    const el = chain[index] ?? (t ? ancestorChain(t, doc.body)[0] : undefined);
+    const el = chain[index] ?? (t ? parentsOf(t, doc.body)[0] : undefined);
     if (el) pick(el);
   };
 
   const onDown = (e: Event) => {
-    if (!inside(e)) swallow(e);
+    if (!inside(e)) ignoreError(e);
   };
 
   const onKey = (e: Event) => {
@@ -150,7 +150,7 @@ export function createHover(o: HoverOptions): { destroy(): void } {
     if (key === "Control") {
       if (!(e as KeyboardEvent).repeat) {
         control = true;
-        drawBoxModel();
+        drawSpacing();
       }
       return;
     }
@@ -165,7 +165,7 @@ export function createHover(o: HoverOptions): { destroy(): void } {
 
   const stopControl = () => {
     control = false;
-    drawBoxModel();
+    drawSpacing();
   };
   const onKeyUp = (e: Event) => {
     if ((e as KeyboardEvent).key === "Control") stopControl();

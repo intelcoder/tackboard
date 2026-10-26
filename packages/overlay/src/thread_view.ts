@@ -3,7 +3,7 @@
 import { statusLabel } from "@app/shared";
 import type { ElementRef, MessageDto, ThreadDto, ThreadStatus } from "@app/shared";
 import type { H } from "./dom.ts";
-import { isSubmitKey } from "./panel_logic.ts";
+import { isSendKey } from "./panel_logic.ts";
 
 export function statusChip(h: H, status: ThreadStatus | "discarded"): HTMLElement {
   return h("span", { class: "tb-chip", "data-s": status }, statusLabel(status));
@@ -127,16 +127,16 @@ export function threadItem(h: H, thread: ThreadDto, o: ThreadItemOptions): HTMLE
     return root;
   }
 
-  const convo = h("div", { class: "tb-convo" });
+  const conversation = h("div", { class: "tb-convo" });
   shown.forEach((m, i) => {
-    convo.append(messageView(h, m, o.history));
+    conversation.append(messageView(h, m, o.history));
     if (m.checkpointId && !m.discarded) {
-      convo.append(restorePoint(h, m, i + 1, !o.history, o.onRestore));
-      if (o.confirm && o.confirm.messageId === m.id) convo.append(o.confirm.view);
+      conversation.append(restorePoint(h, m, i + 1, !o.history, o.onRestore));
+      if (o.confirm && o.confirm.messageId === m.id) conversation.append(o.confirm.view);
     }
   });
-  for (const q of o.queued) convo.append(queuedItem(h, q));
-  root.append(convo);
+  for (const q of o.queued) conversation.append(queuedItem(h, q));
+  root.append(conversation);
   if (o.history) return root;
 
   if (thread.status === "received" && thread.claimStale) {
@@ -152,7 +152,7 @@ export function threadItem(h: H, thread: ThreadDto, o: ThreadItemOptions): HTMLE
     rows: 1, placeholder: "Reply…", "aria-label": "Reply", "data-key": `reply-${thread.id}`,
     oninput: (ev: Event) => o.onDraft((ev.target as HTMLTextAreaElement).value),
     onkeydown: (ev: Event) => {
-      if (!isSubmitKey(ev as KeyboardEvent)) return;
+      if (!isSendKey(ev as KeyboardEvent)) return;
       ev.preventDefault();
       submit();
     },

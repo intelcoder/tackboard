@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { statusLabel } from "@app/shared";
 import type { ThreadDto } from "@app/shared";
-import { badgeCount, badgeLabel, bannerFor, clampToViewport, diffForEvents, errorText, isSubmitKey, restoreDisabledReason, visibleThreads } from "../src/panel_logic.ts";
+import { badgeCount, badgeLabel, bannerFor, clampToViewport, diffForEvents, errorText, isSendKey, restoreDisabledReason, visibleThreads } from "../src/panel_logic.ts";
 import { parseHTML } from "linkedom";
 import { createH } from "../src/dom.ts";
 import { notificationState, permissionBanner } from "../src/notifications.ts";
@@ -142,14 +142,14 @@ test("notificationState maps Notification.permission and returns \"unsupported\"
   assert.equal(errorText(new TypeError("fetch failed")), "Cannot reach the daemon");
 });
 
-test("isSubmitKey: Enter sends, Shift+Enter does not, Ctrl or Cmd plus Enter sends, composition never sends", () => {
+test("isSendKey: Enter sends, Shift+Enter does not, Ctrl or Cmd plus Enter sends, composition never sends", () => {
   const key = (extra: object) => ({ key: "Enter", shiftKey: false, ctrlKey: false, metaKey: false, isComposing: false, keyCode: 13, ...extra });
-  assert.equal(isSubmitKey(key({})), true);
-  assert.equal(isSubmitKey(key({ shiftKey: true })), false);
-  assert.equal(isSubmitKey(key({ ctrlKey: true })), true);
-  assert.equal(isSubmitKey(key({ metaKey: true })), true);
-  assert.equal(isSubmitKey(key({ key: "a" })), false);
-  assert.equal(isSubmitKey(key({ isComposing: true })), false);
-  assert.equal(isSubmitKey(key({ keyCode: 229 })), false);
-  assert.equal(isSubmitKey(key({ ctrlKey: true, isComposing: true })), false);
+  assert.equal(isSendKey(key({})), true);
+  assert.equal(isSendKey(key({ shiftKey: true })), false);
+  assert.equal(isSendKey(key({ ctrlKey: true })), true);
+  assert.equal(isSendKey(key({ metaKey: true })), true);
+  assert.equal(isSendKey(key({ key: "a" })), false);
+  assert.equal(isSendKey(key({ isComposing: true })), false);
+  assert.equal(isSendKey(key({ keyCode: 229 })), false);
+  assert.equal(isSendKey(key({ ctrlKey: true, isComposing: true })), false);
 });
