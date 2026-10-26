@@ -210,6 +210,12 @@ export class Thread {
     this._messages[this._messages.length - 1]!.checkpointId = checkpointId;
   }
 
+  /** Adds the "Restored to message" note (carrying the safety checkpoint) and records the one `restored` event. */
+  noteRestore(messageId: string, safetyCheckpointId: string, now: number, seq: number, data: unknown): void {
+    this.addSystemMessage(`Restored to message ${messageId}`, now, seq, safetyCheckpointId);
+    this.record("restored", now, data);
+  }
+
   pullEvents(): DomainEvent[] {
     const out = this.events;
     this.events = [];

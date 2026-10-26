@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ElementRef } from "@app/shared";
 import { InMemoryThreadRepository } from "./in_memory_repo.ts";
+import type { CheckpointStore } from "../src/domain/checkpoint_store.ts";
 import type { Clock, GitInfo } from "../src/domain/repositories.ts";
 import { Branch, CommitSha } from "../src/domain/value_objects.ts";
 import { DomainError } from "../src/domain/errors.ts";
@@ -18,6 +19,14 @@ import { ListThreadsHandler } from "../src/application/queries/list_threads.ts";
 import { GetHistoryHandler } from "../src/application/queries/get_history.ts";
 
 const MIN = 60_000;
+
+/** A checkpoint store for a project without git: every call says no_git, so handlers make no checkpoints. */
+const noCheckpoints: CheckpointStore = {
+  snapshot() { throw new DomainError("no_git", "not a git repository"); },
+  restore() { throw new DomainError("no_git", "not a git repository"); },
+  changedFiles() { throw new DomainError("no_git", "not a git repository"); },
+  hasChangedSince() { throw new DomainError("no_git", "not a git repository"); },
+};
 const element: ElementRef = {
   selector: "main > button", tag: "button", text: "Buy", html: "<button>Buy</button>",
   rect: { x: 1, y: 2, w: 3, h: 4 }, confidence: "text",
@@ -39,9 +48,9 @@ function setup() {
     repo, clock, git,
     post: new PostCommentHandler(repo, c, g),
     postAgent: new PostAgentCommentHandler(repo, c, g),
-    claim: new ClaimNextThreadHandler(repo, c, g),
-    reply: new ReplyToThreadHandler(repo, c),
-    resolve: new ResolveThreadHandler(repo, c),
+    claim: new ClaimNextThreadHandler(repo, c, g, noCheckpoints),
+    reply: new ReplyToThreadHandler(repo, c, noCheckpoints),
+    resolve: new ResolveThreadHandler(repo, c, noCheckpoints),
     reopen: new ReopenThreadHandler(repo, c),
     release: new ReleaseThreadHandler(repo, c),
     markRead: new MarkReadHandler(repo, c),

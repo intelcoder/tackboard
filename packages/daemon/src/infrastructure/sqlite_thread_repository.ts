@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import type { HistoryEvent, HistoryEventType } from "@app/shared";
+import type { HistoryEvent, HistoryEventType, Notice } from "@app/shared";
 import type { ThreadRepository } from "../domain/repositories.ts";
 import { Thread, type ThreadState } from "../domain/thread.ts";
 import type { AgentName, Branch } from "../domain/value_objects.ts";
@@ -47,6 +47,19 @@ CREATE TABLE IF NOT EXISTS agents (
   at INTEGER NOT NULL,
   ord INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS notices (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  at INTEGER NOT NULL,
+  restored_to_message TEXT NOT NULL,
+  files TEXT NOT NULL,
+  discarded_threads TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS acks (
+  agent TEXT NOT NULL,
+  notice_id TEXT NOT NULL,
+  PRIMARY KEY (agent, notice_id)
+);
 CREATE TABLE IF NOT EXISTS counters (
   key TEXT PRIMARY KEY,
   value INTEGER NOT NULL
@@ -62,6 +75,15 @@ export class SqliteThreadRepository implements ThreadRepository {
     this.db = new DatabaseSync(dbPath);
     this.db.exec(`PRAGMA busy_timeout = ${Math.trunc(opts.busyTimeoutMs ?? 5000)}`);
     this.db.exec(SCHEMA);
+    this.addFirstSeenColumn();
+  }
+
+  /** Older database files have no agents.first_seen. Add it and treat the last time seen as the first. */
+  private addFirstSeenColumn(): void {
+    const columns = this.db.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;
+    if (columns.some((c) => c.name === "first_seen")) return;
+    this.db.exec("ALTER TABLE agents ADD COLUMN first_seen INTEGER");
+    this.db.exec("UPDATE agents SET first_seen = at WHERE first_seen IS NULL");
   }
 
   close(): void {
@@ -103,6 +125,39 @@ export class SqliteThreadRepository implements ThreadRepository {
     });
   }
 
+  saveRestore(threads: Thread[], notice: Notice): void {
+    this.tx(() => {
+      for (const t of threads) this.write(t);
+      this.insertNotice(notice);
+    });
+  }
+
+  add(n: Notice): void {
+    this.insertNotice(n);
+  }
+
+  pendingFor(agent: string): Notice[] {
+    const rows = this.db
+      .prepare(
+        `SELECT n.* FROM notices n JOIN agents a ON a.name = ?
+         WHERE n.at > a.first_seen
+           AND NOT EXISTS (SELECT 1 FROM acks k WHERE k.agent = ? AND k.notice_id = n.id)
+         ORDER BY n.seq`,
+      )
+      .all(agent, agent) as Row[];
+    return rows.map((r) => ({
+      id: r.id as string,
+      at: r.at as number,
+      restoredToMessage: r.restored_to_message as string,
+      files: JSON.parse(r.files as string),
+      discardedThreads: JSON.parse(r.discarded_threads as string),
+    }));
+  }
+
+  ack(agent: string): void {
+    this.db.prepare("INSERT OR IGNORE INTO acks (agent, notice_id) SELECT ?, id FROM notices").run(agent);
+  }
+
   listByBranch(branch: Branch): Thread[] {
     const rows = this.db.prepare("SELECT * FROM threads WHERE branch = ? ORDER BY n").all(branch.value) as Row[];
     return rows.map((r) => this.hydrate(r));
@@ -129,10 +184,10 @@ export class SqliteThreadRepository implements ThreadRepository {
   touchAgent(name: string, now: number): void {
     this.db
       .prepare(
-        `INSERT INTO agents (name, at, ord) VALUES (?, ?, (SELECT COALESCE(MAX(ord), 0) + 1 FROM agents))
+        `INSERT INTO agents (name, at, ord, first_seen) VALUES (?, ?, (SELECT COALESCE(MAX(ord), 0) + 1 FROM agents), ?)
          ON CONFLICT (name) DO UPDATE SET at = excluded.at, ord = excluded.ord`,
       )
-      .run(name, now);
+      .run(name, now, now);
   }
 
   lastAgent(now: number): { name: string | null; online: boolean } {
@@ -141,6 +196,12 @@ export class SqliteThreadRepository implements ThreadRepository {
       | undefined;
     if (!row) return { name: null, online: false };
     return { name: row.name, online: now - row.at <= ONLINE_MS };
+  }
+
+  private insertNotice(n: Notice): void {
+    this.db
+      .prepare("INSERT INTO notices (id, at, restored_to_message, files, discarded_threads) VALUES (?, ?, ?, ?, ?)")
+      .run(n.id, n.at, n.restoredToMessage, JSON.stringify(n.files), JSON.stringify(n.discardedThreads));
   }
 
   private bump(key: string): number {

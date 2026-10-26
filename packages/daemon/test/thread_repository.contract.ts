@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { ElementRef } from "@app/shared";
+import type { ElementRef, Notice } from "@app/shared";
 import type { ThreadRepository } from "../src/domain/repositories.ts";
 import { Thread } from "../src/domain/thread.ts";
 import { AgentName, Branch, CommitSha } from "../src/domain/value_objects.ts";
@@ -201,5 +201,65 @@ export function runContract(label: string, makeRepo: () => RepoHarness): void {
     h.repo.touchAgent("codex", 200_000);
     assert.equal(h.repo.lastAgent(200_000).name, "codex");
     assert.equal(h.reopen().lastAgent(200_000).name, "codex");
+  }));
+  const notice = (id: string, at: number, files: string[] = ["a.txt"]): Notice => ({
+    id, at, restoredToMessage: "t1/m1", files, discardedThreads: ["t2"],
+  });
+
+  test(`${label}: notices survive reopen and ack is per agent`, withRepo((h) => {
+    h.repo.touchAgent("claude", 1_000);
+    h.repo.touchAgent("codex", 1_000);
+    h.repo.add(notice("n1", 2_000));
+    assert.deepEqual(h.repo.pendingFor("claude"), [notice("n1", 2_000)]);
+    assert.deepEqual(h.repo.pendingFor("codex"), [notice("n1", 2_000)]);
+
+    h.repo.ack("claude");
+    assert.deepEqual(h.repo.pendingFor("claude"), []);
+    assert.equal(h.repo.pendingFor("codex").length, 1, "another agent still has it");
+
+    h.repo.add(notice("n2", 3_000, ["b.txt"]));
+    assert.deepEqual(h.repo.pendingFor("claude").map((n) => n.id), ["n2"], "a new notice is pending again after ack");
+    assert.deepEqual(h.repo.pendingFor("codex").map((n) => n.id), ["n1", "n2"]);
+
+    const back = h.reopen();
+    assert.deepEqual(back.pendingFor("claude").map((n) => n.id), ["n2"]);
+    assert.deepEqual(back.pendingFor("codex").map((n) => n.id), ["n1", "n2"]);
+    assert.deepEqual(back.pendingFor("codex")[1], notice("n2", 3_000, ["b.txt"]));
+  }));
+
+  test(`${label}: an agent first seen after a notice does not get it, and first_seen is set once`, withRepo((h) => {
+    h.repo.add(notice("old", 2_000));
+    assert.deepEqual(h.repo.pendingFor("newcomer"), [], "unknown agent has no notices");
+    h.repo.touchAgent("newcomer", 5_000);
+    assert.deepEqual(h.repo.pendingFor("newcomer"), []);
+    h.repo.add(notice("later", 6_000));
+    h.repo.touchAgent("newcomer", 9_000);
+    assert.deepEqual(h.repo.pendingFor("newcomer").map((n) => n.id), ["later"], "touching again keeps the first time");
+    assert.deepEqual(h.reopen().pendingFor("newcomer").map((n) => n.id), ["later"]);
+  }));
+
+  test(`${label}: saveRestore saves every thread and the notice together, or nothing`, withRepo((h) => {
+    const a = open(h.repo, "main", "a");
+    const b = open(h.repo, "main", "b");
+    h.repo.save(a);
+    h.repo.save(b);
+    h.repo.touchAgent("claude", 1);
+    h.repo.add(notice("n1", 2_000));
+
+    const a2 = h.repo.get(a.id)!;
+    const b2 = h.repo.get(b.id)!;
+    a2.discardAfterSeq(-1);
+    b2.discardAfterSeq(-1);
+    assert.throws(() => h.repo.saveRestore([a2, b2], notice("n1", 3_000)), "repeated notice id is refused");
+    const same = h.reopen();
+    assert.equal(same.get(a.id)!.discarded, false, "nothing was saved");
+    assert.equal(same.get(b.id)!.discarded, false);
+    assert.deepEqual(same.pendingFor("claude").map((n) => n.id), ["n1"]);
+
+    same.saveRestore([a2, b2], notice("n2", 3_000));
+    const after = h.reopen();
+    assert.equal(after.get(a.id)!.discarded, true);
+    assert.equal(after.get(b.id)!.discarded, true);
+    assert.deepEqual(after.pendingFor("claude").map((n) => n.id), ["n1", "n2"]);
   }));
 }
