@@ -127,6 +127,7 @@ The daemon stamps each page comment with the branch of the folder it runs in, an
 | `tackboard wait [--timeout s]` | Same as `next`, but checks every 2 seconds until a thread appears or the timeout (default 60) runs out. Exit code 0 in both cases. |
 | `tackboard reply <id> <text> [--ask]` | Adds a reply. With `--ask` the thread shows `waiting on you`. When the work is done, reply with `--ask` and a request to confirm. You close the thread with Resolve in the panel; `tackboard resolve` is refused. If you answer instead, the thread comes back as pending for the agent. |
 | `tackboard comment --selector <css> <text> [--mention me]` | The agent starts a thread on an element. `--mention me` puts `@<your user name>` in front of the text. |
+| `tackboard channel [--as name]` | Runs the Claude Code channel server that pushes comments into a session (see "Push comments into Claude Code (optional)"). Started by Claude Code from `.mcp.json`, not by hand. |
 | `tackboard ack` | Confirms a restore notice (see below). |
 | `tackboard status` | Shows the branch and the threads. If it prints, the daemon is running. |
 | `tackboard history [id]` | Lists what happened, including exactly what the agent was given when it claimed a thread. |
@@ -155,6 +156,46 @@ Instructions:
 ```
 
 Status words are `pending`, `received`, `waiting on you` and `resolved`. A thread that the agent claimed and never answered can be claimed again, or released, after 30 minutes; its status word stays `received` until then. Every command prints the daemon's message and exits 1 on an error; outside a project that message is `no tackboard project found here; run tackboard init`.
+
+## Push comments into Claude Code (optional)
+
+Instead of the agent asking for comments with `tackboard wait`, you can have each comment pushed into a Claude Code session you already have open. This uses Claude Code's "channels" feature. The page that describes it is https://code.claude.com/docs/en/channels.md and the page for building your own channel is https://code.claude.com/docs/en/channels-reference.md.
+
+1. In your project folder, next to `.tackboard/`, make a `.mcp.json` file. Use the full path to the `tackboard` command that `which tackboard` prints:
+
+```json
+{
+  "mcpServers": {
+    "tackboard": { "command": "/full/path/to/tackboard", "args": ["channel"] }
+  }
+}
+```
+
+2. Keep `tackboard start` running, then start Claude Code in that folder like this:
+
+```
+claude --dangerously-load-development-channels server:tackboard
+```
+
+3. Claude Code asks three things, in this order. The first time in a folder it asks "Is this a project you created or one you trust?": choose "Yes, I trust this folder". The first time in a project it asks about "New MCP server found in this project: tackboard": choose "Use this MCP server". Then it shows a warning, "Loading development channels": choose "I am using this for local development". The startup screen then says that messages from `server:tackboard` inject directly in this session.
+
+From then on every comment you leave on the page reaches the session by itself, as a line like `← tackboard: THREAD t1 ...`, and the thread shows `received` on the page. If Claude is busy, comments wait and arrive together on its next turn. Claude is told to make the change, then run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask`. Only you close a thread. Say nothing special to Claude: no `tackboard wait` is needed.
+
+What you need, from the channels pages: Claude Code signed in with a claude.ai account or a Console API key (channels do not work on Amazon Bedrock, Google Cloud or Microsoft Foundry), and on Team and Enterprise plans an owner must switch channels on. Channels are a research preview, so the flag name and the way it works may change. The flag only works in an interactive session: Claude Code ignores it with `claude -p`. Your own channel is not on the approved list, which is why the flag with "dangerously" in its name is needed.
+
+`tackboard channel` checks the daemon every 2 seconds, takes the oldest pending thread of the current branch the same way `tackboard next` does, and sends it. A comment is delivered once. If the daemon is not running it keeps trying and writes one line to stderr. `--as <name>` or `TACKBOARD_AGENT` sets the agent name, as for the other commands.
+
+What was tested: the command is tested against a stand-in daemon with a scripted client, and in a real Claude Code session (version 2.1.310, macOS, started with the flag above in a terminal) two comments posted to the real daemon each reached the session once and the session answered them. Not tested: Team or Enterprise accounts, Linux or Windows, and long sessions. If channels are not available for you, keep using `tackboard wait`.
+
+## Using Cursor
+
+WE HAVE NOT TESTED CURSOR. This is only what Cursor's documentation says, so check it on your machine.
+
+- Cursor reads skills from `.claude/skills/`, so the skill that `tackboard init` installs should be found.
+- The agent has to be allowed to run `tackboard` commands: use Cursor's Allowlist or Run Everything mode, or `--force` in the Cursor command line, whose command is `agent`.
+- Cursor's sandbox blocks `127.x` addresses by default, and the daemon listens on 127.0.0.1. Allow the daemon port, or turn the sandbox off.
+- `tackboard wait` blocks for up to 60 seconds. Whether Cursor lets a command run that long is untested.
+- There is no way to push a comment into a running Cursor session, so the agent has to loop on `tackboard wait`.
 
 ## Restore
 

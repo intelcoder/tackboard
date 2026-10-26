@@ -317,3 +317,9 @@ test("init says why the skill could not be copied when .claude is read-only", { 
     chmodSync(join(dir, ".claude"), 0o755);
   }
 });
+
+test("the usage text lists channel", async () => {
+  const r = await cli(mkdtempSync(join(tmpdir(), "cli-test-")), []);
+  assert.equal(r.code, 1);
+  assert.ok(r.stdout.includes("  channel [--as name]"), r.stdout);
+});

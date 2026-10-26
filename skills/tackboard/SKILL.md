@@ -15,6 +15,8 @@ The user clicks things on their dev site and leaves comments. You read the comme
 4. Run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask` and stop on that thread. Only the user closes a thread: they click Resolve in the panel, or they answer and the thread comes back to you as pending.
 5. Go back to step 1.
 
+If comments reach you as channel events (`<channel source="tackboard" ...>`, started by the user with `tackboard channel` in `.mcp.json`), the loop is the same: do the work, run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask`, and stop. Do not run `tackboard wait` or `tackboard next` for those; the event already claimed the thread.
+
 Other commands:
 
 - `tackboard status` shows the branch and the threads. If it answers, the daemon is running. It does not show whether any agent is working.

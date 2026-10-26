@@ -13,6 +13,7 @@ import type {
   NoticesResponse,
   ThreadDto,
 } from "@app/shared";
+import { channel } from "./channel.ts";
 import { CliError, connect, currentBranch } from "./client.ts";
 import type { Client } from "./client.ts";
 import { formatNotice, formatThread } from "./format.ts";
@@ -39,6 +40,7 @@ const USAGE = [
   "  ack [--as name]",
   "  status",
   "  history [id]",
+  "  channel [--as name]",
 ].join("\n");
 
 const NONE = "no pending threads on this branch";
@@ -222,6 +224,17 @@ async function run1(cmd: string, c: Client, cwd: string, a: Args): Promise<numbe
   }
 }
 
+// stdout belongs to the protocol here, so every message goes to stderr.
+async function run_channel(cwd: string, a: Args): Promise<number> {
+  try {
+    const c = connect(cwd, a.values.as);
+    return await channel(c, () => claim(c, cwd));
+  } catch (e) {
+    console.error(e instanceof CliError ? e.message : `error: ${(e as Error).message}`);
+    return 1;
+  }
+}
+
 export async function run(argv: string[], cwd: string): Promise<number> {
   try {
     const a = parse(argv);
@@ -229,6 +242,7 @@ export async function run(argv: string[], cwd: string): Promise<number> {
     if (!cmd) throw new CliError(USAGE);
     if (cmd === "init") return await init(cwd, a);
     if (cmd === "start") return await start(cwd);
+    if (cmd === "channel") return await run_channel(cwd, a);
     if (cmd === "resolve") throw new CliError(`only the user closes a thread; ask with: ${brand.cli} reply <id> "<text>" --ask`);
     if (!["next", "wait", "reply", "comment", "ack", "status", "history"].includes(cmd)) throw new CliError(USAGE);
     const c = connect(cwd, a.values.as);
