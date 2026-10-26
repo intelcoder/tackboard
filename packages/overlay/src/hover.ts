@@ -1,3 +1,4 @@
+import { drawBox } from "./box_model.ts";
 import { ancestorChain, buildElementRef, labelFor } from "./element_ref.ts";
 import type { H } from "./dom.ts";
 import type { Store } from "./store.ts";
@@ -16,6 +17,7 @@ export type HoverOptions = {
 /**
  * Comment mode: outline the innermost element under the cursor, list its ancestors in a
  * path bar, let arrows or crumbs move the outline outward, and turn a click into onPick.
+ * While Control is held it also shades the outlined element's margin, padding and gaps.
  * Active only while mode is "comment" and no Composer is open; otherwise it leaves no nodes.
  */
 export function createHover(o: HoverOptions): { destroy(): void } {
@@ -25,6 +27,8 @@ export function createHover(o: HoverOptions): { destroy(): void } {
   let last: Element | null = null;
   let outline: HTMLElement | null = null;
   let crumbs: HTMLElement | null = null;
+  let box: HTMLElement | null = null;
+  let control = false;
   let installed = false;
 
   const pathOf = (e: Event): EventTarget[] => (typeof e.composedPath === "function" ? e.composedPath() : []);
@@ -40,7 +44,8 @@ export function createHover(o: HoverOptions): { destroy(): void } {
   const clearUi = () => {
     outline?.remove();
     crumbs?.remove();
-    outline = crumbs = null;
+    box?.remove();
+    outline = crumbs = box = null;
     chain = [];
     last = null;
     index = 0;
@@ -56,6 +61,23 @@ export function createHover(o: HoverOptions): { destroy(): void } {
     const tag = outline.firstElementChild as HTMLElement;
     tag.textContent = labelFor(el);
     tag.classList.toggle("below", r.top < 24);
+  };
+
+  // Reads the outlined element once and shades it while Control is held; the gap text joins the outline label.
+  const drawBoxModel = () => {
+    box?.remove();
+    box = null;
+    const el = chain[index];
+    const tag = outline?.firstElementChild;
+    if (!el || !tag) return;
+    let gap = "";
+    if (control) {
+      const drawn = drawBox(el, win, h);
+      box = drawn.node;
+      gap = drawn.gap;
+      layer.append(box);
+    }
+    tag.textContent = gap ? `${labelFor(el)}  ${gap}` : labelFor(el);
   };
 
   const pick = (el: Element) => {
@@ -88,6 +110,7 @@ export function createHover(o: HoverOptions): { destroy(): void } {
   const redraw = () => {
     if (!chain[index]) return;
     drawOutline(chain[index]!);
+    drawBoxModel();
     drawCrumbs();
   };
 
@@ -123,6 +146,13 @@ export function createHover(o: HoverOptions): { destroy(): void } {
 
   const onKey = (e: Event) => {
     const key = (e as KeyboardEvent).key;
+    if (key === "Control") {
+      if (!(e as KeyboardEvent).repeat) {
+        control = true;
+        drawBoxModel();
+      }
+      return;
+    }
     if ((key !== "ArrowUp" && key !== "ArrowDown") || !chain.length) return;
     // Focus may sit on an overlay button (clicking a tool keeps it there), so only typing fields are left alone.
     const t = targetOf(e);
@@ -132,7 +162,17 @@ export function createHover(o: HoverOptions): { destroy(): void } {
     redraw();
   };
 
-  const onScroll = () => chain[index] && drawOutline(chain[index]!);
+  const stopControl = () => {
+    control = false;
+    drawBoxModel();
+  };
+  const onKeyUp = (e: Event) => {
+    if ((e as KeyboardEvent).key === "Control") stopControl();
+  };
+  const onScroll = () => {
+    if (chain[index]) drawOutline(chain[index]!);
+    stopControl();
+  };
 
   const listeners: [EventTarget, string, EventListener][] = [
     [doc, "mousemove", onMove],
@@ -140,6 +180,8 @@ export function createHover(o: HoverOptions): { destroy(): void } {
     [doc, "mousedown", onDown],
     [doc, "pointerdown", onDown],
     [doc, "keydown", onKey],
+    [doc, "keyup", onKeyUp],
+    [win, "blur", stopControl],
     [win, "scroll", onScroll],
     [win, "resize", onScroll],
   ];
@@ -153,6 +195,7 @@ export function createHover(o: HoverOptions): { destroy(): void } {
     if (!installed) return;
     installed = false;
     for (const [t, type, fn] of listeners) t.removeEventListener(type, fn, true);
+    control = false;
     clearUi();
   };
 

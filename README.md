@@ -97,7 +97,7 @@ Reload your dev site. A small bar appears with three tools and a comments button
 
 - Hidden: the overlay shows nothing.
 - View comments: the page shows pins for existing comments. This is the mode on load.
-- Add comment: hover to outline an element, click it, and type your comment.
+- Add comment: hover to outline an element, click it, and type your comment. Hold Control over an element to see its margin, padding and gaps.
 
 In the comment box and the reply box, Enter sends and Shift+Enter adds a line.
 

@@ -53,6 +53,12 @@ button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px soli
 .tb-outline-tag{position:absolute;left:-2px;top:-22px;background:var(--tb-accent);color:var(--tb-on-accent);font:500 11px var(--mono);padding:2px 6px;border-radius:3px 3px 0 0;white-space:nowrap}
 .tb-outline-tag.below{top:auto;bottom:-22px;border-radius:0 0 3px 3px}
 
+/* Margin, padding and gap bands, shown while Control is held */
+.tb-band{position:fixed;pointer-events:none;z-index:4;display:flex;align-items:center;justify-content:center;font:500 10px var(--mono);color:#14181f;white-space:nowrap}
+.tb-band.margin{background:rgba(246,178,107,.5)}
+.tb-band.padding{background:rgba(147,196,125,.5)}
+.tb-band.gap{background:rgba(111,168,220,.5)}
+
 /* ElementPath */
 .tb-crumbs{position:fixed;left:12px;bottom:12px;z-index:8;display:flex;flex-wrap:wrap;gap:2px;align-items:center;max-width:max(180px,calc(100vw - 300px));background:#23262c;border-radius:10px;padding:5px;font:500 11px var(--mono);color:#aab0bb;box-shadow:0 4px 14px rgba(16,24,40,.3)}
 .tb-crumbs button{border:0;background:none;color:inherit;padding:4px 7px;border-radius:6px;font:inherit}
