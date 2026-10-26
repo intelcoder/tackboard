@@ -564,12 +564,12 @@ Conflict resolutions: T4 and T6 both write `sqlite_thread_repository.ts` and `th
 | T1 | verified | 1 | sonnet | PASS #1 |
 | T2 | verified | 1 | sonnet | PASS #1 |
 | T3 | verified | 2 | sonnet | PASS #2 |
-| T4 | in-progress | 2 | sonnet | FAIL #1 |
+| T4 | verified | 2 | sonnet | PASS #2 |
 | T5 | pending | 0 | sonnet | — |
 | T6 | pending | 0 | sonnet | — |
 | T7 | pending | 0 | sonnet | — |
 | T8 | verified | 1 | sonnet | PASS #1 |
-| T9 | pending | 0 | sonnet | — |
+| T9 | in-progress | 1 | sonnet | — |
 | T10 | pending | 0 | sonnet | — |
 | T11 | verified | 1 | sonnet | PASS #1 |
 | T12 | pending | 0 | sonnet | — |

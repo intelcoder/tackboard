@@ -1,5 +1,7 @@
 $ next  [exit 1]
-NOTICE n1: the project was restored to message m2 at 2026-10-26T00:21:15.130Z.
+cannot reach the daemon on port 62816; run tackboard start
+
+$ status  [exit 1]
 Files changed: a.css
 Discarded thread t9: do not continue t9
 Re-read any files before editing them, then run: tackboard ack
