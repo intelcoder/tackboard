@@ -1,0 +1,16 @@
+install=0
+pw=0
+build=0
+run1 typecheck=0
+run1 build=0
+run1 unit=0
+run1 e2e=0
+run2 typecheck=0
+run2 build=0
+run2 unit=0
+run2 e2e=0
+run3 typecheck=0
+run3 build=0
+run3 unit=0
+run3 e2e=0
+ALLDONE

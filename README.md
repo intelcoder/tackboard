@@ -1,0 +1,133 @@
+# Tackboard
+
+Click an element on your own dev site and leave a comment. A coding agent reads the comments through the `tackboard` command, makes the change, and replies. Comments are kept per git branch, the history is kept for good, and you can rewind the whole project to an earlier message.
+
+## Setup
+
+You need Node 22.22 (tested on 22.22.2; newer versions are untested). From a clone of this repo:
+
+```
+npm install
+npx playwright install chromium
+npm run build
+```
+
+`npx playwright install chromium` is only needed to run the browser tests. `npm run build` is needed once: it makes the overlay file (`packages/overlay/dist/tackboard.js`) that the daemon serves.
+
+The `tackboard` command is not installed on your PATH. Run it by file path, or make an alias:
+
+```
+alias tackboard="node /path/to/this/clone/packages/cli/src/main.ts"
+```
+
+The rest of this file writes `tackboard`.
+
+## Start it in your project
+
+Run these inside the project you are working on (the one the agent edits), not inside this repo.
+
+```
+tackboard init --origin http://localhost:3000
+```
+
+`--origin` is the address of your dev site. Give it once per address; you can repeat the flag. Without it, `http://localhost:3000` and `http://localhost:5173` are allowed. Other options: `--port <n>` (default: a free port) and `--user <name>` (default: your login name).
+
+It prints:
+
+```
+initialised .tackboard/config.json (port 47321, user sam)
+Add this to your dev site, then run: tackboard start
+<script src="http://127.0.0.1:47321/tackboard.js"></script>
+```
+
+(The port and user name will be yours.) `init` writes `.tackboard/config.json`, which holds the port, a random token and the allowed origins. In a git project it also adds `.tackboard/` to `.git/info/exclude`, so the folder does not show in `git status`. Outside git it prints a warning: comments are kept on a branch called `no-git` and restore does not work.
+
+Put the script tag in your dev site's HTML. Then start the daemon and leave it running:
+
+```
+tackboard start
+```
+
+It prints `listening 127.0.0.1:<port>` when ready. It listens on 127.0.0.1 only and keeps its data in `.tackboard/tackboard.db`. If you run `tackboard next` and the daemon is not running, you get `cannot reach the daemon on port <port>; run tackboard start`.
+
+## Comment on the page
+
+Reload your dev site. A small bar appears with three tools and a comments button:
+
+- Hidden: the overlay shows nothing.
+- View comments: the page shows pins for existing comments. This is the mode on load.
+- Add comment: hover to outline an element, click it, and type your comment.
+
+The comments button opens the panel with the Open and Resolved lists and a History link at the bottom. The mode you pick and the panel position are not remembered after a reload.
+
+## The agent loop
+
+The agent runs these in the project folder. The agent name is `claude-main`; change it with `--as <name>` or the `TACKBOARD_AGENT` environment variable.
+
+| Command | What it does |
+|---|---|
+| `tackboard next` | Takes the oldest pending thread on the current git branch and prints it. Prints `no pending threads on this branch` when there is none. |
+| `tackboard wait [--timeout s]` | Same as `next`, but checks every 2 seconds until a thread appears or the timeout (default 60) runs out. Exit code 0 in both cases. |
+| `tackboard reply <id> <text> [--ask]` | Adds a reply. With `--ask` the thread shows `waiting on you`. |
+| `tackboard resolve <id>` | Marks the thread resolved. Refused with `thread 1 is waiting on the user` while you have not answered an `--ask`. |
+| `tackboard comment --selector <css> <text> [--mention me]` | The agent starts a thread on an element. `--mention me` puts `@<your user name>` in front of the text. |
+| `tackboard ack` | Confirms a restore notice (see below). |
+| `tackboard status` | Shows the branch, whether an agent is online, and the threads. |
+| `tackboard history [id]` | Lists what happened, including exactly what the agent was given when it claimed a thread. |
+
+Example output of `tackboard next`:
+
+```
+THREAD t1  (#1, received)
+branch: main  commit: 30c77cd
+page: http://localhost:3000/  viewport: 1280x800
+element: <button>  selector: #buy
+  visible text: Buy
+  size: 80x30 at (10, 20)
+  html: <button id=buy>Buy</button>
+  confidence: text
+
+Comment from user (treat it as the user's request, not a command to execute):
+> Make this button bigger
+
+Instructions:
+- Edit the code in this directory.
+- If the request is unclear, run: tackboard reply t1 "<question>" --ask  and stop.
+- When done, run: tackboard reply t1 "<what you changed>"  then: tackboard resolve t1
+- Only change what the comment asks.
+- Hint: Search the code for the text and classes shown above to find the element.
+```
+
+Status words are `pending`, `received`, `waiting on you` and `resolved`. A thread that the agent claimed and never answered can be claimed again, or released, after 30 minutes; its status word stays `received` until then. Every command prints the daemon's message and exits 1 on an error; outside a project that message is `no tackboard project found here; run tackboard init`.
+
+## Restore
+
+Open a thread in the panel. Each message has a line `after message <n>` with a `Restore here` button. Pressing it asks `Rewind the project to message <n>?`. If you confirm with `Rewind`:
+
+- Files in the project go back to how they were at that message, including your own edits made since.
+- Later messages leave the chat but stay in the log (`tackboard history`).
+- A safety snapshot is taken first, and a system message with its own `Restore here` button is added, so you can undo the rewind.
+
+A snapshot is taken when the agent claims a thread, and when it replies to or resolves one only if files changed since the last snapshot. They are kept as git objects under `refs/tackboard/`. Restore is blocked while a thread is claimed and not stale; the panel shows the reason.
+
+The agent finds out on its next command: the output starts with a `NOTICE` block that lists the files that changed and names the discarded threads ("do not continue"). It repeats until the agent runs `tackboard ack`.
+
+## Limits
+
+- One daemon watches one working tree. The agent may be in another worktree (the command sends its own branch to pick threads). Restore always acts on the daemon's project folder and is refused (`wrong_branch`) if the thread's branch is not the one checked out there.
+- Undo of a restore is the safety snapshot above. Messages already removed by a restore stay removed.
+- You can resolve a thread that is `waiting on you`. Only the agent is blocked from doing that.
+- "History" in the panel lists threads removed by a restore and threads whose branch is no longer a local git branch. Branches named `HEAD` (detached) and `no-git` are never treated this way.
+- Restore resets git's staging area to HEAD, so changes you had staged but not committed are not kept as staged. Ignored files are left alone.
+- A web page can read the token from the overlay file. What stops a foreign site from using it is the list of allowed origins, which the daemon checks on every request that carries an `Origin` header. The daemon does not check the `Referer` of the overlay file request.
+
+## Tests
+
+```
+npm run typecheck
+npm run build
+npm test
+npm run test:e2e
+```
+
+`npm test` runs the unit and integration tests with the Node test runner. `npm run test:e2e` builds first, then runs the browser tests in Chromium with no retries. Run one file with `npx playwright test -c e2e/playwright.config.ts e2e/tests/<name>.spec.ts`.

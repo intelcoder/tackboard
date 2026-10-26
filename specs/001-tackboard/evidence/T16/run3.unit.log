@@ -1,0 +1,1365 @@
+
+> test
+> node --test "packages/*/test/*.test.ts"
+
+TAP version 13
+# Subtest: init writes config and excludes the data dir from git status
+ok 1 - init writes config and excludes the data dir from git status
+  ---
+  duration_ms: 143.096625
+  type: 'test'
+  ...
+# Subtest: init in a non-git directory warns and next works on branch no-git
+ok 2 - init in a non-git directory warns and next works on branch no-git
+  ---
+  duration_ms: 202.990542
+  type: 'test'
+  ...
+# Subtest: next prints THREAD, branch, selector, comment, and the instruction block
+ok 3 - next prints THREAD, branch, selector, comment, and the instruction block
+  ---
+  duration_ms: 116.871875
+  type: 'test'
+  ...
+# Subtest: next prints "no pending threads on this branch" and exits 0 when empty
+ok 4 - next prints "no pending threads on this branch" and exits 0 when empty
+  ---
+  duration_ms: 107.32075
+  type: 'test'
+  ...
+# Subtest: after a restore notice is seeded, next output begins with a NOTICE block naming the files, until ack
+ok 5 - after a restore notice is seeded, next output begins with a NOTICE block naming the files, until ack
+  ---
+  duration_ms: 372.000875
+  type: 'test'
+  ...
+# Subtest: reply --ask leaves the thread waiting
+ok 6 - reply --ask leaves the thread waiting
+  ---
+  duration_ms: 192.344916
+  type: 'test'
+  ...
+# Subtest: comment with --mention me starts a waiting thread whose text starts with the configured user name
+ok 7 - comment with --mention me starts a waiting thread whose text starts with the configured user name
+  ---
+  duration_ms: 89.838666
+  type: 'test'
+  ...
+# Subtest: wait returns a thread that appears after 1 second and times out cleanly otherwise
+ok 8 - wait returns a thread that appears after 1 second and times out cleanly otherwise
+  ---
+  duration_ms: 3165.066625
+  type: 'test'
+  ...
+# Subtest: an agent on branch B does not see threads from branch A
+ok 9 - an agent on branch B does not see threads from branch A
+  ---
+  duration_ms: 221.574542
+  type: 'test'
+  ...
+# Subtest: commands outside an initialised project exit 1 with "run tackboard init"
+ok 10 - commands outside an initialised project exit 1 with "run tackboard init"
+  ---
+  duration_ms: 139.364875
+  type: 'test'
+  ...
+# Subtest: history prints the claimed snapshot
+ok 11 - history prints the claimed snapshot
+  ---
+  duration_ms: 261.413041
+  type: 'test'
+  ...
+# Subtest: status output uses the shared status labels
+ok 12 - status output uses the shared status labels
+  ---
+  duration_ms: 166.65475
+  type: 'test'
+  ...
+# Subtest: payload contains the comment text inside a line instructing the agent to treat it as a request, not a command
+ok 13 - payload contains the comment text inside a line instructing the agent to treat it as a request, not a command
+  ---
+  duration_ms: 0.497
+  type: 'test'
+  ...
+# Subtest: source confidence prints the file-first hint and component confidence the search hint
+ok 14 - source confidence prints the file-first hint and component confidence the search hint
+  ---
+  duration_ms: 9.690542
+  type: 'test'
+  ...
+# (node:82188) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: contract (daemon): post then list round-trip
+ok 15 - contract (daemon): post then list round-trip
+  ---
+  duration_ms: 205.045375
+  type: 'test'
+  ...
+# Subtest: contract (daemon): claim-next returns oldest first then null
+ok 16 - contract (daemon): claim-next returns oldest first then null
+  ---
+  duration_ms: 403.172666
+  type: 'test'
+  ...
+# Subtest: contract (daemon): agent ask moves to waiting and user reply re-queues to pending
+ok 17 - contract (daemon): agent ask moves to waiting and user reply re-queues to pending
+  ---
+  duration_ms: 293.37475
+  type: 'test'
+  ...
+# Subtest: contract (daemon): resolve while waiting by agent is 409 waiting_on_user
+ok 18 - contract (daemon): resolve while waiting by agent is 409 waiting_on_user
+  ---
+  duration_ms: 286.940708
+  type: 'test'
+  ...
+# Subtest: contract (daemon): user may resolve a waiting thread
+ok 19 - contract (daemon): user may resolve a waiting thread
+  ---
+  duration_ms: 298.844458
+  type: 'test'
+  ...
+# Subtest: contract (daemon): missing token is 401 except health
+ok 20 - contract (daemon): missing token is 401 except health
+  ---
+  duration_ms: 52.616334
+  type: 'test'
+  ...
+# Subtest: contract (daemon): 150 KB text is 413 too_large and health still answers
+ok 21 - contract (daemon): 150 KB text is 413 too_large and health still answers
+  ---
+  duration_ms: 50.515375
+  type: 'test'
+  ...
+# Subtest: contract (daemon): unknown thread is 404 not_found
+ok 22 - contract (daemon): unknown thread is 404 not_found
+  ---
+  duration_ms: 49.487584
+  type: 'test'
+  ...
+# Subtest: snapshot does not change HEAD, the index, or git status output
+ok 23 - snapshot does not change HEAD, the index, or git status output
+  ---
+  duration_ms: 363.972875
+  type: 'test'
+  ...
+# Subtest: restore returns modified, untracked and deleted files to the snapshot state
+ok 24 - restore returns modified, untracked and deleted files to the snapshot state
+  ---
+  duration_ms: 336.599959
+  type: 'test'
+  ...
+# Subtest: restore leaves ignored.txt and the data directory untouched
+ok 25 - restore leaves ignored.txt and the data directory untouched
+  ---
+  duration_ms: 225.542291
+  type: 'test'
+  ...
+# Subtest: data directory is excluded even when it is not in .gitignore
+ok 26 - data directory is excluded even when it is not in .gitignore
+  ---
+  duration_ms: 248.662917
+  type: 'test'
+  ...
+# Subtest: untracked non-ignored files added after the snapshot are removed on restore, ignored ones are kept
+ok 27 - untracked non-ignored files added after the snapshot are removed on restore, ignored ones are kept
+  ---
+  duration_ms: 221.007125
+  type: 'test'
+  ...
+# Subtest: hasChangedSince is false right after snapshot and true after editing a file
+ok 28 - hasChangedSince is false right after snapshot and true after editing a file
+  ---
+  duration_ms: 282.53025
+  type: 'test'
+  ...
+# Subtest: changedFiles lists paths between two snapshots
+ok 29 - changedFiles lists paths between two snapshots
+  ---
+  duration_ms: 194.595417
+  type: 'test'
+  ...
+# Subtest: works on a branch name with a slash and on detached HEAD
+ok 30 - works on a branch name with a slash and on detached HEAD
+  ---
+  duration_ms: 439.536167
+  type: 'test'
+  ...
+# Subtest: snapshot ids are unique and refs stay under the ref prefix
+ok 31 - snapshot ids are unique and refs stay under the ref prefix
+  ---
+  duration_ms: 180.781458
+  type: 'test'
+  ...
+# Subtest: a repository with no commits can be snapshotted and restored
+ok 32 - a repository with no commits can be snapshotted and restored
+  ---
+  duration_ms: 170.053875
+  type: 'test'
+  ...
+# Subtest: outside a git repository snapshot throws no_git
+ok 33 - outside a git repository snapshot throws no_git
+  ---
+  duration_ms: 20.404125
+  type: 'test'
+  ...
+# Subtest: a tracked file that matches .gitignore is kept by restore and snapshotted
+ok 34 - a tracked file that matches .gitignore is kept by restore and snapshotted
+  ---
+  duration_ms: 302.968833
+  type: 'test'
+  ...
+# Subtest: restore works when a file became a directory
+ok 35 - restore works when a file became a directory
+  ---
+  duration_ms: 223.408583
+  type: 'test'
+  ...
+# Subtest: restore works when a directory became a file
+ok 36 - restore works when a directory became a file
+  ---
+  duration_ms: 212.035542
+  type: 'test'
+  ...
+# Subtest: a nested repository with no commits does not break snapshot or restore
+ok 37 - a nested repository with no commits does not break snapshot or restore
+  ---
+  duration_ms: 249.043541
+  type: 'test'
+  ...
+# Subtest: snapshot ids are not reused after a ref is deleted
+ok 38 - snapshot ids are not reused after a ref is deleted
+  ---
+  duration_ms: 322.35325
+  type: 'test'
+  ...
+# Subtest: restore removes folders it emptied but keeps folders that were already empty or hold ignored files
+ok 39 - restore removes folders it emptied but keeps folders that were already empty or hold ignored files
+  ---
+  duration_ms: 195.689417
+  type: 'test'
+  ...
+# Subtest: restore and hasChangedSince outside a git repository throw no_git
+ok 40 - restore and hasChangedSince outside a git repository throw no_git
+  ---
+  duration_ms: 58.219334
+  type: 'test'
+  ...
+# Subtest: GitInfo reports branch, commit and branches; no-git outside a repository
+ok 41 - GitInfo reports branch, commit and branches; no-git outside a repository
+  ---
+  duration_ms: 432.572208
+  type: 'test'
+  ...
+# Subtest: post then claim returns the thread and a second claim returns null
+ok 42 - post then claim returns the thread and a second claim returns null
+  ---
+  duration_ms: 1.475959
+  type: 'test'
+  ...
+# Subtest: claims oldest first across three posts
+ok 43 - claims oldest first across three posts
+  ---
+  duration_ms: 1.134708
+  type: 'test'
+  ...
+# Subtest: stale claim is re-queued before claiming
+ok 44 - stale claim is re-queued before claiming
+  ---
+  duration_ms: 0.381125
+  type: 'test'
+  ...
+# Subtest: reply with ask then user reply returns thread to pending and next claim returns it again
+ok 45 - reply with ask then user reply returns thread to pending and next claim returns it again
+  ---
+  duration_ms: 0.401625
+  type: 'test'
+  ...
+# Subtest: list filters by branch
+ok 46 - list filters by branch
+  ---
+  duration_ms: 0.604166
+  type: 'test'
+  ...
+# Subtest: resolve while waiting by agent rejects with waiting_on_user
+ok 47 - resolve while waiting by agent rejects with waiting_on_user
+  ---
+  duration_ms: 0.46
+  type: 'test'
+  ...
+# Subtest: discarded threads are not claimable and sit in history
+ok 48 - discarded threads are not claimable and sit in history
+  ---
+  duration_ms: 2.522042
+  type: 'test'
+  ...
+# Subtest: threads of a deleted branch are in history, HEAD and no-git are never archived
+ok 49 - threads of a deleted branch are in history, HEAD and no-git are never archived
+  ---
+  duration_ms: 0.3095
+  type: 'test'
+  ...
+# Subtest: list carries restoreBlocked while a thread is claimed
+ok 50 - list carries restoreBlocked while a thread is claimed
+  ---
+  duration_ms: 0.497833
+  type: 'test'
+  ...
+# Subtest: agent comment creates a waiting unread thread
+ok 51 - agent comment creates a waiting unread thread
+  ---
+  duration_ms: 0.433625
+  type: 'test'
+  ...
+# Subtest: get history returns the claimed event with the thread snapshot
+ok 52 - get history returns the claimed event with the thread snapshot
+  ---
+  duration_ms: 0.199542
+  type: 'test'
+  ...
+# Subtest: post truncates html to 4096 and text to 120
+ok 53 - post truncates html to 4096 and text to 120
+  ---
+  duration_ms: 0.069417
+  type: 'test'
+  ...
+# Subtest: a user reply does not set unread
+ok 54 - a user reply does not set unread
+  ---
+  duration_ms: 0.090583
+  type: 'test'
+  ...
+# Subtest: an agent reply sets unread and mark read clears it
+ok 55 - an agent reply sets unread and mark read clears it
+  ---
+  duration_ms: 0.090833
+  type: 'test'
+  ...
+# Subtest: handlers stamp events with the injected clock
+ok 56 - handlers stamp events with the injected clock
+  ---
+  duration_ms: 0.155417
+  type: 'test'
+  ...
+# Subtest: history holds discarded threads of the queried branch only, not of other existing branches
+ok 57 - history holds discarded threads of the queried branch only, not of other existing branches
+  ---
+  duration_ms: 0.128625
+  type: 'test'
+  ...
+# Subtest: state open and resolved filter threads and leave history alone
+ok 58 - state open and resolved filter threads and leave history alone
+  ---
+  duration_ms: 0.181542
+  type: 'test'
+  ...
+# Subtest: claim, reply, resolve and agent comment each register the agent as present
+ok 59 - claim, reply, resolve and agent comment each register the agent as present
+  ---
+  duration_ms: 0.221709
+  type: 'test'
+  ...
+# Subtest: agent online flips to false after 60 s of injected clock time
+ok 60 - agent online flips to false after 60 s of injected clock time
+  ---
+  duration_ms: 0.038833
+  type: 'test'
+  ...
+# Subtest: message timestamps come from the injected clock
+ok 61 - message timestamps come from the injected clock
+  ---
+  duration_ms: 0.125667
+  type: 'test'
+  ...
+# Subtest: list restoreBlocked still names the claimed thread when the state filter hides it
+ok 62 - list restoreBlocked still names the claimed thread when the state filter hides it
+  ---
+  duration_ms: 0.181625
+  type: 'test'
+  ...
+# (node:82192) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: post, list, claim-next, reply, resolve round trip
+ok 63 - post, list, claim-next, reply, resolve round trip
+  ---
+  duration_ms: 537.697125
+  type: 'test'
+  ...
+# Subtest: 100 KB comment accepted, 150 KB rejected with 413 and daemon still answers /health
+ok 64 - 100 KB comment accepted, 150 KB rejected with 413 and daemon still answers /health
+  ---
+  duration_ms: 106.327584
+  type: 'test'
+  ...
+# Subtest: 1 MB html field is stored truncated to 4 KB
+ok 65 - 1 MB html field is stored truncated to 4 KB
+  ---
+  duration_ms: 99.724959
+  type: 'test'
+  ...
+# Subtest: branch is read from git at post time: after git checkout -b feature/x a new thread has branch feature/x
+ok 66 - branch is read from git at post time: after git checkout -b feature/x a new thread has branch feature/x
+  ---
+  duration_ms: 133.242292
+  type: 'test'
+  ...
+# Subtest: daemon started outside a git repo returns branch "no-git" and restore is rejected with no_git
+ok 67 - daemon started outside a git repo returns branch "no-git" and restore is rejected with no_git
+  ---
+  duration_ms: 60.790916
+  type: 'test'
+  ...
+# Subtest: detached HEAD yields branch "HEAD"
+ok 68 - detached HEAD yields branch "HEAD"
+  ---
+  duration_ms: 139.809792
+  type: 'test'
+  ...
+# Subtest: claim-next with a branch only returns that branch
+ok 69 - claim-next with a branch only returns that branch
+  ---
+  duration_ms: 170.402959
+  type: 'test'
+  ...
+# Subtest: bundle route serves the bundle with the config global prepended
+ok 70 - bundle route serves the bundle with the config global prepended
+  ---
+  duration_ms: 102.856791
+  type: 'test'
+  ...
+# Subtest: GET /history returns the claimed snapshot
+ok 71 - GET /history returns the claimed snapshot
+  ---
+  duration_ms: 199.179166
+  type: 'test'
+  ...
+# Subtest: daemon binds 127.0.0.1 only
+ok 72 - daemon binds 127.0.0.1 only
+  ---
+  duration_ms: 49.158084
+  type: 'test'
+  ...
+# Subtest: restore over HTTP rewinds and reports ids as threadId/messageId
+ok 73 - restore over HTTP rewinds and reports ids as threadId/messageId
+  ---
+  duration_ms: 432.36825
+  type: 'test'
+  ...
+# Subtest: invalid input is 400 invalid and a missing JSON body is handled
+ok 74 - invalid input is 400 invalid and a missing JSON body is handled
+  ---
+  duration_ms: 45.878833
+  type: 'test'
+  ...
+# (node:82193) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: claim creates a checkpoint on the claimed user message
+ok 75 - claim creates a checkpoint on the claimed user message
+  ---
+  duration_ms: 470.74125
+  type: 'test'
+  ...
+# Subtest: claim in a folder that is not a git repository still works and makes no checkpoint
+ok 76 - claim in a folder that is not a git repository still works and makes no checkpoint
+  ---
+  duration_ms: 72.028084
+  type: 'test'
+  ...
+# Subtest: reply with no file change creates no checkpoint
+ok 77 - reply with no file change creates no checkpoint
+  ---
+  duration_ms: 250.365458
+  type: 'test'
+  ...
+# Subtest: reply after a file edit creates one
+ok 78 - reply after a file edit creates one
+  ---
+  duration_ms: 361.787875
+  type: 'test'
+  ...
+# Subtest: resolve creates a checkpoint only when files changed since the last one and the last message has none
+ok 79 - resolve creates a checkpoint only when files changed since the last one and the last message has none
+  ---
+  duration_ms: 646.778
+  type: 'test'
+  ...
+# Subtest: restore rewinds files, takes a safety checkpoint first, marks later messages discarded
+ok 80 - restore rewinds files, takes a safety checkpoint first, marks later messages discarded
+  ---
+  duration_ms: 567.381917
+  type: 'test'
+  ...
+# Subtest: restore discards messages across threads that are later than the target
+ok 81 - restore discards messages across threads that are later than the target
+  ---
+  duration_ms: 693.05025
+  type: 'test'
+  ...
+# Subtest: restore throws restore_blocked while a thread is claimed, succeeds when the claim is stale
+ok 82 - restore throws restore_blocked while a thread is claimed, succeeds when the claim is stale
+  ---
+  duration_ms: 615.103167
+  type: 'test'
+  ...
+# Subtest: a thread waiting on the user does not block restore
+ok 83 - a thread waiting on the user does not block restore
+  ---
+  duration_ms: 611.140625
+  type: 'test'
+  ...
+# Subtest: a released thread no longer blocks restore
+ok 84 - a released thread no longer blocks restore
+  ---
+  duration_ms: 566.317542
+  type: 'test'
+  ...
+# Subtest: restore on the wrong branch throws wrong_branch
+ok 85 - restore on the wrong branch throws wrong_branch
+  ---
+  duration_ms: 294.08875
+  type: 'test'
+  ...
+# Subtest: restore outside a git repository throws no_git with a clear message
+ok 86 - restore outside a git repository throws no_git with a clear message
+  ---
+  duration_ms: 63.435584
+  type: 'test'
+  ...
+# Subtest: restore refuses an unknown thread, an unknown message, a message without a checkpoint and a discarded message
+ok 87 - restore refuses an unknown thread, an unknown message, a message without a checkpoint and a discarded message
+  ---
+  duration_ms: 480.051042
+  type: 'test'
+  ...
+# Subtest: restoring the safety checkpoint message brings the edits back
+ok 88 - restoring the safety checkpoint message brings the edits back
+  ---
+  duration_ms: 560.716458
+  type: 'test'
+  ...
+# Subtest: restore adds a notice that pendingFor(agent) returns until ack
+ok 89 - restore adds a notice that pendingFor(agent) returns until ack
+  ---
+  duration_ms: 400.3745
+  type: 'test'
+  ...
+# Subtest: discarded threads are listed in the notice
+ok 90 - discarded threads are listed in the notice
+  ---
+  duration_ms: 596.226666
+  type: 'test'
+  ...
+# Subtest: an agent first seen after a restore does not get that notice
+ok 91 - an agent first seen after a restore does not get that notice
+  ---
+  duration_ms: 396.849625
+  type: 'test'
+  ...
+# Subtest: a snapshot failure at claim gives a clear error and leaves the thread pending
+ok 92 - a snapshot failure at claim gives a clear error and leaves the thread pending
+  ---
+  duration_ms: 95.439459
+  type: 'test'
+  ...
+# Subtest: a checkpoint failure at reply or resolve saves nothing
+ok 93 - a checkpoint failure at reply or resolve saves nothing
+  ---
+  duration_ms: 220.900167
+  type: 'test'
+  ...
+# Subtest: a real snapshot failure (an unreadable file) becomes a domain error and saves nothing
+ok 94 - a real snapshot failure (an unreadable file) becomes a domain error and saves nothing
+  ---
+  duration_ms: 281.789833
+  type: 'test'
+  ...
+# Subtest: restore failing in the first snapshot changes nothing
+ok 95 - restore failing in the first snapshot changes nothing
+  ---
+  duration_ms: 259.066625
+  type: 'test'
+  ...
+# Subtest: restore failing halfway puts the files back and leaves thread data, events and notices unchanged
+ok 96 - restore failing halfway puts the files back and leaves thread data, events and notices unchanged
+  ---
+  duration_ms: 665.431125
+  type: 'test'
+  ...
+# Subtest: saving the restore result failing puts the files back and discards nothing
+ok 97 - saving the restore result failing puts the files back and discards nothing
+  ---
+  duration_ms: 471.489917
+  type: 'test'
+  ...
+# (node:82194) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: wrong Host is 403 (DNS rebinding)
+ok 98 - wrong Host is 403 (DNS rebinding)
+  ---
+  duration_ms: 103.756416
+  type: 'test'
+  ...
+# Subtest: foreign Origin is 403 and has no CORS header
+ok 99 - foreign Origin is 403 and has no CORS header
+  ---
+  duration_ms: 72.538833
+  type: 'test'
+  ...
+# Subtest: allowed Origin gets CORS headers and preflight succeeds without a token
+ok 100 - allowed Origin gets CORS headers and preflight succeeds without a token
+  ---
+  duration_ms: 110.583209
+  type: 'test'
+  ...
+# Subtest: missing token is 401 on POST, allowed on GET /health
+ok 101 - missing token is 401 on POST, allowed on GET /health
+  ---
+  duration_ms: 68.637416
+  type: 'test'
+  ...
+# Subtest: a wrong token is 401
+ok 102 - a wrong token is 401
+  ---
+  duration_ms: 56.361708
+  type: 'test'
+  ...
+# Subtest: localhost Host with the right port is accepted
+ok 103 - localhost Host with the right port is accepted
+  ---
+  duration_ms: 94.327417
+  type: 'test'
+  ...
+# (node:82195) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: in-memory: save then get round-trips every field including messages and discard flags
+ok 104 - in-memory: save then get round-trips every field including messages and discard flags
+  ---
+  duration_ms: 1.299208
+  type: 'test'
+  ...
+# Subtest: in-memory: saving again keeps later discards and checkpoints
+ok 105 - in-memory: saving again keeps later discards and checkpoints
+  ---
+  duration_ms: 0.20825
+  type: 'test'
+  ...
+# Subtest: in-memory: save is an upsert and does not duplicate messages
+ok 106 - in-memory: save is an upsert and does not duplicate messages
+  ---
+  duration_ms: 0.133875
+  type: 'test'
+  ...
+# Subtest: in-memory: claimNext is atomic: two calls in a row return different threads or null
+ok 107 - in-memory: claimNext is atomic: two calls in a row return different threads or null
+  ---
+  duration_ms: 0.21275
+  type: 'test'
+  ...
+# Subtest: in-memory: claimNext skips discarded and other-branch threads and requeues stale claims first
+ok 108 - in-memory: claimNext skips discarded and other-branch threads and requeues stale claims first
+  ---
+  duration_ms: 3.13225
+  type: 'test'
+  ...
+# Subtest: in-memory: data survives closing and reopening the db file
+ok 109 - in-memory: data survives closing and reopening the db file
+  ---
+  duration_ms: 0.315667
+  type: 'test'
+  ...
+# Subtest: in-memory: listByBranch isolates branches
+ok 110 - in-memory: listByBranch isolates branches
+  ---
+  duration_ms: 0.248041
+  type: 'test'
+  ...
+# Subtest: in-memory: nextNumber is per branch and monotonic
+ok 111 - in-memory: nextNumber is per branch and monotonic
+  ---
+  duration_ms: 0.063625
+  type: 'test'
+  ...
+# Subtest: in-memory: events are append-only and survive reopen
+ok 112 - in-memory: events are append-only and survive reopen
+  ---
+  duration_ms: 0.396209
+  type: 'test'
+  ...
+# Subtest: in-memory: touchAgent and lastAgent report online within 60 s and offline after
+ok 113 - in-memory: touchAgent and lastAgent report online within 60 s and offline after
+  ---
+  duration_ms: 0.320042
+  type: 'test'
+  ...
+# Subtest: in-memory: notices survive reopen and ack is per agent
+ok 114 - in-memory: notices survive reopen and ack is per agent
+  ---
+  duration_ms: 0.234459
+  type: 'test'
+  ...
+# Subtest: in-memory: an agent first seen after a notice does not get it, and first_seen is set once
+ok 115 - in-memory: an agent first seen after a notice does not get it, and first_seen is set once
+  ---
+  duration_ms: 0.058958
+  type: 'test'
+  ...
+# Subtest: in-memory: saveRestore saves every thread and the notice together, or nothing
+ok 116 - in-memory: saveRestore saves every thread and the notice together, or nothing
+  ---
+  duration_ms: 0.690334
+  type: 'test'
+  ...
+# Subtest: sqlite: save then get round-trips every field including messages and discard flags
+ok 117 - sqlite: save then get round-trips every field including messages and discard flags
+  ---
+  duration_ms: 8.492875
+  type: 'test'
+  ...
+# Subtest: sqlite: saving again keeps later discards and checkpoints
+ok 118 - sqlite: saving again keeps later discards and checkpoints
+  ---
+  duration_ms: 6.166083
+  type: 'test'
+  ...
+# Subtest: sqlite: save is an upsert and does not duplicate messages
+ok 119 - sqlite: save is an upsert and does not duplicate messages
+  ---
+  duration_ms: 5.777125
+  type: 'test'
+  ...
+# Subtest: sqlite: claimNext is atomic: two calls in a row return different threads or null
+ok 120 - sqlite: claimNext is atomic: two calls in a row return different threads or null
+  ---
+  duration_ms: 8.982042
+  type: 'test'
+  ...
+# Subtest: sqlite: claimNext skips discarded and other-branch threads and requeues stale claims first
+ok 121 - sqlite: claimNext skips discarded and other-branch threads and requeues stale claims first
+  ---
+  duration_ms: 16.822083
+  type: 'test'
+  ...
+# Subtest: sqlite: data survives closing and reopening the db file
+ok 122 - sqlite: data survives closing and reopening the db file
+  ---
+  duration_ms: 12.182667
+  type: 'test'
+  ...
+# Subtest: sqlite: listByBranch isolates branches
+ok 123 - sqlite: listByBranch isolates branches
+  ---
+  duration_ms: 10.742667
+  type: 'test'
+  ...
+# Subtest: sqlite: nextNumber is per branch and monotonic
+ok 124 - sqlite: nextNumber is per branch and monotonic
+  ---
+  duration_ms: 6.614792
+  type: 'test'
+  ...
+# Subtest: sqlite: events are append-only and survive reopen
+ok 125 - sqlite: events are append-only and survive reopen
+  ---
+  duration_ms: 11.24225
+  type: 'test'
+  ...
+# Subtest: sqlite: touchAgent and lastAgent report online within 60 s and offline after
+ok 126 - sqlite: touchAgent and lastAgent report online within 60 s and offline after
+  ---
+  duration_ms: 5.203167
+  type: 'test'
+  ...
+# Subtest: sqlite: notices survive reopen and ack is per agent
+ok 127 - sqlite: notices survive reopen and ack is per agent
+  ---
+  duration_ms: 7.973416
+  type: 'test'
+  ...
+# Subtest: sqlite: an agent first seen after a notice does not get it, and first_seen is set once
+ok 128 - sqlite: an agent first seen after a notice does not get it, and first_seen is set once
+  ---
+  duration_ms: 7.295375
+  type: 'test'
+  ...
+# Subtest: sqlite: saveRestore saves every thread and the notice together, or nothing
+ok 129 - sqlite: saveRestore saves every thread and the notice together, or nothing
+  ---
+  duration_ms: 10.58425
+  type: 'test'
+  ...
+# Subtest: Thread.toState/fromState round-trips, records no events and re-runs no invariants
+ok 130 - Thread.toState/fromState round-trips, records no events and re-runs no invariants
+  ---
+  duration_ms: 0.174917
+  type: 'test'
+  ...
+# Subtest: two connections to one file never hand the same thread to both claimers
+ok 131 - two connections to one file never hand the same thread to both claimers
+  ---
+  duration_ms: 7.302417
+  type: 'test'
+  ...
+# Subtest: claimNext takes the write lock up front (BEGIN IMMEDIATE): a competing writer makes it fail fast
+ok 132 - claimNext takes the write lock up front (BEGIN IMMEDIATE): a competing writer makes it fail fast
+  ---
+  duration_ms: 4.620875
+  type: 'test'
+  ...
+# Subtest: claimNext and save start with BEGIN IMMEDIATE, before any read
+ok 133 - claimNext and save start with BEGIN IMMEDIATE, before any read
+  ---
+  duration_ms: 5.132375
+  type: 'test'
+  ...
+# Subtest: Thread.toState returns a copy: changing it does not change the thread
+ok 134 - Thread.toState returns a copy: changing it does not change the thread
+  ---
+  duration_ms: 0.103709
+  type: 'test'
+  ...
+# Subtest: SystemClock returns current epoch milliseconds
+ok 135 - SystemClock returns current epoch milliseconds
+  ---
+  duration_ms: 0.049083
+  type: 'test'
+  ...
+# Subtest: open creates pending thread with one user message
+ok 136 - open creates pending thread with one user message
+  ---
+  duration_ms: 0.782416
+  type: 'test'
+  ...
+# Subtest: openByAgent creates a waiting unread thread owned by the agent
+ok 137 - openByAgent creates a waiting unread thread owned by the agent
+  ---
+  duration_ms: 0.126833
+  type: 'test'
+  ...
+# Subtest: claim moves pending to received and records agent
+ok 138 - claim moves pending to received and records agent
+  ---
+  duration_ms: 0.078042
+  type: 'test'
+  ...
+# Subtest: claim on a non-pending thread throws DomainError "not_pending"
+ok 139 - claim on a non-pending thread throws DomainError "not_pending"
+  ---
+  duration_ms: 0.216875
+  type: 'test'
+  ...
+# Subtest: agent reply with ask moves to waiting
+ok 140 - agent reply with ask moves to waiting
+  ---
+  duration_ms: 0.081417
+  type: 'test'
+  ...
+# Subtest: agent reply without ask keeps received
+ok 141 - agent reply without ask keeps received
+  ---
+  duration_ms: 0.046208
+  type: 'test'
+  ...
+# Subtest: user reply moves any non-resolved thread to pending and clears agent
+ok 142 - user reply moves any non-resolved thread to pending and clears agent
+  ---
+  duration_ms: 0.09325
+  type: 'test'
+  ...
+# Subtest: resolve while waiting by agent throws "waiting_on_user"
+ok 143 - resolve while waiting by agent throws "waiting_on_user"
+  ---
+  duration_ms: 3.718375
+  type: 'test'
+  ...
+# Subtest: user may resolve a waiting thread
+ok 144 - user may resolve a waiting thread
+  ---
+  duration_ms: 0.287292
+  type: 'test'
+  ...
+# Subtest: resolve after reply succeeds
+ok 145 - resolve after reply succeeds
+  ---
+  duration_ms: 0.380166
+  type: 'test'
+  ...
+# Subtest: reopen on resolved returns pending
+ok 146 - reopen on resolved returns pending
+  ---
+  duration_ms: 0.153792
+  type: 'test'
+  ...
+# Subtest: stale claim: isStaleClaim(claimedAt + 30*60_000 + 1) is true, at exactly +30*60_000 is false
+ok 147 - stale claim: isStaleClaim(claimedAt + 30*60_000 + 1) is true, at exactly +30*60_000 is false
+  ---
+  duration_ms: 0.0755
+  type: 'test'
+  ...
+# Subtest: discardAfterSeq marks later messages discarded and leaves earlier ones
+ok 148 - discardAfterSeq marks later messages discarded and leaves earlier ones
+  ---
+  duration_ms: 0.075792
+  type: 'test'
+  ...
+# Subtest: a thread whose first message is discarded reports discarded true
+ok 149 - a thread whose first message is discarded reports discarded true
+  ---
+  duration_ms: 0.031167
+  type: 'test'
+  ...
+# Subtest: restoreBlocker names the claimed thread
+ok 150 - restoreBlocker names the claimed thread
+  ---
+  duration_ms: 0.065833
+  type: 'test'
+  ...
+# Subtest: claim records a claimed event holding the full ThreadDto snapshot
+ok 151 - claim records a claimed event holding the full ThreadDto snapshot
+  ---
+  duration_ms: 0.095667
+  type: 'test'
+  ...
+# Subtest: Branch.of accepts "feature/pricing" and "HEAD"; AgentName.of rejects "", "user" and "system"
+ok 152 - Branch.of accepts "feature/pricing" and "HEAD"; AgentName.of rejects "", "user" and "system"
+  ---
+  duration_ms: 0.084125
+  type: 'test'
+  ...
+# Subtest: daemon package can import shared by package name
+ok 153 - daemon package can import shared by package name
+  ---
+  duration_ms: 0.252375
+  type: 'test'
+  ...
+# Subtest: post then list round trip through the typed client
+ok 154 - post then list round trip through the typed client
+  ---
+  duration_ms: 21.963083
+  type: 'test'
+  ...
+# Subtest: the token header is sent on every call
+ok 155 - the token header is sent on every call
+  ---
+  duration_ms: 15.278542
+  type: 'test'
+  ...
+# Subtest: 413 surfaces as ApiError with code too_large
+ok 156 - 413 surfaces as ApiError with code too_large
+  ---
+  duration_ms: 19.939583
+  type: 'test'
+  ...
+# Subtest: build writes one bundle file named by brand.bundle
+ok 157 - build writes one bundle file named by brand.bundle
+  ---
+  duration_ms: 20.598125
+  type: 'test'
+  ...
+# Subtest: the bundle contains no HTML sink
+ok 158 - the bundle contains no HTML sink
+  ---
+  duration_ms: 12.42875
+  type: 'test'
+  ...
+# Subtest: buildElementRef + findElement round-trips for an element with an id and one without
+ok 159 - buildElementRef + findElement round-trips for an element with an id and one without
+  ---
+  duration_ms: 4.671084
+  type: 'test'
+  ...
+# Subtest: findElement falls back to tag plus text when the nth-child path no longer matches
+ok 160 - findElement falls back to tag plus text when the nth-child path no longer matches
+  ---
+  duration_ms: 0.667125
+  type: 'test'
+  ...
+# Subtest: findElement returns null when nothing matches
+ok 161 - findElement returns null when nothing matches
+  ---
+  duration_ms: 0.322916
+  type: 'test'
+  ...
+# Subtest: ancestorChain excludes the root and starts at the innermost
+ok 162 - ancestorChain excludes the root and starts at the innermost
+  ---
+  duration_ms: 1.949709
+  type: 'test'
+  ...
+# Subtest: html longer than 4 KB is truncated
+ok 163 - html longer than 4 KB is truncated
+  ---
+  duration_ms: 1.349083
+  type: 'test'
+  ...
+# Subtest: labelFor names tag, id and first class
+ok 164 - labelFor names tag, id and first class
+  ---
+  duration_ms: 0.489041
+  type: 'test'
+  ...
+# Subtest: hidden mode renders no pins, outline or crumbs
+ok 165 - hidden mode renders no pins, outline or crumbs
+  ---
+  duration_ms: 24.652375
+  type: 'test'
+  ...
+# Subtest: a pin is not rendered while its element is off screen
+ok 166 - a pin is not rendered while its element is off screen
+  ---
+  duration_ms: 1.437417
+  type: 'test'
+  ...
+# Subtest: a thread with a missing element yields no pin
+ok 167 - a thread with a missing element yields no pin
+  ---
+  duration_ms: 2.456917
+  type: 'test'
+  ...
+# Subtest: onPick fires for a crumb click with that ancestor
+ok 168 - onPick fires for a crumb click with that ancestor
+  ---
+  duration_ms: 2.509083
+  type: 'test'
+  ...
+# Subtest: clicks inside the overlay host are ignored by hover
+ok 169 - clicks inside the overlay host are ignored by hover
+  ---
+  duration_ms: 1.05375
+  type: 'test'
+  ...
+# Subtest: visibleThreads splits open and resolved
+ok 170 - visibleThreads splits open and resolved
+  ---
+  duration_ms: 0.799334
+  type: 'test'
+  ...
+# Subtest: badgeCount counts waiting and unread threads once each
+ok 171 - badgeCount counts waiting and unread threads once each
+  ---
+  duration_ms: 0.148584
+  type: 'test'
+  ...
+# Subtest: badgeCount ignores discarded
+ok 172 - badgeCount ignores discarded
+  ---
+  duration_ms: 0.110583
+  type: 'test'
+  ...
+# Subtest: clampToViewport keeps the panel fully inside, including after a smaller viewport
+ok 173 - clampToViewport keeps the panel fully inside, including after a smaller viewport
+  ---
+  duration_ms: 0.128625
+  type: 'test'
+  ...
+# Subtest: clamp keeps the panel clear of the pill
+ok 174 - clamp keeps the panel clear of the pill
+  ---
+  duration_ms: 0.198542
+  type: 'test'
+  ...
+# Subtest: bannerFor maps granted, default, dismissed, denied and unsupported
+ok 175 - bannerFor maps granted, default, dismissed, denied and unsupported
+  ---
+  duration_ms: 0.052875
+  type: 'test'
+  ...
+# Subtest: diffForEvents reports a new agent message once
+ok 176 - diffForEvents reports a new agent message once
+  ---
+  duration_ms: 0.196542
+  type: 'test'
+  ...
+# Subtest: notificationState maps Notification.permission and returns "unsupported" when absent
+ok 177 - notificationState maps Notification.permission and returns "unsupported" when absent
+  ---
+  duration_ms: 0.073
+  type: 'test'
+  ...
+# Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+# Warning: An update to Root inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+# Warning: An update to Root inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+# Subtest: source from the data attribute wins and reports confidence "source"
+ok 178 - source from the data attribute wins and reports confidence "source"
+  ---
+  duration_ms: 1.9395
+  type: 'test'
+  ...
+# Subtest: fiber names produce ["PricingPage","PlanCard"] with confidence "component"
+ok 179 - fiber names produce ["PricingPage","PlanCard"] with confidence "component"
+  ---
+  duration_ms: 0.31325
+  type: 'test'
+  ...
+# Subtest: fiber reading skips anonymous functions and reads memo, forwardRef and displayName types
+ok 180 - fiber reading skips anonymous functions and reads memo, forwardRef and displayName types
+  ---
+  duration_ms: 0.373625
+  type: 'test'
+  ...
+# Subtest: a plain element inside a React element uses the nearest fiber above it
+ok 181 - a plain element inside a React element uses the nearest fiber above it
+  ---
+  duration_ms: 0.185083
+  type: 'test'
+  ...
+# Subtest: plain DOM yields confidence "text"
+ok 182 - plain DOM yields confidence "text"
+  ---
+  duration_ms: 0.149916
+  type: 'test'
+  ...
+# Subtest: a broken fiber does not throw and falls back to text
+ok 183 - a broken fiber does not throw and falls back to text
+  ---
+  duration_ms: 0.101333
+  type: 'test'
+  ...
+# Subtest: the nearest ancestor attribute is used
+ok 184 - the nearest ancestor attribute is used
+  ---
+  duration_ms: 0.199292
+  type: 'test'
+  ...
+# Subtest: buildElementRef carries component, source and confidence
+ok 185 - buildElementRef carries component, source and confidence
+  ---
+  duration_ms: 1.260666
+  type: 'test'
+  ...
+# Subtest: a real React 18 element: names come from the fiber React really sets
+ok 186 - a real React 18 element: names come from the fiber React really sets
+  ---
+  duration_ms: 33.913083
+  type: 'test'
+  ...
+# Subtest: message text with img onerror becomes a text node
+ok 187 - message text with img onerror becomes a text node
+  ---
+  duration_ms: 2.435875
+  type: 'test'
+  ...
+# Subtest: chip, ThreadItem, toast and badge text all come from statusLabel
+ok 188 - chip, ThreadItem, toast and badge text all come from statusLabel
+  ---
+  duration_ms: 2.37225
+  type: 'test'
+  ...
+# Subtest: RestoreConfirm is disabled with the reason
+ok 189 - RestoreConfirm is disabled with the reason
+  ---
+  duration_ms: 0.715125
+  type: 'test'
+  ...
+# Subtest: a RestorePoint renders after each message with a checkpoint only
+ok 190 - a RestorePoint renders after each message with a checkpoint only
+  ---
+  duration_ms: 0.557291
+  type: 'test'
+  ...
+# Subtest: discarded messages are hidden outside History and shown with the discarded chip inside it
+ok 191 - discarded messages are hidden outside History and shown with the discarded chip inside it
+  ---
+  duration_ms: 0.294542
+  type: 'test'
+  ...
+# Subtest: a thread with a missing element lands in the DetachedList
+ok 192 - a thread with a missing element lands in the DetachedList
+  ---
+  duration_ms: 0.616166
+  type: 'test'
+  ...
+# Subtest: the Release button shows only on received threads
+ok 193 - the Release button shows only on received threads
+  ---
+  duration_ms: 0.878208
+  type: 'test'
+  ...
+# Subtest: brand fields have the expected values
+ok 194 - brand fields have the expected values
+  ---
+  duration_ms: 0.319375
+  type: 'test'
+  ...
+# Subtest: findConfig walks up from a nested directory
+ok 195 - findConfig walks up from a nested directory
+  ---
+  duration_ms: 1.547125
+  type: 'test'
+  ...
+# Subtest: findConfig returns null outside a project
+ok 196 - findConfig returns null outside a project
+  ---
+  duration_ms: 0.305792
+  type: 'test'
+  ...
+# Subtest: writeConfig then readConfig round-trips
+ok 197 - writeConfig then readConfig round-trips
+  ---
+  duration_ms: 0.889291
+  type: 'test'
+  ...
+# Subtest: guard flags each banned DOM sink form
+ok 198 - guard flags each banned DOM sink form
+  ---
+  duration_ms: 1.101125
+  type: 'test'
+  ...
+# Subtest: guard flags the brand name in indirect forms
+ok 199 - guard flags the brand name in indirect forms
+  ---
+  duration_ms: 0.096333
+  type: 'test'
+  ...
+# Subtest: guard exempts brand.ts and test directories
+ok 200 - guard exempts brand.ts and test directories
+  ---
+  duration_ms: 0.055666
+  type: 'test'
+  ...
+# Subtest: real tree has no violations
+ok 201 - real tree has no violations
+  ---
+  duration_ms: 16.157917
+  type: 'test'
+  ...
+# Subtest: statusLabel covers every ThreadStatus
+ok 202 - statusLabel covers every ThreadStatus
+  ---
+  duration_ms: 2.545125
+  type: 'test'
+  ...
+# Subtest: contract (stub): post then list round-trip
+ok 203 - contract (stub): post then list round-trip
+  ---
+  duration_ms: 19.293083
+  type: 'test'
+  ...
+# Subtest: contract (stub): claim-next returns oldest first then null
+ok 204 - contract (stub): claim-next returns oldest first then null
+  ---
+  duration_ms: 11.376666
+  type: 'test'
+  ...
+# Subtest: contract (stub): agent ask moves to waiting and user reply re-queues to pending
+ok 205 - contract (stub): agent ask moves to waiting and user reply re-queues to pending
+  ---
+  duration_ms: 8.74275
+  type: 'test'
+  ...
+# Subtest: contract (stub): resolve while waiting by agent is 409 waiting_on_user
+ok 206 - contract (stub): resolve while waiting by agent is 409 waiting_on_user
+  ---
+  duration_ms: 3.603333
+  type: 'test'
+  ...
+# Subtest: contract (stub): user may resolve a waiting thread
+ok 207 - contract (stub): user may resolve a waiting thread
+  ---
+  duration_ms: 6.22725
+  type: 'test'
+  ...
+# Subtest: contract (stub): missing token is 401 except health
+ok 208 - contract (stub): missing token is 401 except health
+  ---
+  duration_ms: 2.699416
+  type: 'test'
+  ...
+# Subtest: contract (stub): 150 KB text is 413 too_large and health still answers
+ok 209 - contract (stub): 150 KB text is 413 too_large and health still answers
+  ---
+  duration_ms: 3.936959
+  type: 'test'
+  ...
+# Subtest: contract (stub): unknown thread is 404 not_found
+ok 210 - contract (stub): unknown thread is 404 not_found
+  ---
+  duration_ms: 1.642958
+  type: 'test'
+  ...
+# Subtest: addSourceAttrs adds the attribute with the right line to host tags
+ok 211 - addSourceAttrs adds the attribute with the right line to host tags
+  ---
+  duration_ms: 0.715459
+  type: 'test'
+  ...
+# Subtest: addSourceAttrs leaves uppercase components, generics and i<n comparisons alone
+ok 212 - addSourceAttrs leaves uppercase components, generics and i<n comparisons alone
+  ---
+  duration_ms: 0.091292
+  type: 'test'
+  ...
+# Subtest: addSourceAttrs handles multi-line tags, self-closing tags, nesting and text before a tag
+ok 213 - addSourceAttrs handles multi-line tags, self-closing tags, nesting and text before a tag
+  ---
+  duration_ms: 0.172583
+  type: 'test'
+  ...
+# Subtest: addSourceAttrs does not touch fragments or closing tags and skips tags that already have the attribute
+ok 214 - addSourceAttrs does not touch fragments or closing tags and skips tags that already have the attribute
+  ---
+  duration_ms: 0.157166
+  type: 'test'
+  ...
+# Subtest: addSourceAttrs ignores tags inside strings, template text and comments, but not tags after them
+ok 215 - addSourceAttrs ignores tags inside strings, template text and comments, but not tags after them
+  ---
+  duration_ms: 0.086458
+  type: 'test'
+  ...
+# Subtest: addSourceAttrs counts lines past strings and comments that span lines
+ok 216 - addSourceAttrs counts lines past strings and comments that span lines
+  ---
+  duration_ms: 0.046
+  type: 'test'
+  ...
+# Subtest: addSourceAttrs handles braces holding arrow functions and a > inside attribute values
+ok 217 - addSourceAttrs handles braces holding arrow functions and a > inside attribute values
+  ---
+  duration_ms: 0.065875
+  type: 'test'
+  ...
+# Subtest: addSourceAttrs leaves input it does not understand unchanged
+ok 218 - addSourceAttrs leaves input it does not understand unchanged
+  ---
+  duration_ms: 0.204208
+  type: 'test'
+  ...
+# Subtest: addSourceAttrs gives the same answer when run on its own output
+ok 219 - addSourceAttrs gives the same answer when run on its own output
+  ---
+  duration_ms: 0.314958
+  type: 'test'
+  ...
+# Subtest: the plugin has apply serve and returns null for build and non-JSX ids
+ok 220 - the plugin has apply serve and returns null for build and non-JSX ids
+  ---
+  duration_ms: 0.467
+  type: 'test'
+  ...
+# Subtest: the plugin output for a tsx file contains the attribute
+ok 221 - the plugin output for a tsx file contains the attribute
+  ---
+  duration_ms: 0.294625
+  type: 'test'
+  ...
+1..221
+# tests 221
+# suites 0
+# pass 221
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 9822.984833

@@ -1,0 +1,16 @@
+diff --git a/package-lock.json b/package-lock.json
+index 27b17d3..42f53d3 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1317,7 +1317,10 @@
+     },
+     "packages/cli": {
+       "name": "@app/cli",
+-      "version": "0.0.0"
++      "version": "0.0.0",
++      "bin": {
++        "tackboard": "src/main.ts"
++      }
+     },
+     "packages/daemon": {
+       "name": "@app/daemon",
