@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseHTML } from "linkedom";
-import { ancestorChain, buildElementRef, findElement, labelFor } from "../src/element_ref.ts";
+import { ancestorChain, buildElementRef, labelFor } from "../src/element_ref.ts";
 import { createStore } from "../src/store.ts";
 import { createFinder } from "../src/element_ref.ts";
 
@@ -10,7 +10,14 @@ function dom(body: string) {
   return document as unknown as Document;
 }
 
-test("buildElementRef + findElement round-trips for an element with an id and one without", () => {
+function lookup(element: any, doc: Document): Element | null {
+  const store = createStore();
+  const t = { id: "t", url: "", element } as any;
+  store.set({ threads: [t] });
+  return createFinder(doc, { location: { href: "http://x/" } } as unknown as Window, store).find(t);
+}
+
+test("buildElementRef + lookup round-trips for an element with an id and one without", () => {
   const doc = dom(`<div id="app"><section><p>one</p><p>two</p></section><button id="cta">Buy</button></div>`);
   const cta = doc.getElementById("cta")!;
   const refCta = buildElementRef(cta);
@@ -18,15 +25,15 @@ test("buildElementRef + findElement round-trips for an element with an id and on
   assert.equal(refCta.tag, "button");
   assert.equal(refCta.text, "Buy");
   assert.equal(refCta.confidence, "text");
-  assert.equal(findElement(refCta, doc), cta);
+  assert.equal(lookup(refCta, doc), cta);
 
   const second = doc.querySelectorAll("p")[1]!;
   const ref = buildElementRef(second);
   assert.equal(doc.querySelectorAll(ref.selector).length, 1);
-  assert.equal(findElement(ref, doc), second);
+  assert.equal(lookup(ref, doc), second);
 });
 
-test("findElement falls back to tag plus text when the nth-child path no longer matches", () => {
+test("finder: falls back to tag plus text when the nth-child path no longer matches", () => {
   const doc = dom(`<div id="app"><section><p>one</p><p>two</p></section></div>`);
   const second = doc.querySelectorAll("p")[1]!;
   const ref = buildElementRef(second);
@@ -34,13 +41,13 @@ test("findElement falls back to tag plus text when the nth-child path no longer 
   const app = doc.getElementById("app")!;
   app.insertBefore(doc.createElement("div"), app.firstChild);
   assert.equal(doc.querySelector(ref.selector), null);
-  assert.equal(findElement(ref, doc), second);
+  assert.equal(lookup(ref, doc), second);
 });
 
-test("findElement returns null when nothing matches", () => {
+test("finder: returns null when nothing matches", () => {
   const doc = dom(`<div id="app"><p>one</p></div>`);
   const ref = { ...buildElementRef(doc.querySelector("p")!), selector: "#nope", text: "never written" };
-  assert.equal(findElement(ref, doc), null);
+  assert.equal(lookup(ref, doc), null);
 });
 
 test("ancestorChain excludes the root and starts at the innermost", () => {
@@ -70,11 +77,11 @@ test("labelFor names tag, id and first class", () => {
 test("the text fallback ignores spacing, takes the first element in document order and never matches long text", () => {
   const doc = dom(`<div id="app"><p>  Buy \n now </p><div><div>same</div></div><p>other</p></div>`);
   const stale = (el: Element) => ({ ...buildElementRef(el), selector: "#nope" });
-  assert.equal(findElement(stale(doc.querySelector("p")!), doc), doc.querySelector("p"));
+  assert.equal(lookup(stale(doc.querySelector("p")!), doc), doc.querySelector("p"));
   const outer = doc.querySelector("div div")!;
-  assert.equal(findElement(stale(outer), doc), outer, "outer of two nested same-text divs comes first");
+  assert.equal(lookup(stale(outer), doc), outer, "outer of two nested same-text divs comes first");
   const long = { ...stale(outer), text: "x".repeat(200) };
-  assert.equal(findElement(long, doc), null);
+  assert.equal(lookup(long, doc), null);
 });
 
 function finderFor(body: string, url = "http://x/") {
@@ -103,6 +110,14 @@ test("finder: another page gets no lookup, a kept element is not searched again,
   assert.equal(f.asked.length, 1);
   a.remove();
   assert.equal(f.finder.find(here), null);
+});
+
+test("finder: an empty url is looked up on this page", () => {
+  const f = finderFor(`<p id="a">a</p>`);
+  const a = f.doc.getElementById("a")!;
+  const agent = { ...f.make("t1", a, ""), element: { ...buildElementRef(a), tag: "", text: "" } };
+  f.store.set({ threads: [agent] });
+  assert.equal(f.finder.find(agent), a);
 });
 
 test("finder: an unmatched thread is searched once per thread list", () => {

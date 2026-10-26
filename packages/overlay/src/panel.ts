@@ -161,8 +161,8 @@ export function createPanel(o: PanelOptions): Panel {
     notice = null;
     call().then(
       (t) => {
-        after?.(t);
         saveThread(t);
+        after?.(t);
         draw();
       },
       (e) => {

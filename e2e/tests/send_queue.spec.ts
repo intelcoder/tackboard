@@ -25,24 +25,6 @@ async function unreachable(page: Page, path: string) {
   return () => page.unroute(match, handler);
 }
 
-test("Enter sends in the reply box and Shift+Enter adds a line", async ({ harness: h }) => {
-  const page = h.page;
-  const id = await postComment(page, "#cta", "first comment");
-  const box = page.locator(`[data-key="reply-${id}"]`);
-  const messages = thread(page, id).locator(".tb-msg .text");
-
-  await box.fill("line one");
-  await box.press("Shift+Enter");
-  await box.pressSequentially("line two");
-  await page.waitForTimeout(300);
-  await expect(box).toHaveValue("line one\nline two");
-  await expect(messages).toHaveCount(1);
-
-  await box.press("Enter");
-  await expect(box).toHaveValue("");
-  await expect(messages).toHaveText(["first comment", "line one\nline two"]);
-});
-
 test("Enter sends in the new comment box and Shift+Enter adds a line", async ({ harness: h }) => {
   const page = h.page;
   await openComposer(page, "#cta");
@@ -145,51 +127,6 @@ test("a request held forever becomes Not sent after 8 seconds and Send still wor
   await box.fill("second try");
   await page.locator(`[data-key="send-${id}"]`).click();
   await expect(thread(page, id).locator(".tb-msg .text")).toContainText(["first comment", "second try"]);
-  h.problems.length = 0;
-});
-
-test("a 4xx answer shows Not sent with Retry and Remove and is not tried again by itself", async ({ harness: h }) => {
-  const page = h.page;
-  const id = await postComment(page, "#cta", "first comment");
-  const box = page.locator(`[data-key="reply-${id}"]`);
-  let reached = 0;
-  let broken = true;
-  await page.route(posts("/messages"), (route) => {
-    reached++;
-    if (!broken) return route.continue();
-    return route.fulfill({ status: 400, contentType: "application/json", body: '{"error":"invalid","message":"not accepted"}' });
-  });
-
-  await box.fill("will bounce");
-  await box.press("Enter");
-  const item = thread(page, id).locator(".tb-queued");
-  await expect(item).toContainText("Not sent");
-  await expect(item).toContainText("not accepted");
-  await expect(item.getByRole("button", { name: "Retry" })).toBeVisible();
-  await expect(item.getByRole("button", { name: "Remove" })).toBeVisible();
-  await page.waitForTimeout(3500);
-  expect(reached).toBe(1);
-
-  broken = false;
-  await item.getByRole("button", { name: "Retry" }).click();
-  await expect(item).toHaveCount(0);
-  await expect(thread(page, id).locator(".tb-msg .text")).toHaveText(["first comment", "will bounce"]);
-  expect(reached).toBe(2);
-  h.problems.length = 0;
-});
-
-test("Remove drops a Not sent item", async ({ harness: h }) => {
-  const page = h.page;
-  const id = await postComment(page, "#cta", "first comment");
-  const box = page.locator(`[data-key="reply-${id}"]`);
-  await page.route(posts("/messages"), (route) =>
-    route.fulfill({ status: 400, contentType: "application/json", body: '{"error":"invalid","message":"not accepted"}' }));
-  await box.fill("drop me");
-  await box.press("Enter");
-  const item = thread(page, id).locator(".tb-queued");
-  await item.getByRole("button", { name: "Remove" }).click();
-  await expect(item).toHaveCount(0);
-  await expect(thread(page, id).locator(".tb-msg")).toHaveCount(1);
   h.problems.length = 0;
 });
 

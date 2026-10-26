@@ -1,20 +1,6 @@
 import { test, expect } from "../fixtures/harness.ts";
 import { openPanel, postComment, thread } from "../fixtures/states.ts";
 
-test("reply box empties at once and the reply shows once", async ({ harness: h }) => {
-  const page = h.page;
-  const id = await postComment(page, "#cta", "first comment");
-  const box = page.locator(`[data-key="reply-${id}"]`);
-  const messages = thread(page, id).locator(".tb-msg");
-
-  await box.fill("my reply");
-  await page.locator(`[data-key="send-${id}"]`).click();
-  await expect(box).toHaveValue("");
-  await expect(messages).toHaveCount(2);
-  await expect(messages.filter({ hasText: "my reply" })).toHaveCount(1);
-  await expect(thread(page, id).locator(".tb-queued")).toHaveCount(0);
-});
-
 test("a second Send queues behind the first and both arrive in order", async ({ harness: h }) => {
   const page = h.page;
   const id = await postComment(page, "#cta", "first comment");

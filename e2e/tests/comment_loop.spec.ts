@@ -67,6 +67,7 @@ test("agent-started thread", async ({ harness: h }) => {
   const started = await h.agent(["comment", "--selector", "#cta", "Is this copy final?", "--mention", "me"]);
   expect(started.code).toBe(0);
   await expect(badge(page)).toHaveText("1", { timeout: 4000 });
+  await expect(page.locator(".tb-pin")).toHaveCount(1);
   await openPanel(page);
   const row = page.locator(".tb-thread").first();
   await expect(row.locator(".tb-chip")).toHaveText("waiting on you");

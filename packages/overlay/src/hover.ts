@@ -65,19 +65,20 @@ export function createHover(o: HoverOptions): { destroy(): void } {
 
   // Reads the outlined element once and shades it while Control is held; the gap text joins the outline label.
   const drawBoxModel = () => {
+    if (!control && !box) return;
     box?.remove();
     box = null;
     const el = chain[index];
     const tag = outline?.firstElementChild;
     if (!el || !tag) return;
-    let gap = "";
-    if (control) {
-      const drawn = drawBox(el, win, h);
-      box = drawn.node;
-      gap = drawn.gap;
-      layer.append(box);
+    if (!control) {
+      tag.textContent = labelFor(el);
+      return;
     }
-    tag.textContent = gap ? `${labelFor(el)}  ${gap}` : labelFor(el);
+    const drawn = drawBox(el, win, h);
+    box = drawn.node;
+    layer.append(box);
+    if (drawn.gap) tag.textContent = `${labelFor(el)}  ${drawn.gap}`;
   };
 
   const pick = (el: Element) => {
