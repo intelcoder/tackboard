@@ -177,25 +177,15 @@ Instead of the agent asking for comments with `tackboard wait`, you can have eac
 claude --dangerously-load-development-channels server:tackboard
 ```
 
-3. Claude Code asks three things, in this order. The first time in a folder it asks "Is this a project you created or one you trust?": choose "Yes, I trust this folder". The first time in a project it asks about "New MCP server found in this project: tackboard": choose "Use this MCP server". Then it shows a warning, "Loading development channels": choose "I am using this for local development". The startup screen then says that messages from `server:tackboard` inject directly in this session.
-
 From then on every comment you leave on the page reaches the session by itself, as a line like `← tackboard: THREAD t1 ...`, and the thread shows `received` on the page. If Claude is busy, comments wait and arrive together on its next turn. Claude is told to make the change, then run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask`. Only you close a thread. Say nothing special to Claude: no `tackboard wait` is needed.
 
-What you need, from the channels pages: Claude Code signed in with a claude.ai account or a Console API key (channels do not work on Amazon Bedrock, Google Cloud or Microsoft Foundry), and on Team and Enterprise plans an owner must switch channels on. Channels are a research preview, so the flag name and the way it works may change. The flag only works in an interactive session: Claude Code ignores it with `claude -p`. Your own channel is not on the approved list, which is why the flag with "dangerously" in its name is needed.
+Claude Code asks you to confirm a few things the first time; what it asks, and what an account needs for channels, is described on https://code.claude.com/docs/en/channels.md. Channels are a research preview, so the flag may change; if it stops working or is not available to you, use `tackboard wait` instead.
 
-`tackboard channel` checks the daemon every 2 seconds, takes the oldest pending thread of the current branch the same way `tackboard next` does, and sends it. A comment is delivered once. If the daemon is not running it keeps trying and writes one line to stderr. `--as <name>` or `TACKBOARD_AGENT` sets the agent name, as for the other commands.
-
-What was tested: the command is tested against a stand-in daemon with a scripted client, and in a real Claude Code session (version 2.1.310, macOS, started with the flag above in a terminal) two comments posted to the real daemon each reached the session once and the session answered them. Not tested: Team or Enterprise accounts, Linux or Windows, and long sessions. If channels are not available for you, keep using `tackboard wait`.
+`tackboard channel` checks the daemon every 2 seconds, takes the oldest pending thread of the current branch the same way `tackboard next` does, and sends it. A thread that was claimed and never answered can be claimed and sent again after 30 minutes. If the daemon is not running it keeps trying and writes one line to stderr. `--as <name>` or `TACKBOARD_AGENT` sets the agent name, as for the other commands.
 
 ## Using Cursor
 
-WE HAVE NOT TESTED CURSOR. This is only what Cursor's documentation says, so check it on your machine.
-
-- Cursor reads skills from `.claude/skills/`, so the skill that `tackboard init` installs should be found.
-- The agent has to be allowed to run `tackboard` commands: use Cursor's Allowlist or Run Everything mode, or `--force` in the Cursor command line, whose command is `agent`.
-- Cursor's sandbox blocks `127.x` addresses by default, and the daemon listens on 127.0.0.1. Allow the daemon port, or turn the sandbox off.
-- `tackboard wait` blocks for up to 60 seconds. Whether Cursor lets a command run that long is untested.
-- There is no way to push a comment into a running Cursor session, so the agent has to loop on `tackboard wait`.
+WE HAVE NOT TESTED CURSOR. Cursor's documentation says it also loads skills from `.claude/skills/` (https://cursor.com/docs/context/skills), so the skill that `tackboard init` installs may be found. Whether its agent may run `tackboard` commands, and whether it can reach the daemon on 127.0.0.1, depends on its own settings: see https://cursor.com/docs/agent/security/run-modes. There is no way to push a comment into a running Cursor session, so the agent has to loop on `tackboard wait`.
 
 ## Restore
 

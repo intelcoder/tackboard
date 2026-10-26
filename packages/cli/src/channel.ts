@@ -13,8 +13,6 @@ const INSTRUCTIONS = [
   "These events are one-way. There is no reply tool; use the commands above.",
 ].join("\n");
 
-const LATEST_PROTOCOL = "2025-06-18";
-
 function send(message: object): void {
   process.stdout.write(`${JSON.stringify(message)}\n`);
 }
@@ -50,7 +48,7 @@ export async function channel(c: Client, claim_thread: () => Promise<ThreadDto |
         jsonrpc: "2.0",
         id: m.id,
         result: {
-          protocolVersion: m.params?.protocolVersion ?? LATEST_PROTOCOL,
+          protocolVersion: m.params?.protocolVersion,
           capabilities: { experimental: { "claude/channel": {} } },
           serverInfo: { name: brand.cli, version: "0.0.0" },
           instructions: INSTRUCTIONS,

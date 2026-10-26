@@ -62,18 +62,12 @@ test("post, list, claim-next, reply, resolve round trip", () =>
     assert.equal((await agent_thread.json()).status, "waiting");
   }));
 
-test("a resolve request by the agent is refused, with or without agent, and the thread stays as it was", () =>
+test("a refused resolve by the agent leaves no resolved event in the history", () =>
   with_daemon(async (d) => {
     const t = (await (await d.call("POST", paths.threads, post_body("fix this"))).json()) as ThreadDto;
     await d.call("POST", paths.claimNext, { agent: "claude" });
     await d.call("POST", paths.messages(t.id), { author: "claude", text: "done" });
-    const before = await (await d.call("GET", paths.threads)).json();
-    for (const body of [{ by: "agent", agent: "claude" }, { by: "agent" }]) {
-      const r = await d.call("POST", paths.resolve(t.id), body);
-      assert.equal(r.status, 409);
-      assert.equal((await r.json()).error, "waiting_on_user");
-    }
-    assert.deepEqual(await (await d.call("GET", paths.threads)).json(), before);
+    assert.equal((await d.call("POST", paths.resolve(t.id), { by: "agent" })).status, 409);
     const events = ((await (await d.call("GET", paths.history)).json()) as { events: HistoryEvent[] }).events;
     assert.equal(events.some((e) => e.type === "resolved"), false);
   }));

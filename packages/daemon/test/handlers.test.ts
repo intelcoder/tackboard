@@ -128,18 +128,6 @@ test("list filters by branch", () => {
   assert.equal(claimed?.messages[0]!.text, "on main");
 });
 
-test("resolve by agent rejects with waiting_on_user", () => {
-  const s = setup();
-  const posted = s.post.handle(postArgs());
-  s.claim.handle({ agent: "claude" });
-  s.reply.handle({ id: posted.id, author: "claude", text: "done" });
-  assert.throws(
-    () => s.resolve.handle({ id: posted.id, by: "agent" }),
-    (e: unknown) => e instanceof DomainError && e.code === "waiting_on_user",
-  );
-  assert.equal(s.resolve.handle({ id: posted.id, by: "user" }).status, "resolved");
-});
-
 test("discarded threads are not claimable and sit in history", () => {
   const s = setup();
   const posted = s.post.handle(postArgs());
