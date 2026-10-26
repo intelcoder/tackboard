@@ -78,6 +78,29 @@ test("init writes config and excludes the data dir from git status", async () =>
   assert.equal(execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" }), "?? .claude/\n");
 });
 
+test("init stores each origin without a trailing slash and keeps two valid ones", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cli-test-"));
+  const r = await cli(dir, ["init", "--origin", "http://localhost:3000/", "--origin", "https://my.site:8443"]);
+  assert.equal(r.code, 0);
+  assert.deepEqual(findConfig(dir)!.config.origins, ["http://localhost:3000", "https://my.site:8443"]);
+});
+
+test("init without --origin keeps the default origins", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cli-test-"));
+  assert.equal((await cli(dir, ["init"])).code, 0);
+  assert.deepEqual(findConfig(dir)!.config.origins, ["http://localhost:3000", "http://localhost:5173"]);
+});
+
+for (const bad of ["localhost:4000", "ftp://x", "http://localhost:5000/path", "http://localhost:5000?a=1", "http://localhost:5000/#x", "not a url"]) {
+  test(`init rejects --origin ${bad} and writes nothing`, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "cli-test-"));
+    const r = await cli(dir, ["init", "--origin", "http://localhost:3000", "--origin", bad]);
+    assert.equal(r.code, 1);
+    assert.ok(r.stdout.includes("--origin must look like http://localhost:3000"), r.stdout);
+    assert.equal(existsSync(join(dir, brand.dataDir)), false);
+  });
+}
+
 test("init in a non-git directory warns and next works on branch no-git", async () => {
   await withStub(async (stub) => {
     const dir = mkdtempSync(join(tmpdir(), "cli-test-"));

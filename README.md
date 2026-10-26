@@ -74,7 +74,7 @@ In another terminal, in the same project:
 tackboard status
 ```
 
-It shows the branch, `agent: claude-main (online)` and `no threads`. Now reload your dev site, comment on the page (see below), and run `tackboard wait`. The comment prints.
+It shows the branch and `no threads`. If it prints, the daemon is running. Now reload your dev site, comment on the page (see below), and run `tackboard wait`. The comment prints.
 
 ### Not working?
 
@@ -109,7 +109,7 @@ If you are not sure, run `tackboard reply <id> "<question>" --ask` and stop.
 
 The agent runs these in the project folder. The agent name is `claude-main`; change it with `--as <name>` or the `TACKBOARD_AGENT` environment variable.
 
-To run an agent in a second git worktree, copy the config into it first: `mkdir .tackboard && cp <project folder>/.tackboard/config.json .tackboard/config.json`. It talks to the same daemon. `next` and `wait` there only see threads made on the worktree's branch, while `status` and `comment` use the branch the daemon is on.
+The daemon stamps each page comment with the branch of the folder it runs in, and git does not allow the same branch in two worktrees. So an agent only sees comments made while that folder was on its branch. To run an agent in a second git worktree, run `tackboard init --origin <that worktree's dev site address>` and `tackboard start` inside it. It then has its own daemon and port, and the script tag `init` prints goes on that worktree's dev site. Copying the config into a worktree does not work: `next` and `wait` there find nothing.
 
 | Command | What it does |
 |---|---|
@@ -119,7 +119,7 @@ To run an agent in a second git worktree, copy the config into it first: `mkdir 
 | `tackboard resolve <id>` | Marks the thread resolved. Refused with `thread 1 is waiting on the user` while you have not answered an `--ask`. |
 | `tackboard comment --selector <css> <text> [--mention me]` | The agent starts a thread on an element. `--mention me` puts `@<your user name>` in front of the text. |
 | `tackboard ack` | Confirms a restore notice (see below). |
-| `tackboard status` | Shows the branch, whether an agent is online, and the threads. |
+| `tackboard status` | Shows the branch and the threads. If it prints, the daemon is running. |
 | `tackboard history [id]` | Lists what happened, including exactly what the agent was given when it claimed a thread. |
 
 Example output of `tackboard next`:
@@ -161,7 +161,7 @@ The agent finds out on its next command: the output starts with a `NOTICE` block
 
 ## Limits
 
-- One daemon watches one working tree. The agent may be in another worktree (the command sends its own branch to pick threads). Restore always acts on the daemon's project folder and is refused (`wrong_branch`) if the thread's branch is not the one checked out there.
+- One daemon watches one working tree, and page comments are stamped with the branch of that folder. An agent in another worktree needs its own `init` and `start` (see "The agent loop"). Restore always acts on the daemon's project folder and is refused (`wrong_branch`) if the thread's branch is not the one checked out there.
 - Undo of a restore is the safety snapshot above. Messages already removed by a restore stay removed.
 - You can resolve a thread that is `waiting on you`. Only the agent is blocked from doing that.
 - "History" in the panel lists threads removed by a restore and threads whose branch is no longer a local git branch. Branches named `HEAD` (detached) and `no-git` are never treated this way.

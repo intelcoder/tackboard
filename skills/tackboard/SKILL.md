@@ -5,7 +5,7 @@ description: Use when the user leaves comments on their running dev site and you
 
 # Tackboard
 
-The user clicks things on their dev site and leaves comments. You read the comments with the `tackboard` command, change the code, and answer. Run the commands in the project folder, or in a git worktree that has the project's config copied in (see "One agent per worktree" below).
+The user clicks things on their dev site and leaves comments. You read the comments with the `tackboard` command, change the code, and answer. Run the commands in the project folder, or in a git worktree that has its own `tackboard init` and daemon (see "One agent per worktree" below).
 
 ## The loop
 
@@ -18,7 +18,7 @@ The user clicks things on their dev site and leaves comments. You read the comme
 
 Other commands:
 
-- `tackboard status` shows the branch, whether an agent is online, and the threads.
+- `tackboard status` shows the branch and the threads. If it answers, the daemon is running. It does not show whether any agent is working.
 - `tackboard history [id]` lists what happened, including what you were given when you took a thread.
 - `tackboard comment --selector <css> <text> [--mention me]` starts a thread of your own on an element. Your comment always shows as "waiting on you". `--mention me` only puts `@<user name>` in front of the text.
 
@@ -46,14 +46,16 @@ You show up as `claude-main`. Pass `--as <name>` to any command to use another n
 
 ## One agent per worktree
 
-Comments are kept per git branch. Only `next` and `wait` send the branch of the folder you run them in. `status`, `comment` and the rest use the branch the daemon is on. Run one agent in each git worktree.
+Comments are kept per git branch. The daemon stamps each page comment with the branch of the folder it runs in, and git does not allow the same branch in two worktrees. So you only see comments made while the daemon's folder was on your branch. Copying the config into a worktree does not help: the commands run, but `next` and `wait` find nothing.
 
-A second worktree has no `.tackboard` folder, so every command there says `no tackboard project found here`. Give it the project's config, from inside the worktree. This uses the same daemon, and git does not show the folder as new:
+To work in a second worktree, give it its own daemon. Ask the user to run these inside that worktree, with the worktree's dev site address as `--origin`:
 
 ```
-mkdir .tackboard
-cp <project folder>/.tackboard/config.json .tackboard/config.json
+tackboard init --origin http://localhost:3001
+tackboard start
 ```
+
+The worktree then has its own port, and the script tag that `init` prints must go on that worktree's dev site. Comments made on that site are stamped with the worktree's branch, and `next` there gets them.
 
 Two agents in the same folder do not collide: each `next` gets a different thread, so they split the queue. Give each its own `--as` name.
 

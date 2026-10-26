@@ -60,15 +60,29 @@ function freePort(): Promise<number> {
   });
 }
 
+function clean_origin(given: string): string {
+  const bad = new CliError("--origin must look like http://localhost:3000");
+  let url: URL;
+  try {
+    url = new URL(given);
+  } catch {
+    throw bad;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") throw bad;
+  if (url.pathname !== "/" || url.search !== "" || url.hash !== "" || given.includes("?") || given.includes("#")) throw bad;
+  return url.origin;
+}
+
 async function init(cwd: string, a: Args): Promise<number> {
   const existing = findConfig(cwd);
   const same = existing && resolve(existing.dir) === resolve(cwd) ? existing.config : undefined;
   const port = a.values.port ? Number(a.values.port) : (same?.port ?? (await freePort()));
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new CliError("--port must be a number from 1 to 65535");
+  const origins = a.values.origin?.map(clean_origin);
   const config = {
     port,
     token: same?.token ?? randomBytes(24).toString("hex"),
-    origins: a.values.origin ?? same?.origins ?? ["http://localhost:3000", "http://localhost:5173"],
+    origins: origins ?? same?.origins ?? ["http://localhost:3000", "http://localhost:5173"],
     userName: a.values.user ?? same?.userName ?? userInfo().username,
   };
   writeConfig(cwd, config);
