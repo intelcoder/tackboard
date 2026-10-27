@@ -110,7 +110,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
   };
 
   const app = new Hono<{ Variables: Variables }>();
-  app.use("*", security({ allowedOrigins: opts.allowedOrigins, token: opts.token, port: () => address()?.port ?? opts.port }));
+  app.use("*", security({ allowedOrigins: [...opts.allowedOrigins, brand.extensionOrigin], token: opts.token, port: () => address()?.port ?? opts.port }));
 
   app.onError((e, c) => {
     if (e instanceof DomainError) return c.json({ error: e.code, message: e.message }, ERROR_STATUS[e.code] as 400);

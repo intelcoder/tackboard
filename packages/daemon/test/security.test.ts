@@ -129,3 +129,32 @@ test("POST to a token-free path needs the token and its body is not read first",
     }
     assert.equal((await d.call("GET", paths.health, undefined, { [brand.tokenHeader]: "" })).status, 200);
   }));
+
+test("extension origin with the token is accepted and gets its CORS header", () =>
+  with_daemon(async (d) => {
+    const r = await d.call("GET", paths.threads, undefined, { origin: brand.extensionOrigin });
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get("access-control-allow-origin"), brand.extensionOrigin);
+  }));
+
+test("another chrome-extension origin is refused as forbidden_origin and gets no CORS header", () =>
+  with_daemon(async (d) => {
+    const r = await d.call("GET", paths.threads, undefined, { origin: "chrome-extension://" + "a".repeat(32) });
+    assert.equal(r.status, 403);
+    assert.equal((await r.json()).error, "forbidden_origin");
+    assert.equal(r.headers.get("access-control-allow-origin"), null);
+  }));
+
+test("the extension origin without a token is unauthorized", () =>
+  with_daemon(async (d) => {
+    const r = await raw(d.port, paths.threads, { host: `127.0.0.1:${d.port}`, origin: brand.extensionOrigin });
+    assert.equal(r.status, 401);
+    assert.equal(JSON.parse(r.body).error, "unauthorized");
+  }));
+
+test("the extension origin on a wrong Host is forbidden_host", () =>
+  with_daemon(async (d) => {
+    const r = await raw(d.port, paths.threads, { host: "evil.example.com", origin: brand.extensionOrigin, [brand.tokenHeader]: d.token });
+    assert.equal(r.status, 403);
+    assert.equal(JSON.parse(r.body).error, "forbidden_host");
+  }));

@@ -11,4 +11,6 @@ export const brand = {
   configGlobal: "__TACKBOARD__",
   envPrefix: "TACKBOARD_",
   sourceAttr: "data-tb-src",
+  extensionKey: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAkukkK204SWW8glU4GYnnjaFpsoV4CR4pbEg/6gV/upvp6pxbaJkeqzkiRr7aYXsXlmwTgPyG2aiCC5ySTFj+Oexqgp7iDrnfNwTLUj9MKN+0a7zTH5nGMdd4bOmaCkQaqSt54FP68alJuJWimBFX4F80gKri/liCU7X/7wzJYKkiTEh/L+8gSTBEjZlnGMTTo2ivepOb/rfqQd6XcJdE8VseLKLjkkAo6LyJLHYlPU/X+tZHlGZm+QmBE4OPnKWL136UZ922SV2LQ7Tj4u7qQWjuFcyRtHXhWP6Q9bgMLbToI/tCSwLkIlRZM/Z0PFRArbUXGEolPD8ebrTRlVHomwIDAQAB",
+  extensionOrigin: "chrome-extension://hinelfccpbbimkajobmpalnodachpjdh",
 } as const;
