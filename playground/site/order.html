@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corner Crumb Bakery: Order</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="playground.css">
+<script src="playground.js" defer></script>
+</head>
+<body>
+<div class="page">
+<header class="page-header">
+<span class="logo">Corner Crumb</span>
+<nav class="main-links" aria-label="Main">
+<a href="index.html">Home</a>
+<a href="order.html" class="here">Order</a>
+</nav>
+</header>
+<main class="order-main">
+<div class="order-intro">
+<h1 class="order-title">Order for pickup</h1>
+<p>Tell us what you would like and when. We will have it ready and warm at the counter.</p>
+</div>
+<div class="order-columns">
+<form class="order-form">
+<h2 class="box-title">Your details</h2>
+<div class="field-row">
+<label class="field">Name<input type="text" value="Sam Rivera"></label>
+<label class="field">Phone<input type="tel" value="555 0142"></label>
+</div>
+<div class="field-row">
+<label class="field">Bread<select><option>Sourdough loaf</option><option>Cinnamon roll</option><option>Seeded rye</option></select></label>
+<label class="field narrow">Quantity<input type="number" value="2" min="1"></label>
+</div>
+<label class="field">Pickup time<select><option>Tomorrow, 7:30</option><option>Tomorrow, 12:00</option><option>Saturday, 9:00</option></select></label>
+<label class="field">Notes<textarea rows="3">Sliced, please.</textarea></label>
+<button class="place-order" type="submit">Place order</button>
+</form>
+<aside class="order-side">
+<section class="price-list">
+<h2 class="box-title">Price list</h2>
+<div class="price-list-line"><span>Sourdough loaf</span><span>$4.50</span></div>
+<div class="price-list-line"><span>Cinnamon roll</span><span>$3.25</span></div>
+<div class="price-list-line"><span>Seeded rye</span><span>$5.00</span></div>
+</section>
+<section class="order-summary">
+<h2 class="box-title">Your order</h2>
+<p class="soft-text">Nothing added yet.</p>
+<div class="pickup-note">
+<p>Pickup only</p>
+<p>Pay at the counter when you collect.</p>
+</div>
+</section>
+</aside>
+</div>
+</main>
+<footer class="page-footer">
+<div class="footer-inner">
+<span>Corner Crumb Bakery · 12 Mill Lane · Closed on Sundays</span>
+<span class="footer-links"><a href="index.html">Home</a><a href="order.html">Order</a></span>
+</div>
+</footer>
+</div>
+</body>
+</html>

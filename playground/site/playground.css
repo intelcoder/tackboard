@@ -1,0 +1,86 @@
+body { margin: 0; }
+a { color: #b7351f; }
+a:hover { color: #8f2815; }
+
+.page { background: #fffdf8; color: #2a2118; font: 16px/1.55 'Nunito Sans', system-ui, sans-serif; }
+.heading { margin: 0; font: 400 32px/1.2 'Young Serif', Georgia, serif; }
+.card-title { margin: 0; font: 400 22px 'Young Serif', Georgia, serif; }
+.box-title { margin: 0; font: 400 24px 'Young Serif', Georgia, serif; }
+.soft-text { margin: 0; color: #4a3d2f; }
+
+.page-header { max-width: 1100px; margin: 0 auto; padding: 20px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.logo { font: 400 24px 'Young Serif', Georgia, serif; }
+.main-links { display: flex; gap: 24px; font-weight: 700; }
+.main-links a { color: #2a2118; text-decoration: none; }
+.main-links a.here { text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px; }
+
+.hero { background: #f6e3a8; }
+.hero-inner { max-width: 1100px; margin: 0 auto; padding: 56px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 32px; }
+.hero-text { flex: 1 1 340px; display: flex; flex-direction: column; gap: 16px; }
+.hero-title { margin: 0; font: 400 clamp(2.2rem, 5vw, 3.2rem)/1.1 'Young Serif', Georgia, serif; }
+.hero-lead { margin: 0; font-size: 18px; color: #4a3d2f; max-width: 46ch; }
+.hero-buttons { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 8px; }
+.link-button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 8px; font: 700 15px 'Nunito Sans', system-ui, sans-serif; text-decoration: none; }
+.link-button.filled { background: #b7351f; color: #fff; }
+.link-button.outlined { background: #fffdf8; color: #2a2118; border: 2px solid #2a2118; }
+.special-card { flex: 0 1 300px; background: #fffdf8; border-radius: 16px; padding: 24px 28px; display: flex; flex-direction: column; gap: 6px; }
+.small-label { font: 700 13px 'Nunito Sans', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #5a4d40; }
+.special-name { font: 400 24px 'Young Serif', Georgia, serif; }
+
+.products { max-width: 1100px; margin: 0 auto; padding: 56px 24px 24px; display: flex; flex-direction: column; gap: 24px; }
+.product-row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.product-card { flex: 1 1 260px; background: #e7eee0; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.product-card.lowered { margin-top: 16px; padding: 24px 20px; }
+.product-photo { height: 96px; border-radius: 8px; background: #c9d9bd; }
+.product-photo.cinnamon { background: #f0cfa8; }
+.product-photo.rye { background: #d6c9b3; }
+.price-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.price { font-weight: 700; }
+.add-button { font: 700 15px 'Nunito Sans', system-ui, sans-serif; color: #fff; background: #b7351f; border: 0; border-radius: 8px; padding: 11px 18px; min-height: 44px; cursor: pointer; }
+.add-button:hover { background: #8f2815; }
+
+.hours-and-address { max-width: 1100px; margin: 0 auto; padding: 32px 24px 56px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 32px; }
+.hours-list { display: flex; flex-direction: column; gap: 12px; }
+.hours-list .heading { margin-bottom: 4px; }
+.hours-line { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #e6dccb; }
+.hours-line:last-child { border-bottom: 0; }
+.hours-line span:last-child { font-weight: 700; }
+.find-us-box { background: #fff; border: 1px solid #e6dccb; border-radius: 12px; padding: 28px 32px; margin-left: 8px; display: flex; flex-direction: column; gap: 14px; }
+.find-us-box p { margin: 0; }
+.allergy-note { background: #f6e3a8; border-radius: 8px; padding: 14px 16px; }
+.allergy-note p { margin: 0; font-weight: 700; }
+.allergy-note p + p { margin: 4px 0 0; font-weight: 400; color: #4a3d2f; }
+
+.page-footer { background: #2a2118; color: #f3ead9; }
+.footer-inner { max-width: 1100px; margin: 0 auto; padding: 28px 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+.footer-links { display: flex; gap: 20px; }
+.footer-links a { color: #f3ead9; }
+
+.order-main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; display: flex; flex-direction: column; gap: 28px; }
+.order-intro { display: flex; flex-direction: column; gap: 8px; }
+.order-title { margin: 0; font: 400 clamp(2rem, 4.5vw, 2.8rem)/1.1 'Young Serif', Georgia, serif; }
+.order-intro p { margin: 0; font-size: 18px; color: #4a3d2f; max-width: 52ch; }
+.order-columns { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+.order-form { flex: 1.5 1 420px; background: #fff; border: 1px solid #e6dccb; border-radius: 12px; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+.field-row { display: flex; flex-wrap: wrap; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-weight: 700; }
+.field-row .field { flex: 1 1 220px; }
+.field-row .field.narrow { flex: 0 1 120px; }
+.field input, .field select, .field textarea { font: 400 16px 'Nunito Sans', system-ui, sans-serif; color: #2a2118; background: #fffdf8; border: 1px solid #b9ab94; border-radius: 8px; padding: 10px 12px; min-height: 44px; box-sizing: border-box; width: 100%; }
+.field textarea { resize: vertical; }
+.place-order { font: 700 16px 'Nunito Sans', system-ui, sans-serif; color: #fff; background: #b7351f; border: 0; border-radius: 8px; padding: 12px 24px; min-height: 48px; cursor: pointer; align-self: flex-start; }
+.place-order:hover { background: #8f2815; }
+.order-side { flex: 1 1 300px; display: flex; flex-direction: column; gap: 20px; }
+.price-list { background: #e7eee0; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 4px; }
+.price-list .box-title { margin-bottom: 8px; }
+.price-list-line { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #c9d9bd; }
+.price-list-line:last-child { border-bottom: 0; }
+.price-list-line span:last-child { font-weight: 700; }
+.order-summary { background: #fff; border: 1px solid #e6dccb; border-radius: 12px; padding: 20px 24px 24px; margin-left: 12px; display: flex; flex-direction: column; gap: 10px; }
+.order-summary .box-title { font-size: 20px; }
+.order-summary p { margin: 0; }
+.pickup-note { background: #f6e3a8; border-radius: 8px; padding: 12px 14px; }
+.pickup-note p { margin: 0; font-weight: 700; }
+.pickup-note p + p { margin: 4px 0 0; font-weight: 400; color: #4a3d2f; }
+
+.fill-item { font-size: 12px; color: #4a3d2f; }

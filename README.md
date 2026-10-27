@@ -91,6 +91,25 @@ If it prints, the daemon is running. The `agent` line is only the name the agent
 - `cannot reach the daemon on port <port>; run tackboard start`: the daemon is not running. Run `tackboard start` in your project.
 - The bar shows, but sending a comment fails with `Cannot reach the daemon`: the address of your dev site is not in the `origins` list in `.tackboard/config.json`. Run `init` again with `--origin` once for every address you want (it replaces the list), then restart `tackboard start`.
 
+## Try it without a project of your own
+
+```
+npm run playground
+```
+
+This makes a new folder in your system temp directory, copies a small two-page bakery site into its `site/` folder, makes it a git project of its own, runs `init` and `start` there, and serves the site with the overlay already added. It prints:
+
+```
+Playground site: http://localhost:5199
+Project folder: <temp folder>/tackboard-playground-<random>
+Pages: <temp folder>/tackboard-playground-<random>/site
+Start an agent there: cd "<temp folder>/tackboard-playground-<random>" && claude
+Comments daemon: http://127.0.0.1:<port>
+Press Ctrl+C to stop. The folder stays where it is.
+```
+
+The CLI's own lines (from `init`, the installed skill and the SQLite warning) print as well. Open the site address, comment on the page, and start your agent in the project folder it printed (the one line above does that). The pages are in the `site/` folder inside it, and only that folder is served: the project folder itself also holds the git data, the daemon token and the agent skill, and the site never shows them. Restore only touches that copy, never this repo or any project of yours. Add `?fill=20000` to a page address to add 20000 small items, for checking speed. Ctrl+C stops the daemon and the server. The folder is left in place and every run makes a new one, so delete old ones yourself when you are done.
+
 ## Comment on the page
 
 Reload your dev site. A small bar appears with three tools and a comments button:
