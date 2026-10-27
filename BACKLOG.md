@@ -48,6 +48,10 @@ Priority: **P1** can lose or confuse a user's data or work. **P2** is a visible 
 - **P3: idea, tools for the agent.** A channel with tools (reply, comment) instead of shell commands. Not needed: the CLI works with every agent.
 - **P3: idea, WebSocket or Server-Sent Events** between the daemon and the page instead of polling. Browsers cannot set a header on either, so the token would have to move into the URL or a first message. Left out because the page cost was the real problem, and that is fixed.
 
+## Playground
+
+- **P3: a hard link to an outside file is served.** The playground server serves only `<copy>/site/` and checks the real path of every file, which closes every symlink case, but a hard link (`ln`, not `ln -s`) made inside `site/` to a file elsewhere on the same disk (for example the daemon's token file) looks like an ordinary file and is served. Only an agent working in the throwaway copy can make one. The daemon also gives the token to any allowed page in its own bundle, by design.
+
 ## Names (the rule: easy everyday words, no jargon)
 
 - **P3: names left after the plain-names pass.** Kept on purpose: `h`, `H` and `createH` (`h` is also a height in many places, so a blind rename is unsafe), the CSS classes `tb-crumbs` and `tb-convo` (browser tests select them), the `job` field on queue items. Cryptic names a reviewer still found, with a plainer one: `crumbs2` and `chain` (hover.ts) -> `parents`, `kept` and `finder` (element_ref.ts) -> `foundElements`, `snap`, `lit`, `lastLook`, `settle`, `poller` in tests and helpers -> `savedState`, `highlighted`, `lastSeen`, `waitUntilStill`, `pollTimer`, `evil` and `fakeSend` and `withStub` in tests -> `badInput`, `pretendSend`, `withFakeDaemon`, `px` -> `pixels`, and the `box` variable in `thread_view.test.ts` -> `replyBox`. The `fiber` names in `source_map.ts` are React's own word and may stay.
