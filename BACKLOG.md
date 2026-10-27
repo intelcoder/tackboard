@@ -52,6 +52,10 @@ Priority: **P1** can lose or confuse a user's data or work. **P2** is a visible 
 
 - **P3: a hard link to an outside file is served.** The playground server serves only `<copy>/site/` and checks the real path of every file, which closes every symlink case, but a hard link (`ln`, not `ln -s`) made inside `site/` to a file elsewhere on the same disk (for example the daemon's token file) looks like an ordinary file and is served. Only an agent working in the throwaway copy can make one. The daemon also gives the token to any allowed page in its own bundle, by design.
 
+- **P3: playground tests leave the daemon behind when they fail.** The `finally` blocks of most tests in `e2e/tests/playground.spec.ts` stop only the playground, and the daemon runs in its own process group, so a failing test leaves a daemon running (passing runs are clean). The SIGHUP test already records and kills its own pids; the others could do the same.
+- **P3: `SIGKILL` of the playground** leaves its daemon running (no program can handle it). Stop it with Ctrl+C, SIGTERM or SIGHUP.
+- **P3: SIGTERM during a reset** can still print the done line although the daemon is deliberately not restarted while leaving.
+
 ## Names (the rule: easy everyday words, no jargon)
 
 - **P3: names left after the plain-names pass.** Kept on purpose: `h`, `H` and `createH` (`h` is also a height in many places, so a blind rename is unsafe), the CSS classes `tb-crumbs` and `tb-convo` (browser tests select them), the `job` field on queue items. Cryptic names a reviewer still found, with a plainer one: `crumbs2` and `chain` (hover.ts) -> `parents`, `kept` and `finder` (element_ref.ts) -> `foundElements`, `snap`, `lit`, `lastLook`, `settle`, `poller` in tests and helpers -> `savedState`, `highlighted`, `lastSeen`, `waitUntilStill`, `pollTimer`, `evil` and `fakeSend` and `withStub` in tests -> `badInput`, `pretendSend`, `withFakeDaemon`, `px` -> `pixels`, and the `box` variable in `thread_view.test.ts` -> `replyBox`. The `fiber` names in `source_map.ts` are React's own word and may stay.
