@@ -2,10 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { request } from "node:http";
 import type { Server } from "node:http";
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createSiteServer } from "../../../scripts/playground.ts";
+import { createSiteServer, reasonNotToReset } from "../../../scripts/playground.ts";
 
 const TAG = '<script src="http://127.0.0.1:1234/bundle.js"></script>';
 
@@ -202,3 +203,27 @@ test("a missing file and a folder both get 404, and there is no listing", () =>
     assert.ok(!folder.body.includes("index.html"));
     assert.equal((await get(server, "/empty")).status, 404);
   }));
+
+/** A throwaway "repo" and a throwaway copy folder, both in the temp folder. The real repo is never used. */
+test("reset is refused for any folder that is not this run's own copy, and says why", () => {
+  const temp = realpathSync(mkdtempSync(join(tmpdir(), "reset-test-")));
+  const repo = join(temp, "repo");
+  mkdirSync(join(repo, "inside"), { recursive: true });
+  const copy = join(temp, "copy");
+  mkdirSync(copy);
+  execFileSync("git", ["init", "-q"], { cwd: copy });
+  const noGit = join(temp, "no-git");
+  mkdirSync(noGit);
+  const link = join(temp, "link-to-repo");
+  symlinkSync(repo, link);
+
+  assert.equal(reasonNotToReset(copy, copy, repo), null);
+  assert.match(reasonNotToReset(repo, repo, repo)!, /this repo/);
+  assert.match(reasonNotToReset(join(repo, "inside"), join(repo, "inside"), repo)!, /this repo/);
+  assert.match(reasonNotToReset(temp, temp, repo)!, /holds this repo/);
+  assert.match(reasonNotToReset(noGit, noGit, repo)!, /its own git project/);
+  assert.match(reasonNotToReset(link, link, repo)!, /link/);
+  assert.match(reasonNotToReset(copy, noGit, repo)!, /not the folder/);
+  assert.match(reasonNotToReset(join(temp, "gone"), join(temp, "gone"), repo)!, /not there/);
+  assert.match(reasonNotToReset("/usr", "/usr", repo)!, /temp folder/);
+});

@@ -97,6 +97,8 @@ If it prints, the daemon is running. The `agent` line is only the name the agent
 npm run playground
 ```
 
+or `just playground` (needs the `just` tool; `npm run playground` works without it).
+
 This makes a new folder in your system temp directory, copies a small two-page bakery site into its `site/` folder, makes it a git project of its own, runs `init` and `start` there, and serves the site with the overlay already added. It prints:
 
 ```
@@ -105,10 +107,11 @@ Project folder: <temp folder>/tackboard-playground-<random>
 Pages: <temp folder>/tackboard-playground-<random>/site
 Start an agent there: cd "<temp folder>/tackboard-playground-<random>" && claude
 Comments daemon: http://127.0.0.1:<port>
+To start over, type reset and press Enter: files go back to the first version and comments are cleared.
 Press Ctrl+C to stop. The folder stays where it is.
 ```
 
-The CLI's own lines (from `init`, the installed skill and the SQLite warning) print as well. Open the site address, comment on the page, and start your agent in the project folder it printed (the one line above does that). The pages are in the `site/` folder inside it, and only that folder is served: the project folder itself also holds the git data, the daemon token and the agent skill, and the site never shows them. Restore only touches that copy, never this repo or any project of yours. Add `?fill=20000` to a page address to add 20000 small items, for checking speed. Ctrl+C stops the daemon and the server. The folder is left in place and every run makes a new one, so delete old ones yourself when you are done.
+The CLI's own lines (from `init`, the installed skill and the SQLite warning) print as well. Open the site address, comment on the page, and start your agent in the project folder it printed (the one line above does that). The pages are in the `site/` folder inside it, and only that folder is served: the project folder itself also holds the git data, the daemon token and the agent skill, and the site never shows them. Restore only touches that copy, never this repo or any project of yours. Add `?fill=20000` to a page address to add 20000 small items, for checking speed. To start over at any time, type `reset` (or `r`) and press Enter in the playground terminal. The pages go back to the first commit (edits, new files, branches, tags and stashes are removed), every comment and snapshot is cleared, and the daemon restarts on the same port with the same token, so a page you have open keeps working. The installed skill stays. Reset only ever acts on that copy folder and refuses with a reason if the folder is anything else. Ctrl+C stops the daemon and the server. The folder is left in place and every run makes a new one, so delete old ones yourself when you are done.
 
 ## Comment on the page
 
