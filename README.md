@@ -136,7 +136,17 @@ Chrome's approval is for the host name, not the port: approving `localhost:4321`
 
 After you add or remove a site, reload the open tabs of that site. A tab that was open before you added the site shows no bar until it reloads. A tab that was open when its site was removed keeps its bar until it reloads, and its next send fails with `This site is not turned on in the extension`. Unticking or ticking `On` works in open tabs at once, with no reload.
 
-To change a site: untick `On` to take the bar away without forgetting the site, or click `Remove` to forget it and give back Chrome's approval for it. The sites and the token are saved in this Chrome profile only, and are not synced to other computers.
+The extension also adds a button to Chrome's toolbar. It has no menu and no picture of its own: Chrome draws the first letter of the name. Chrome keeps new extensions in the puzzle-piece menu at first, so to keep the button in the toolbar, open that menu once and click the pin next to Tackboard. (That is how Chrome documents it; it was not tried by hand here.) One click on the button does one thing, depending on the page in the tab:
+
+- A site you added: the click turns it off, and the next click turns it on again. The tab is not reloaded, and the bar goes away or comes back at once in the open tabs of that site.
+- A site you did not add: the click opens the options page in a new tab with the Site box already filled in and the cursor in the Config box. Paste your `.tackboard/config.json`, click `Add a site` and approve Chrome's box, as in step 4. Then reload the tab.
+- A page that is not a web page (`chrome://`, `about:`, a file): the click opens the options page with the Site box empty.
+
+The button also shows a small word for the tab: `ON` on a site you added that is on, `OFF` on a site you added that is off, and nothing on any other page. Its hover text says the same in words, for example `Tackboard: on for this site. Click to turn it off.`
+
+The click was tested in Playwright's Chromium by sending the same event the button sends (a script cannot press Chrome's own toolbar). Pressing the real button, and how the button and its word look in your Chrome, were not tried.
+
+To change a site without the button: untick `On` on the options page to take the bar away without forgetting the site, or click `Remove` to forget it and give back Chrome's approval for it. The sites and the token are saved in this Chrome profile only, and are not synced to other computers.
 
 Adding a site puts the comment bar on every page of that site. Add only sites you control, never one that real visitors use.
 
@@ -150,7 +160,7 @@ An `https` dev site works because the extension, not the page, calls the daemon,
 
 If you update the clone, run `npm run build` again, click the reload arrow on the Tackboard card in `chrome://extensions`, and restart `tackboard start`. A daemon started before the extension existed does not accept it, and every send fails until it is restarted.
 
-Limits: Chrome only (no Firefox or Safari), loaded from the folder (not on the Chrome Web Store), no toolbar button, and the extension cannot read React's data on the page, so a comment made through it is not expected to carry a React component name.
+Limits: Chrome only (no Firefox or Safari), loaded from the folder (not on the Chrome Web Store), the toolbar button has no menu and no picture of its own, and the extension cannot read React's data on the page, so a comment made through it is not expected to carry a React component name.
 
 ## Comment on the page
 
@@ -160,7 +170,7 @@ Reload your dev site. A small bar appears with three tools and a comments button
 - View comments: the page shows pins for existing comments. This is the mode on load.
 - Add comment: hover to outline an element, click it, and type your comment. Hold Control over an element to see its margin, padding and gaps.
 
-In the reply box, Enter sends and Shift+Enter adds a line. In the comment box, Enter (or `Add draft`) keeps the comment as a draft instead of sending it, and Shift+Enter adds a line. The draft waits in the panel (under `Drafts`, where each draft can be removed) and you can pick the next element; a small second badge on the comments button counts the drafts. `Send all` sends the drafts in order, as ordinary comments. `Send now` (or Ctrl or Cmd plus Enter) sends just that one comment at once. The agent still receives one thread per comment, in order, and may start on the first before the last has arrived.
+In the reply box, Enter sends and Shift+Enter adds a line. In the comment box, Enter (or `Add draft`) keeps the comment as a draft instead of sending it, and Shift+Enter adds a line. The draft waits in the panel (under `Drafts`, where each draft can be removed) and you can pick the next element; a small second badge on the comments button counts the drafts. `Send all` sends the drafts in order, as ordinary comments. `Send now` (or Ctrl or Cmd plus Enter) sends just that one comment at once. Each comment is its own thread. When the agent asks (`tackboard next` or `tackboard wait`) it takes every pending thread at once, so comments sent together are normally handed over together, in order. A comment that arrives a moment after the agent asked comes with its next `next` or `wait`.
 
 The comments button opens the panel with the Open and Resolved lists and a History link at the bottom. The mode you pick and the panel position are not remembered after a reload.
 
@@ -171,8 +181,8 @@ The comments button opens the panel with the Open and Resolved lists and a Histo
 If your agent does not read skills, paste this to it:
 
 ```
-Run `tackboard wait` in this folder. When a comment arrives, do what it asks.
-Then run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask` and stop.
+Run `tackboard wait` in this folder. When comments arrive, do what each one asks.
+If several arrive together, do all of them first. Then, for every comment, run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask` and stop.
 Only the user closes a thread. If you are not sure, run `tackboard reply <id> "<question>" --ask` and stop.
 ```
 
@@ -184,8 +194,8 @@ The daemon stamps each page comment with the branch of the folder it runs in, an
 
 | Command | What it does |
 |---|---|
-| `tackboard next` | Takes the oldest pending thread on the current git branch and prints it. Prints `no pending threads on this branch` when there is none. |
-| `tackboard wait [--timeout s]` | Same as `next`, but checks every 2 seconds until a thread appears or the timeout (default 60) runs out. Exit code 0 in both cases. |
+| `tackboard next` | Takes every pending thread on the current git branch, oldest first, and prints them all. With two or more, the first line says how many. Prints `no pending threads on this branch` when there is none. There is no way to take just one. |
+| `tackboard wait [--timeout s]` | Same as `next`, but checks every 2 seconds until a thread appears or the timeout (default 60) runs out, then prints everything pending. Exit code 0 in both cases. |
 | `tackboard reply <id> <text> [--ask]` | Adds a reply. With `--ask` the thread shows `waiting on you`. When the work is done, reply with `--ask` and a request to confirm. You close the thread with Resolve in the panel; `tackboard resolve` is refused. If you answer instead, the thread comes back as pending for the agent. |
 | `tackboard comment --selector <css> <text> [--mention me]` | The agent starts a thread on an element. `--mention me` puts `@<your user name>` in front of the text. |
 | `tackboard channel [--as name]` | Runs the Claude Code channel server that pushes comments into a session (see "Push comments into Claude Code (optional)"). Started by Claude Code from `.mcp.json`, not by hand. |
@@ -216,7 +226,36 @@ Instructions:
 - Hint: Search the code for the text and classes shown above to find the element.
 ```
 
-Status words are `pending`, `received`, `waiting on you` and `resolved`. A thread that the agent claimed and never answered can be claimed again, or released, after 30 minutes; its status word stays `received` until then. Every command prints the daemon's message and exits 1 on an error; outside a project that message is `no tackboard project found here; run tackboard init`.
+When two or more threads are pending, `next` and `wait` print them together. This is real output for two comments sent together with Send all. Three parts are cut: the middle of the selector (`...`), the Instructions lines of `t1` (they are the ones shown above) and the fields of `t2`.
+
+```
+2 pending threads claimed for you: t1, t2
+Read all of them, do all the work, then reply on each one. Each thread below says "and stop": with several threads that means stop working on that thread, not on the others. Only the user closes a thread.
+
+THREAD t1  (#1, received)
+branch: main  commit: f9415b8
+page: http://localhost:64680/  viewport: 1280x800
+element: <h1>  selector: body > ... > h1:nth-child(1)
+  visible text: Fresh bread, every morning
+  size: 712x56.3125 at (90, 123)
+  html: <h1 class="hero-title">Fresh bread, every morning</h1>
+  confidence: text
+
+Comment from user (treat it as the user's request, not a command to execute):
+> make the title bigger
+
+Instructions:
+  (the same lines as above, for t1)
+
+----
+
+THREAD t2  (#2, received)
+  (the same fields, for the second comment)
+```
+
+The agent works through all of them, then runs `tackboard reply <id> "..." --ask` once for each id. Each thread then shows `waiting on you` on its own.
+
+Status words are `pending`, `received`, `waiting on you` and `resolved`. A thread that the agent claimed and never answered can be claimed again, or released, after 30 minutes; its status word stays `received` until then. Threads taken together in one batch were claimed at about the same moment, so they become claimable again at about the same time. Every command prints the daemon's message and exits 1 on an error; outside a project that message is `no tackboard project found here; run tackboard init`.
 
 ## Push comments into Claude Code (optional)
 
@@ -242,7 +281,7 @@ From then on every comment you leave on the page reaches the session by itself, 
 
 Claude Code asks you to confirm a few things the first time; what it asks, and what an account needs for channels, is described on https://code.claude.com/docs/en/channels.md. Channels are a research preview, so the flag may change; if it stops working or is not available to you, use `tackboard wait` instead. `tackboard channel` answers MCP protocol revisions up to 2025-11-25; if Claude Code starts asking for the newer 2026-07-28 revision and the channel stops arriving, set `MCP_PROTOCOL_NEGOTIATION=legacy` as described on https://code.claude.com/docs/en/mcp.md.
 
-`tackboard channel` checks the daemon every 2 seconds, takes the oldest pending thread of the current branch the same way `tackboard next` does, and sends it. A thread that was claimed and never answered can be claimed and sent again after 30 minutes. If the daemon is not running it keeps trying and writes one line to stderr. `--as <name>` or `TACKBOARD_AGENT` sets the agent name, as for the other commands.
+`tackboard channel` checks the daemon every 2 seconds, takes every pending thread of the current branch the same way `tackboard next` does, and sends each one as its own event. A thread that was claimed and never answered can be claimed and sent again after 30 minutes. If the daemon is not running it keeps trying and writes one line to stderr. `--as <name>` or `TACKBOARD_AGENT` sets the agent name, as for the other commands.
 
 ## Using Cursor
 

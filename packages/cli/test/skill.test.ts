@@ -30,6 +30,10 @@ test("the skill says only the user closes a thread", () => {
   assert.match(readFileSync(SKILL, "utf8"), /only the user closes/i);
 });
 
+test("the skill tells the agent to reply on each thread when several come together", () => {
+  assert.match(readFileSync(SKILL, "utf8"), /reply on each/i);
+});
+
 test("every command in the usage text appears in the skill", () => {
   const commands = usage_commands();
   assert.ok(commands.length >= 9, commands.join(","));

@@ -10,12 +10,12 @@ The user clicks things on their dev site and leaves comments. You read the comme
 ## The loop
 
 1. Run `tackboard wait`. It checks every 2 seconds for up to 60 seconds. If nothing comes it prints `no pending threads on this branch` and exits 0; run it again. Use `tackboard wait --timeout 300` to wait longer. `tackboard next` looks once and does not wait.
-2. When a thread prints, read it. It names the page, the element, a selector, and the comment.
-3. Do the work. Search the code for the text and classes shown to find the element.
-4. Run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask` and stop on that thread. Only the user closes a thread: they click Resolve in the panel, or they answer and the thread comes back to you as pending.
+2. When a thread prints, read it. It names the page, the element, a selector, and the comment. `next` and `wait` take every pending thread of the branch at once, so one or several threads may print. With two or more, the first line says how many (`3 pending threads claimed for you: t1, t2, t3`) and each thread follows, split by a line `----`. Read all of them first.
+3. Do the work for all of them. Search the code for the text and classes shown to find each element.
+4. Reply on each thread: run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask` once for every id. Each thread says "and stop": that means stop working on that thread, not on the others. Only the user closes a thread: they click Resolve in the panel, or they answer and the thread comes back to you as pending.
 5. Go back to step 1.
 
-If comments reach you as channel events (`<channel source="tackboard" ...>`, started by the user with `tackboard channel` in `.mcp.json`), the loop is the same: do the work, run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask`, and stop. Do not run `tackboard wait` or `tackboard next` for those; the event already claimed the thread.
+If comments reach you as channel events (`<channel source="tackboard" ...>`, started by the user with `tackboard channel` in `.mcp.json`), the loop is the same: do the work, run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask` once for each event, and stop. Several events may come together: do all of them first, then reply on each one. Do not run `tackboard wait` or `tackboard next` for those; the event already claimed the thread.
 
 Other commands:
 
@@ -58,6 +58,6 @@ tackboard start
 
 The worktree then has its own port, and the script tag that `init` prints must go on that worktree's dev site. Comments made on that site are stamped with the worktree's branch, and `next` there gets them.
 
-Two agents in the same folder do not collide: each `next` gets a different thread, so they split the queue. Give each its own `--as` name.
+Two agents in the same folder do not collide: each thread goes to only one of them, and the one that asks first takes everything pending. Give each its own `--as` name.
 
 Without git, the branch is `no-git`, the commit is `0000000`, and restore is unavailable.
