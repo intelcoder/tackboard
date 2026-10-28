@@ -6,7 +6,7 @@ import { createServer as createPortProbe } from "node:net";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { chromium, expect, test } from "@playwright/test";
-import type { BrowserContext, Page } from "@playwright/test";
+import type { BrowserContext, Frame, Page } from "@playwright/test";
 import { buildExtension } from "../../packages/extension/build.ts";
 import { brand } from "../../packages/shared/src/brand.ts";
 import { createSiteServer } from "../../scripts/playground.ts";
@@ -138,7 +138,7 @@ async function addSite(stack: Stack, options: Page, site: string): Promise<void>
   await expect(options.locator("li", { hasText: site })).toBeVisible();
 }
 
-const host = (page: Page) => page.locator(`#${brand.hostId}`);
+const host = (page: Page | Frame) => page.locator(`#${brand.hostId}`);
 
 test("the extension has the fixed id", async () => {
   await withStack(async (stack) => {
@@ -308,8 +308,24 @@ test("a site that was not added gets no overlay", async () => {
   });
 });
 
-const registeredScripts = (options: Page) =>
-  options.evaluate(async () => ((await (globalThis as any).chrome.scripting.getRegisteredContentScripts()) as { id: string }[]).map((script) => script.id));
+const savedScripts = (options: Page) =>
+  options.evaluate(async () => (await (globalThis as any).chrome.scripting.getRegisteredContentScripts()) as { id: string; allFrames?: boolean }[]);
+const registeredScripts = async (options: Page) => (await savedScripts(options)).map((script) => script.id);
+
+/** Adds a page of the site inside the page as an iframe, and gives back that frame once it has loaded. */
+async function addFrame(page: Page, address: string): Promise<Frame> {
+  await page.evaluate(
+    (src) =>
+      new Promise<void>((done) => {
+        const frame = document.createElement("iframe");
+        frame.onload = () => done();
+        frame.src = src;
+        document.body.append(frame);
+      }),
+    address,
+  );
+  return page.frames().find((frame) => frame.url() === address)!;
+}
 
 test("Remove unregisters the script only when no other site uses the same pattern", async () => {
   await withStack(async (stack) => {
@@ -345,8 +361,9 @@ test("when Chrome refuses to register the script, nothing is saved and one plain
     await options.getByLabel("Site").fill(fakeHttpsSite);
     await options.getByLabel("Config").fill(stack.configText);
     await options.getByRole("button", { name: "Add a site" }).click();
-    await expect(options.locator("#problem")).toHaveText("Chrome did not allow that site");
+    await expect(options.locator("#problem")).toHaveText(/^Chrome did not allow that site \(.*no.*\)$/);
     await expect(options.locator("#sites")).toHaveText("No sites yet.");
+    expect(await savedScripts(options)).toEqual([]);
     expect(await options.evaluate(async () => (await (globalThis as any).chrome.storage.local.get("sites")).sites)).toBeUndefined();
   });
 });
@@ -480,5 +497,187 @@ test("the toolbar button is registered and has no popup", async () => {
       return { listening: chrome.action.onClicked.hasListeners() as boolean, popup: chrome.runtime.getManifest().action.default_popup as string | undefined };
     });
     expect(seen).toEqual({ listening: true, popup: undefined });
+  });
+});
+
+test("adding a site registers one script for all frames, also when the site is added twice", async () => {
+  await withStack(async (stack) => {
+    const options = await optionsPage(stack);
+    for (let time = 0; time < 2; time++) {
+      await options.getByLabel("Site").fill(fakeHttpsSite);
+      await options.getByLabel("Config").fill(stack.configText);
+      await options.getByRole("button", { name: "Add a site" }).click();
+      await expect(options.getByLabel("Site")).toHaveValue("");
+      await expect(options.locator("#problem")).toHaveText("");
+      expect(await savedScripts(options)).toMatchObject([{ id: `${fakeHttpsSite}/*`, allFrames: true }]);
+    }
+  });
+});
+
+test("the overlay appears in a frame of the same host, never twice in one frame, and the token cannot be read from the frame", async () => {
+  await withStack(async (stack) => {
+    const token = (JSON.parse(stack.configText) as { token: string }).token;
+    const site = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, site.replace("http://", ""));
+    const page = await stack.context.newPage();
+    await page.goto(site);
+    await expect(host(page)).toBeAttached();
+    const frame = await addFrame(page, `${site}/order.html`);
+    await expect(host(frame)).toBeAttached();
+    await page.waitForTimeout(1000);
+    await expect(host(frame)).toHaveCount(1);
+
+    const seen = await frame.evaluate(
+      ([secret, global]) => {
+        let found = 0;
+        const scan = (node: Node) => {
+          if (node.nodeType === 3 && node.textContent!.includes(secret!)) found++;
+          if (node instanceof Element) {
+            for (const attribute of node.attributes) if (attribute.value.includes(secret!)) found++;
+            if (node.shadowRoot) node.shadowRoot.childNodes.forEach(scan);
+          }
+          node.childNodes.forEach(scan);
+        };
+        scan(document);
+        const stored = [localStorage, sessionStorage].some((store) => JSON.stringify(Object.entries(store)).includes(secret!));
+        return { found, stored, cookie: document.cookie.includes(secret!), globalValue: typeof (window as any)[global!] };
+      },
+      [token, brand.configGlobal],
+    );
+    expect(seen).toEqual({ found: 0, stored: false, cookie: false, globalValue: "undefined" });
+  });
+});
+
+test("a frame from another host inside an added page gets no overlay, and the daemon refuses its own fetch", async () => {
+  await withStack(async (stack) => {
+    const site = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, site.replace("http://", ""));
+    const page = await stack.context.newPage();
+    await page.goto(site);
+    await expect(host(page)).toBeAttached();
+    // this host is allowed in the build, but it was not added
+    const frame = await addFrame(page, `${fakeHttpsSite}/`);
+    await page.waitForTimeout(1500);
+    await expect(host(frame)).toHaveCount(0);
+    expect(await frame.evaluate((daemon) => fetch(`${daemon}/threads`).then((r) => r.status, () => "refused"), stack.daemonUrl)).toBe("refused");
+  });
+});
+
+test("a frame of an added host inside a page of a host that was not added shows no overlay and reaches no daemon", async () => {
+  await withStack(async (stack) => {
+    const site = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, site.replace("http://", ""));
+    // the same machine under another name, so this page is not an added site
+    const page = await stack.context.newPage();
+    await page.goto(site.replace("localhost", "127.0.0.1"));
+    await expect(host(page)).toHaveCount(0);
+    const frame = await addFrame(page, `${site}/`);
+    await page.waitForTimeout(1500);
+    await expect(host(frame)).toHaveCount(0);
+    await expect(host(page)).toHaveCount(0);
+  });
+});
+
+/** Opens the options page for a site, with the clipboard read replaced so the test decides what the clipboard holds. `answer` is code that runs in the page. */
+async function optionsWithClipboard(stack: Stack, answer: string): Promise<Page> {
+  const page = await stack.context.newPage();
+  await page.addInitScript(`window.__reads = 0; navigator.clipboard.readText = () => { window.__reads++; return ${answer}; };`);
+  await page.goto(`chrome-extension://${stack.extensionId}/options.html?site=${encodeURIComponent("http://localhost:1")}`);
+  await expect.poll(() => page.evaluate(() => (window as any).__reads)).toBe(1);
+  return page;
+}
+
+/** A short wait, so the answer of the clipboard read has been used before the test looks. */
+const settle = (page: Page) => page.evaluate(() => new Promise((done) => setTimeout(done, 200)));
+
+test("with a config on the clipboard the Config box fills when the page opens with ?site=, and typed text is not overwritten", async () => {
+  await withStack(async (stack) => {
+    const filled = await optionsWithClipboard(stack, `Promise.resolve(${JSON.stringify(stack.configText)})`);
+    await expect(filled.getByLabel("Config")).toHaveValue(stack.configText);
+
+    // the clipboard answers only after the user has typed
+    const late = await optionsWithClipboard(stack, `new Promise((done) => (window.__answer = () => done(${JSON.stringify(stack.configText)})))`);
+    await late.getByLabel("Config").fill("typed by hand");
+    await late.evaluate(() => (window as any).__answer());
+    await settle(late);
+    await expect(late.getByLabel("Config")).toHaveValue("typed by hand");
+  });
+});
+
+test("the Config box stays empty for text that is not a config, for an empty clipboard and for a clipboard read that fails", async () => {
+  await withStack(async (stack) => {
+    for (const answer of ['Promise.resolve("just some words")', 'Promise.resolve("")', 'Promise.reject(new Error("no"))']) {
+      const page = await optionsWithClipboard(stack, answer);
+      await settle(page);
+      await expect(page.getByLabel("Config")).toHaveValue("");
+      await expect(page.locator("#problem")).toHaveText("");
+    }
+  });
+});
+
+test("removing a site whose script was already unregistered still removes the site", async () => {
+  await withStack(async (stack) => {
+    const options = await optionsPage(stack);
+    const errors: Error[] = [];
+    // The test build grants the site for good, and Chrome refuses to take such a permission back, so that one error is expected here.
+    options.on("pageerror", (error) => error.message !== "You cannot remove required permissions." && errors.push(error));
+    await addSite(stack, options, fakeHttpsSite);
+    await options.evaluate(async (pattern) => (globalThis as any).chrome.scripting.unregisterContentScripts({ ids: [pattern] }), `${fakeHttpsSite}/*`);
+    expect(await savedScripts(options)).toEqual([]);
+
+    await options.locator("li", { hasText: fakeHttpsSite }).getByRole("button", { name: "Remove" }).click();
+    await expect(options.locator("#sites")).toHaveText("No sites yet.");
+    await options.waitForTimeout(500);
+    expect(await options.evaluate(async () => (await (globalThis as any).chrome.storage.local.get("sites")).sites)).toEqual({});
+    expect(errors).toEqual([]);
+  });
+});
+
+test("frames with srcdoc, about:blank, data: or blob: addresses inside an added page get no overlay", async () => {
+  await withStack(async (stack) => {
+    const site = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, site.replace("http://", ""));
+    const page = await stack.context.newPage();
+    await page.goto(site);
+    await expect(host(page)).toBeAttached();
+    // a same-host frame shows the extension is working in frames at all
+    const same = await addFrame(page, `${site}/order.html`);
+    await expect(host(same)).toBeAttached();
+
+    await page.evaluate(
+      () =>
+        Promise.all(
+          ["srcdoc", "about:blank", "data:text/html,<p>data</p>", URL.createObjectURL(new Blob(["<p>blob</p>"], { type: "text/html" }))].map(
+            (address, index) =>
+              new Promise<void>((done) => {
+                const frame = document.createElement("iframe");
+                frame.onload = () => done();
+                if (index === 0) frame.srcdoc = "<p>srcdoc</p>";
+                else frame.src = address;
+                document.body.append(frame);
+              }),
+          ),
+        ),
+    );
+    await page.waitForTimeout(1500);
+    const others = page.frames().filter((frame) => frame !== page.mainFrame() && frame !== same);
+    expect(others).toHaveLength(4);
+    for (const frame of others) await expect(host(frame), frame.url()).toHaveCount(0);
+  });
+});
+
+test("the clipboard is not read when the options page opens without ?site=", async () => {
+  await withStack(async (stack) => {
+    const page = await stack.context.newPage();
+    await page.addInitScript(`window.__reads = 0; navigator.clipboard.readText = () => { window.__reads++; return Promise.resolve(${JSON.stringify(stack.configText)}); };`);
+    await page.goto(`chrome-extension://${stack.extensionId}/options.html`);
+    await expect(page.locator("#sites")).toHaveText("No sites yet.");
+    await settle(page);
+    expect(await page.evaluate(() => (window as any).__reads)).toBe(0);
+    await expect(page.getByLabel("Config")).toHaveValue("");
   });
 });
