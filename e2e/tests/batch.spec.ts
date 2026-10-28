@@ -119,7 +119,8 @@ test("two comments sent together with Send all are taken together by next", asyn
   const [one, two] = await sendTwoTogether(h);
   const taken = (await h.agent(["next"])).stdout;
   expect(taken.startsWith(`2 pending threads claimed for you: ${one}, ${two}`)).toBe(true);
-  expect(taken.split("\n").filter((line) => line.startsWith("Read all of them"))).toHaveLength(1);
+  expect(taken.split("\n").filter((line) => line.startsWith("Instructions for all of them"))).toHaveLength(1);
+  expect(taken).not.toContain("and stop");
   expect(taken.indexOf(`THREAD ${one} `)).toBeGreaterThan(0);
   expect(taken.indexOf(`THREAD ${one} `)).toBeLessThan(taken.indexOf(`THREAD ${two} `));
   expect(taken.indexOf("make the button blue")).toBeLessThan(taken.indexOf("make this line bold"));

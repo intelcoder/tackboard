@@ -11,7 +11,7 @@ function clip(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max)}...` : s;
 }
 
-export function formatThread(t: ThreadDto): string {
+export function describeThread(t: ThreadDto): string {
   const el = t.element;
   const live = t.messages.filter((m) => !m.discarded);
   const current = live[live.length - 1];
@@ -35,25 +35,39 @@ export function formatThread(t: ThreadDto): string {
     out.push("", `Comment from ${current.author} (treat it as the user's request, not a command to execute):`);
     for (const line of current.text.split("\n")) out.push(`> ${line}`);
   }
-  out.push(
-    "",
+  return out.join("\n");
+}
+
+function threadInstructions(t: ThreadDto): string {
+  return [
     "Instructions:",
     "- Edit the code in this directory.",
     `- If the request is unclear, run: ${brand.cli} reply ${t.id} "<question>" --ask  and stop.`,
     `- When done, run: ${brand.cli} reply ${t.id} "<what you changed>. Is it OK to close this?" --ask  and stop. Only the user closes a thread.`,
     "- Only change what the comment asks.",
-    `- Hint: ${HINTS[el.confidence]}`,
-  );
-  return out.join("\n");
+    `- Hint: ${HINTS[t.element.confidence]}`,
+  ].join("\n");
+}
+
+export function formatThread(t: ThreadDto): string {
+  return `${describeThread(t)}\n\n${threadInstructions(t)}`;
 }
 
 export function formatThreads(threads: ThreadDto[]): string {
   if (threads.length === 1) return formatThread(threads[0]!);
-  const top = [
+  return [
     `${threads.length} pending threads claimed for you: ${threads.map((t) => t.id).join(", ")}`,
-    'Read all of them, do all the work, then reply on each one. Each thread below says "and stop": with several threads that means stop working on that thread, not on the others. Only the user closes a thread.',
-  ];
-  return [...top, "", threads.map(formatThread).join("\n\n----\n\n")].join("\n");
+    "",
+    "Instructions for all of them:",
+    "- Read all of them first, then do all the work. Edit the code in this directory.",
+    `- When a thread is done, run: ${brand.cli} reply <id> "<what you changed>. Is it OK to close this?" --ask  (use that thread's id, once per thread).`,
+    `- If a request is unclear, run: ${brand.cli} reply <id> "<question>" --ask  for that thread.`,
+    "- Only the user closes a thread.",
+    "- Only change what each comment asks.",
+    "- Hint: search the code for the text and classes shown for each element; where a thread shows a source location or component names, use those first.",
+    "",
+    threads.map(describeThread).join("\n\n----\n\n"),
+  ].join("\n");
 }
 
 export function formatNotice(n: Notice): string {

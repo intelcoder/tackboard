@@ -329,6 +329,8 @@ test("next with three pending threads prints all three in order and claims all t
     const at = ids.map((id) => r.stdout.indexOf(`THREAD ${id} `));
     assert.ok(at[0]! > 0 && at[0]! < at[1]! && at[1]! < at[2]!, r.stdout);
     assert.equal(r.stdout.split("\n----\n").length, 3);
+    assert.equal(r.stdout.split("Instructions for all of them").length, 2);
+    assert.ok(!r.stdout.includes("and stop"), r.stdout);
     assert.deepEqual((await list(stub)).threads.map((t) => t.status), ["received", "received", "received"]);
     assert.ok((await cli(project(stub), ["next"])).stdout.includes("no pending threads"));
   });
@@ -341,6 +343,8 @@ test("wait returns all pending threads at once", async () => {
     const r = await cli(project(stub), ["wait", "--timeout", "5"]);
     assert.equal(r.code, 0);
     assert.ok(r.stdout.startsWith(`2 pending threads claimed for you: ${a.id}, ${b.id}`), r.stdout);
+    assert.equal(r.stdout.split("Instructions for all of them").length, 2);
+    assert.ok(!r.stdout.includes("and stop"), r.stdout);
     assert.deepEqual((await list(stub)).threads.map((t) => t.status), ["received", "received"]);
   });
 });
