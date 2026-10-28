@@ -30,7 +30,7 @@ export const chrome = (globalThis as unknown as {
       query(filter: { url?: string[] }): Promise<Tab[]>;
       sendMessage(tabId: number, message: unknown): Promise<unknown>;
       create(tab: { url: string }): Promise<unknown>;
-      onUpdated: Listeners<[tabId: number, changes: unknown, tab: Tab]>;
+      onUpdated: Listeners<[tabId: number, changes: Record<string, unknown>, tab: Tab]>;
       onActivated: Listeners<[active: { tabId: number }]>;
       get(tabId: number): Promise<Tab>;
     };

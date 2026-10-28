@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { badgeFor, whatClickDoes } from "../src/toolbar.ts";
+import { badgeFor, badgeNeedsUpdate, whatClickDoes } from "../src/toolbar.ts";
 import type { Sites } from "../src/sites.ts";
 
 const on = { daemon: "http://127.0.0.1:1", token: "t", on: true };
@@ -41,4 +41,24 @@ test("the badge says ON, OFF or nothing, and the words differ, and the title say
   assert.match(no.title, /Click to turn it on/);
   assert.match(none.title, /Click to add this site/);
   assert.equal(badgeFor(sites, undefined).text, "");
+});
+
+test("a page with no readable address or not a web page gets the site list title", () => {
+  for (const address of ["chrome://version", "about:blank", "file:///tmp/a.html", "chrome-extension://abc/options.html", undefined]) {
+    const badge = badgeFor(sites, address);
+    assert.equal(badge.text, "", String(address));
+    assert.match(badge.title, /click to open the site list/, String(address));
+    assert.doesNotMatch(badge.title, /add this site/, String(address));
+  }
+});
+
+test("a web page that is not added keeps the add this site title", () => {
+  assert.match(badgeFor(sites, "https://other.com/page").title, /Click to add this site/);
+});
+
+test("badgeNeedsUpdate is true for a url or a status and false for a title, an icon or sound change", () => {
+  assert.equal(badgeNeedsUpdate({ url: "https://xxx.com/" }), true);
+  assert.equal(badgeNeedsUpdate({ status: "loading" }), true);
+  assert.equal(badgeNeedsUpdate({ status: "complete" }), true);
+  for (const change of [{ title: "New" }, { favIconUrl: "x.png" }, { audible: true }, {}]) assert.equal(badgeNeedsUpdate(change), false);
 });

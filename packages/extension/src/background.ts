@@ -2,7 +2,7 @@ import { chrome, loadSites, saveSites } from "./chrome_calls.ts";
 import { answerMessage } from "./proxy.ts";
 import type { Sites } from "./sites.ts";
 import { siteFrom } from "./sites.ts";
-import { badgeFor, whatClickDoes } from "./toolbar.ts";
+import { badgeFor, badgeNeedsUpdate, whatClickDoes } from "./toolbar.ts";
 
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
   if (!sender.tab?.url) return;
@@ -13,21 +13,25 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
 // Tabs of saved sites check again when the saved sites change.
 chrome.storage.onChanged.addListener(async (changes) => {
   if (!changes.sites) return;
-  const patterns = Object.keys(await loadSites()).flatMap((origin) => {
+  const sites = await loadSites();
+  const patterns = Object.keys(sites).flatMap((origin) => {
     const site = siteFrom(origin);
     return "pattern" in site ? [site.pattern] : [];
   });
-  if (patterns.length > 0) {
-    for (const tab of await chrome.tabs.query({ url: patterns })) {
-      if (tab.id !== undefined) chrome.tabs.sendMessage(tab.id, { kind: "changed" }).catch(() => {});
+  try {
+    if (patterns.length > 0) {
+      for (const tab of await chrome.tabs.query({ url: patterns })) {
+        if (tab.id !== undefined) chrome.tabs.sendMessage(tab.id, { kind: "changed" }).catch(() => {});
+      }
     }
+    // Every tab, so a tab of a site that was just removed loses its badge too.
+    for (const tab of await chrome.tabs.query({})) showBadge(sites, tab);
+  } catch {
+    // A tab closed in the meantime.
   }
-  // Every tab, so a tab of a site that was just removed loses its badge too.
-  const sites = await loadSites();
-  for (const tab of await chrome.tabs.query({})) showBadge(sites, tab);
 });
 
-/** Sets the button's words and title for one tab. Chrome keeps them per tab, even after the tab goes to another site, so this runs on every update. */
+/** Sets the button's words and title for one tab. Chrome keeps them per tab, even after the tab goes to another site, so this runs on every new address or load. */
 function showBadge(sites: Sites, tab: { id?: number; url?: string }): void {
   if (tab.id === undefined) return;
   const badge = badgeFor(sites, tab.url);
@@ -41,8 +45,13 @@ function showBadge(sites: Sites, tab: { id?: number; url?: string }): void {
   for (const one of done) one.catch(() => {});
 }
 
-chrome.tabs.onUpdated.addListener(async (_tabId, _changes, tab) => showBadge(await loadSites(), tab));
-chrome.tabs.onActivated.addListener(async ({ tabId }) => showBadge(await loadSites(), await chrome.tabs.get(tabId)));
+chrome.tabs.onUpdated.addListener(async (_tabId, changes, tab) => {
+  if (!badgeNeedsUpdate(changes)) return;
+  await loadSites().then((sites) => showBadge(sites, tab)).catch(() => {});
+});
+chrome.tabs.onActivated.addListener(({ tabId }) =>
+  chrome.tabs.get(tabId).then(async (tab) => showBadge(await loadSites(), tab)).catch(() => {}),
+);
 
 // A click on the button turns a saved site on or off, or opens the setup for a site that is not added.
 chrome.action.onClicked.addListener(async (tab) => {

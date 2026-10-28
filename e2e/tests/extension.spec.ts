@@ -90,6 +90,8 @@ async function startStack() {
       }
     });
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
+    // Playwright hands over the worker before its script has run, so a page opened right away would fire events before the extension listens.
+    await worker.evaluate(() => true);
     const extensionId = new URL(worker.url()).host;
     const site = async (scriptTag = "") => {
       const port = await freePort();
@@ -370,6 +372,15 @@ async function badgeOn(stack: Stack, page: Page): Promise<{ text: string; title:
   }, page.url());
 }
 
+/** The button's hover title on the tab in front. */
+async function titleOfFrontTab(stack: Stack): Promise<string> {
+  return stack.context.serviceWorkers()[0]!.evaluate(async () => {
+    const chrome = (globalThis as any).chrome;
+    const [tab] = (await chrome.tabs.query({ active: true })) as { id: number }[];
+    return chrome.action.getTitle({ tabId: tab!.id }) as Promise<string>;
+  });
+}
+
 test("the toolbar click turns a site off and on with no reload, and the badge follows", async () => {
   await withStack(async (stack) => {
     const site = await stack.site();
@@ -413,6 +424,7 @@ test("a toolbar click on a page that was not added opens the options page with t
     const site = await stack.site();
     const page = await stack.context.newPage();
     await page.goto(site);
+    await expect.poll(async () => (await badgeOn(stack, page)).title).toContain("add this site");
     const opened = stack.context.waitForEvent("page");
     await clickToolbar(stack, page);
     const options = await opened;
@@ -440,6 +452,15 @@ test("a toolbar click on a page that was not added opens the options page with t
 
 test("a toolbar click on a page that is not http or https opens the options page with the Site box empty", async () => {
   await withStack(async (stack) => {
+    // Chrome hides the address of these tabs from the extension, so the tab is found by being the one in front. A tab that never had a page keeps the plain button title, so each one comes from a web page first.
+    for (const address of ["about:blank", "chrome://version"]) {
+      const tab = await stack.context.newPage();
+      await tab.goto(await stack.site());
+      await tab.goto(address);
+      await tab.bringToFront();
+      await expect.poll(() => titleOfFrontTab(stack), address).toContain("click to open the site list");
+      expect(await titleOfFrontTab(stack)).not.toContain("add this site");
+    }
     for (const url of ["about:blank", "chrome://version"]) {
       const opened = stack.context.waitForEvent("page");
       await clickToolbar(stack, { url });

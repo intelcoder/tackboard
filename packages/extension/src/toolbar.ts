@@ -26,5 +26,11 @@ export function badgeFor(sites: Sites, tabUrl: string | undefined): { text: stri
   const saved = sites[webOrigin(tabUrl) ?? ""];
   if (saved?.on) return { text: "ON", color: "#1a7f37", title: `${brand.name}: on for this site. Click to turn it off.` };
   if (saved) return { text: "OFF", color: "#6b7280", title: `${brand.name}: off for this site. Click to turn it on.` };
-  return { text: "", color: "#6b7280", title: `${brand.name}: this site is not added. Click to add this site.` };
+  const title = webOrigin(tabUrl) ? `${brand.name}: this site is not added. Click to add this site.` : `${brand.name}: click to open the site list.`;
+  return { text: "", color: "#6b7280", title };
+}
+
+/** Whether an update to a tab can change its button: a new address or a page loading. A new title, icon or sound cannot. */
+export function badgeNeedsUpdate(changes: Record<string, unknown>): boolean {
+  return "url" in changes || "status" in changes;
 }
