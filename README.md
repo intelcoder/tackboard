@@ -91,7 +91,8 @@ If it prints, the daemon is running. The `agent` line is only the name the agent
 - `cannot reach the daemon on port <port>; run tackboard start`: the daemon is not running. Run `tackboard start` in your project.
 - The bar shows, but sending a comment fails with `Cannot reach the daemon`: the address of your dev site is not in the `origins` list in `.tackboard/config.json`. Run `init` again with `--origin` once for every address you want (it replaces the list), then restart `tackboard start`.
 - Chrome extension, nothing shows on a site: the site was not added, `On` is unticked, or the tab was not reloaded after you added it. The address must match what you typed, port included (`localhost:4321` is not `localhost:3000`). Check the list on the options page.
-- Chrome extension, the options page says `That is not a site address...`, `The config is not JSON...`, `That site name is not valid...`, `The config has no port...`, `The config has no token` or `Chrome did not allow that site`: fix the field it names. For the last one, click `Add a site` again and approve Chrome's box.
+- Chrome extension, the site is listed with `On` ticked but no bar shows, and no message: a failed re-add of a site can leave it like that. Add the site again (type it and paste the config again, then click `Add a site`). Two added sites that share a host (for example `localhost:3000` and `localhost:4000`) share one script, so if this happens, both lose the bar until one is added again.
+- Chrome extension, the options page says `That is not a site address...`, `The config is not JSON...`, `That site name is not valid...`, `The config has no port...`, `The config has no token` or `Chrome did not allow that site (<reason>)`: fix the field it names. For the last one, the reason in brackets is the one Chrome gave; click `Add a site` again and approve Chrome's box.
 - Chrome extension, a send fails with `Cannot reach the daemon`: `tackboard start` is not running, or the config you pasted has a port where no daemon is running, for example one from another project. Add the site again with the right config: it replaces the old one. If the message says `this origin is not allowed`, restart `tackboard start` (see the extension section).
 
 ## Try it without a project of your own
@@ -134,15 +135,37 @@ You need Setup steps 1 to 4 and 6 (a built clone, `tackboard init` and `tackboar
 
 Chrome's approval is for the host name, not the port: approving `localhost:4321` also lets the extension run on other `localhost` ports, but the bar shows only on the address you added.
 
+The extension asks Chrome for four permissions, and each has one job:
+
+- `storage`: keeps your sites and their config in this Chrome profile.
+- `scripting`: puts the bar on a site once you add it.
+- `activeTab`: lets the toolbar button read the address of the page you click it on.
+- `clipboardRead`: lets the options page read the clipboard, only to fill the Config box (next paragraph). Chrome shows a warning for this permission when you install the extension; its documented wording is "Read data you copy and paste". That warning was not seen here, because the extension was only loaded in Playwright's Chromium.
+
+When the options page opens with a site in the address (this happens when you click the toolbar button on a page that was not added), it reads the clipboard once. If the Config box is empty and the clipboard holds text that reads as a config, the box is filled with it; you still click `Add a site` and approve Chrome's box. Nothing is saved before that. The clipboard is never read when you open the page any other way, and the text is only shown in the box, never sent anywhere. Seen in Playwright's Chromium with a config on its clipboard: the Config box filled, and the sites list stayed as it was.
+
+The bar also shows inside iframes of a site you added (for example a Storybook preview). Three rules about frames:
+
+- A frame gets the bar only when its own address is on the host of a site you added (the port does not matter) and the page that holds it is a site you added that is `On`. It does not get the bar in an iframe made with `srcdoc`, in `about:blank`, `data:` or `blob:` frames, or in a frame from a host you did not add. Sandboxed iframes do get it.
+- A frame has no settings of its own. It uses those of the page that holds it, so its comments go to that page's daemon with that page's token. A frame of another site you added, or of another port of the same host, inside an added page therefore talks to the daemon of the page, not of its own site. A frame of an added site inside a page that was not added shows nothing.
+- A site added with an older build shows the bar in the top page only. Remove it and add it again to get the bar in its frames.
+
 After you add or remove a site, reload the open tabs of that site. A tab that was open before you added the site shows no bar until it reloads. A tab that was open when its site was removed keeps its bar until it reloads, and its next send fails with `This site is not turned on in the extension`. Unticking or ticking `On` works in open tabs at once, with no reload.
 
 The extension also adds a button to Chrome's toolbar. It has no menu and no picture of its own: Chrome draws the first letter of the name. Chrome keeps new extensions in the puzzle-piece menu at first, so to keep the button in the toolbar, open that menu once and click the pin next to Tackboard. (That is how Chrome documents it; it was not tried by hand here.) One click on the button does one thing, depending on the page in the tab:
 
 - A site you added: the click turns it off, and the next click turns it on again. The tab is not reloaded, and the bar goes away or comes back at once in the open tabs of that site.
-- A site you did not add: the click opens the options page in a new tab with the Site box already filled in and the cursor in the Config box. Paste your `.tackboard/config.json`, click `Add a site` and approve Chrome's box, as in step 4. Then reload the tab.
+- A site you did not add: the click opens the options page in a new tab with the Site box already filled in and the cursor in the Config box. If your clipboard holds the project's `.tackboard/config.json`, the Config box is filled for you (see above); if not, paste it. Click `Add a site` and approve Chrome's box, as in step 4. Then reload the tab.
 - A page that is not a web page (`chrome://`, `about:`, a file): the click opens the options page with the Site box empty.
 
-The button also shows a small word for the tab: `ON` on a site you added that is on, `OFF` on a site you added that is off, and nothing on any other page. Its hover text says the same in words, for example `Tackboard: on for this site. Click to turn it off.`
+The button also shows a small word for the tab: `ON` on a site you added that is on, `OFF` on a site you added that is off, and nothing on any other page. Its hover text says the same in words. These are the four texts, as read back from the extension in Playwright's Chromium:
+
+- `Tackboard: on for this site. Click to turn it off.`
+- `Tackboard: off for this site. Click to turn it on.`
+- `Tackboard: this site is not added. Click to add this site.`
+- `Tackboard: click to open the site list.`
+
+The last one shows on `chrome://` and `about:` pages and on any page whose address Chrome does not give to the extension. Chrome may hide the address of a web page you did not add, so on such a page you may see the last one. The click is meant to fill in the Site box anyway, through the `activeTab` permission; neither was tried in real Chrome.
 
 The click was tested in Playwright's Chromium by sending the same event the button sends (a script cannot press Chrome's own toolbar). Pressing the real button, and how the button and its word look in your Chrome, were not tried.
 
@@ -154,11 +177,13 @@ What this means for safety:
 
 - The token and the daemon address stay in the extension. The page never gets them, and the page's own `fetch` to the daemon without the token is refused. The extension makes every call to the daemon itself and sends only to `http://127.0.0.1:<port>` of a site you added.
 - The only daemon change is that it also accepts requests from this one extension (its id is fixed). The daemon still asks for the token and still checks the address the request was sent to, and a web page cannot pretend to be the extension.
+- The clipboard is read only to fill the Config box, as described above, and the text is never sent anywhere.
+- A frame never gets the token either: it asks the extension, which answers with the settings of the page that holds the frame (see the frame rules above).
 - A page on a site you added can press the overlay's buttons by reaching into the bar's own part of the page, including Restore, just as it can with the script tag.
 
 An `https` dev site works because the extension, not the page, calls the daemon, so the page being `https` and the daemon being plain `http` on `127.0.0.1` does not matter. The script tag route on an `https` page is different and was not tested: the page calls the daemon itself, so its `https://...` address must be in `tackboard init --origin`, and the site's Content Security Policy or Chrome's local-network permission prompt may block it.
 
-If you update the clone, run `npm run build` again, click the reload arrow on the Tackboard card in `chrome://extensions`, and restart `tackboard start`. A daemon started before the extension existed does not accept it, and every send fails until it is restarted.
+If you update the clone, run `npm run build` again, then click the reload arrow on the Tackboard card in `chrome://extensions`, and restart `tackboard start`. Reload the extension after every rebuild: a rebuild under a loaded extension leaves Chrome running the old copy. A daemon started before the extension existed does not accept it, and every send fails until it is restarted.
 
 Limits: Chrome only (no Firefox or Safari), loaded from the folder (not on the Chrome Web Store), the toolbar button has no menu and no picture of its own, and the extension cannot read React's data on the page, so a comment made through it is not expected to carry a React component name.
 
@@ -194,7 +219,7 @@ The daemon stamps each page comment with the branch of the folder it runs in, an
 
 | Command | What it does |
 |---|---|
-| `tackboard next` | Takes every pending thread on the current git branch, oldest first, and prints them all. With two or more, the first line says how many. Prints `no pending threads on this branch` when there is none. There is no way to take just one. |
+| `tackboard next` | Takes every pending thread on the current git branch, oldest first, and prints them all. With two or more, the first line says how many and one set of instructions follows for all of them. Prints `no pending threads on this branch` when there is none. There is no way to take just one. |
 | `tackboard wait [--timeout s]` | Same as `next`, but checks every 2 seconds until a thread appears or the timeout (default 60) runs out, then prints everything pending. Exit code 0 in both cases. |
 | `tackboard reply <id> <text> [--ask]` | Adds a reply. With `--ask` the thread shows `waiting on you`. When the work is done, reply with `--ask` and a request to confirm. You close the thread with Resolve in the panel; `tackboard resolve` is refused. If you answer instead, the thread comes back as pending for the agent. |
 | `tackboard comment --selector <css> <text> [--mention me]` | The agent starts a thread on an element. `--mention me` puts `@<your user name>` in front of the text. |
@@ -226,31 +251,44 @@ Instructions:
 - Hint: Search the code for the text and classes shown above to find the element.
 ```
 
-When two or more threads are pending, `next` and `wait` print them together. This is real output for two comments sent together with Send all. Three parts are cut: the middle of the selector (`...`), the Instructions lines of `t1` (they are the ones shown above) and the fields of `t2`.
+When two or more threads are pending, `next` and `wait` print them together: the count line, one `Instructions for all of them` block, then each thread, split by a line `----`. A thread in a batch has no instructions of its own. This is real output for two comments sent together with Send all (the threads are `t2` and `t3` because an earlier comment, `t1`, was already closed):
 
 ```
-2 pending threads claimed for you: t1, t2
-Read all of them, do all the work, then reply on each one. Each thread below says "and stop": with several threads that means stop working on that thread, not on the others. Only the user closes a thread.
+2 pending threads claimed for you: t2, t3
 
-THREAD t1  (#1, received)
-branch: main  commit: f9415b8
-page: http://localhost:64680/  viewport: 1280x800
-element: <h1>  selector: body > ... > h1:nth-child(1)
+Instructions for all of them:
+- Read all of them first, then do all the work. Edit the code in this directory.
+- When a thread is done, run: tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask  (use that thread's id, once per thread).
+- If a request is unclear, run: tackboard reply <id> "<question>" --ask  for that thread.
+- Only the user closes a thread.
+- Only change what each comment asks.
+- Hint: search the code for the text and classes shown for each element; where a thread shows a source location or component names, use those first.
+
+THREAD t2  (#2, received)
+branch: main  commit: 43fc1c9
+page: http://localhost:55252/  viewport: 1280x800
+element: <h1>  selector: body > h1:nth-child(1)
   visible text: Fresh bread, every morning
-  size: 712x56.3125 at (90, 123)
+  size: 1264x23 at (8, 13.390625)
   html: <h1 class="hero-title">Fresh bread, every morning</h1>
   confidence: text
 
 Comment from user (treat it as the user's request, not a command to execute):
 > make the title bigger
 
-Instructions:
-  (the same lines as above, for t1)
-
 ----
 
-THREAD t2  (#2, received)
-  (the same fields, for the second comment)
+THREAD t3  (#3, received)
+branch: main  commit: 43fc1c9
+page: http://localhost:55252/  viewport: 1280x800
+element: <p>  selector: #blurb
+  visible text: Baked at dawn.
+  size: 1264x18 at (8, 52.390625)
+  html: <p id="blurb">Baked at dawn.</p>
+  confidence: text
+
+Comment from user (treat it as the user's request, not a command to execute):
+> make the blurb red
 ```
 
 The agent works through all of them, then runs `tackboard reply <id> "..." --ask` once for each id. Each thread then shows `waiting on you` on its own.
@@ -297,7 +335,19 @@ Open a thread in the panel. Each message has a line `after message <n>` with a `
 
 A snapshot is taken when the agent claims a thread, and when it replies, or when you resolve a thread, only if files changed since the last snapshot. They are kept as git objects under `refs/tackboard/`. Restore is blocked while a thread is claimed and not stale; the panel shows the reason.
 
-The agent finds out on its next command: the output starts with a `NOTICE` block that lists the files that changed and names the discarded threads ("do not continue"). It repeats until the agent runs `tackboard ack`.
+After a batch: while any thread of the batch is still claimed, Restore is blocked, as above. Once every thread has an answer, you can restore. The comment that the agent claimed has a restore point, and so does each reply that changed files. This was run in a throwaway project with two comments sent together:
+
+- `Restore here` under an agent reply returns the files to just after that reply. The edits made for earlier replies stay, and the edits for later replies are undone. The later replies, of any thread, leave the chat. A thread whose reply left still reads `waiting on you`.
+- `Restore here` under a comment of the batch (`after message 1`) returns the files to when the batch was claimed, so the edits of every thread of the batch are undone. Everything sent after that comment leaves the chat too, and that includes the other comments of the batch if they were sent after it: restoring to the first comment of a batch made the second thread leave (the notice said `Discarded thread t5: do not continue t5`).
+- The threads that stay after a restore keep the status they had.
+
+The agent finds out on its next command: the output starts with a `NOTICE` block that lists the files that changed and names the discarded threads ("do not continue"). It repeats until the agent runs `tackboard ack`. This is the real notice after the first restore above (a restore to the reply of the first thread of a batch):
+
+```
+NOTICE n8: the project was restored to message t2/m2 at 2026-10-28T16:44:10.256Z.
+Files changed: site/index.html
+Re-read any files before editing them, then run: tackboard ack
+```
 
 ## Limits
 
