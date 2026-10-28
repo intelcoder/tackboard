@@ -16,7 +16,7 @@ test("the manifest is version 3 with the fixed key, only storage, scripting and 
     assert.equal(manifest.manifest_version, 3);
     assert.equal(manifest.name, brand.name);
     assert.equal(manifest.key, brand.extensionKey);
-    assert.deepEqual(manifest.permissions, ["storage", "scripting", "activeTab"]);
+    assert.deepEqual(manifest.permissions, ["storage", "scripting", "activeTab", "clipboardRead"]);
     assert.ok(manifest.action);
     assert.equal(manifest.action.default_popup, undefined);
     assert.deepEqual(manifest.optional_host_permissions, ["http://*/*", "https://*/*"]);

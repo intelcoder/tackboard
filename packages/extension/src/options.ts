@@ -49,7 +49,8 @@ async function removeSite(origin: string): Promise<void> {
   await showSites();
   const found = siteFrom(origin);
   if (!("pattern" in found) || patternStillUsed(sites, found.pattern)) return;
-  await chrome.scripting.unregisterContentScripts({ ids: [found.pattern] });
+  // Chrome rejects an id that is not registered, which is fine here.
+  await chrome.scripting.unregisterContentScripts({ ids: [found.pattern] }).catch(() => {});
   await chrome.permissions.remove({ origins: [found.pattern] });
 }
 
@@ -64,14 +65,14 @@ form.addEventListener("submit", async (event) => {
   const hadIt = await chrome.permissions.contains({ origins: [site.pattern] });
   try {
     if (!(await chrome.permissions.request({ origins: [site.pattern] }))) throw new Error("refused");
-    if ((await chrome.scripting.getRegisteredContentScripts({ ids: [site.pattern] })).length === 0) {
-      await chrome.scripting.registerContentScripts([
-        { id: site.pattern, matches: [site.pattern], js: ["content.js"], runAt: "document_idle", persistAcrossSessions: true },
-      ]);
-    }
+    // allFrames: the overlay also mounts inside iframes of the site, such as Storybook's preview. Re-registering moves older sites onto it too.
+    await chrome.scripting.unregisterContentScripts({ ids: [site.pattern] }).catch(() => {});
+    await chrome.scripting.registerContentScripts([
+      { id: site.pattern, matches: [site.pattern], js: ["content.js"], runAt: "document_idle", allFrames: true, persistAcrossSessions: true },
+    ]);
     await saveSites({ ...(await loadSites()), [site.origin]: { ...config, on: true } });
-  } catch {
-    problem.textContent = "Chrome did not allow that site";
+  } catch (error) {
+    problem.textContent = `Chrome did not allow that site (${error instanceof Error ? error.message : error})`;
     if (!hadIt) await chrome.permissions.remove({ origins: [site.pattern] }).catch(() => {});
     return;
   }
@@ -85,6 +86,10 @@ const wantedSite = new URLSearchParams(location.search).get("site");
 if (wantedSite) {
   siteField.value = wantedSite;
   configField.focus();
+  // Fill the config from the clipboard when it holds one, so only the approval click is left.
+  void navigator.clipboard.readText().then((text) => {
+    if (configField.value === "" && "token" in readConfigText(text)) configField.value = text;
+  }).catch(() => {});
 }
 
 void showSites();
