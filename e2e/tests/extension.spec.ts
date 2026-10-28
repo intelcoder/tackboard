@@ -1,0 +1,345 @@
+import { execFileSync, spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import type { Server } from "node:http";
+import { createServer as createPortProbe } from "node:net";
+import { tmpdir } from "node:os";
+import { extname, join } from "node:path";
+import { chromium, expect, test } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
+import { buildExtension } from "../../packages/extension/build.ts";
+import { brand } from "../../packages/shared/src/brand.ts";
+import { createSiteServer } from "../../scripts/playground.ts";
+import { openPanel, postComment, thread } from "../fixtures/states.ts";
+
+// The service worker's own requests are only reported to the context when this is set.
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = "1";
+
+const root = join(import.meta.dirname, "..", "..");
+const cli = join(root, "packages", "cli", "src", "main.ts");
+const pages = join(root, "playground", "site");
+const fakeHttpsSite = "https://dev.example.test";
+
+function freePort(): Promise<number> {
+  return new Promise((done, fail) => {
+    const probe = createPortProbe();
+    probe.once("error", fail);
+    probe.listen(0, "127.0.0.1", () => {
+      const port = (probe.address() as { port: number }).port;
+      probe.close(() => done(port));
+    });
+  });
+}
+
+function listen(server: Server, port: number): Promise<Server> {
+  return new Promise((done) => server.listen(port, "127.0.0.1", () => done(server)));
+}
+
+const CONTENT_TYPES: Record<string, string> = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript" };
+
+/** The extension is built with the test sites already allowed, because Playwright cannot click Chrome's approval box. */
+async function startStack() {
+  const folder = mkdtempSync(join(tmpdir(), "tb-ext-"));
+  const extensionFolder = await buildExtension(join(folder, "extension"), ["http://localhost/*", fakeHttpsSite + "/*"]);
+  const project = join(folder, "project");
+  const daemonPort = await freePort();
+  const run = (args: string[]) => execFileSync("node", [cli, ...args], { cwd: project, encoding: "utf8" });
+  execFileSync("git", ["init", "-q", "-b", "main", project]);
+  execFileSync("git", ["config", "user.email", "e2e@example.com"], { cwd: project });
+  execFileSync("git", ["config", "user.name", "e2e"], { cwd: project });
+  run(["init", "--port", String(daemonPort), "--origin", "http://localhost:1", "--user", "sam"]);
+  const configText = readFileSync(join(project, brand.dataDir, brand.configFile), "utf8");
+
+  const daemon: ChildProcess = spawn("node", [cli, "start"], { cwd: project, stdio: ["ignore", "pipe", "ignore"] });
+  const servers: Server[] = [];
+  let context: BrowserContext | undefined;
+  const stop = async () => {
+    await context?.close();
+    for (const server of servers) {
+      server.close();
+      server.closeAllConnections();
+    }
+    if (daemon.exitCode === null) {
+      const gone = new Promise((done) => daemon.once("exit", done));
+      daemon.kill("SIGTERM");
+      await gone;
+    }
+    rmSync(folder, { recursive: true, force: true });
+  };
+  try {
+    await new Promise<void>((done, fail) => {
+      let seen = "";
+      daemon.stdout!.on("data", (d) => {
+        seen += d;
+        if (seen.includes("listening")) done();
+      });
+      daemon.once("exit", () => fail(new Error(`daemon exited early: ${seen}`)));
+    });
+    context = await chromium.launchPersistentContext(join(folder, "profile"), {
+      channel: "chromium",
+      viewport: { width: 1280, height: 800 },
+      args: [`--disable-extensions-except=${extensionFolder}`, `--load-extension=${extensionFolder}`],
+    });
+    // A site with no network: https://dev.example.test is answered from the playground pages.
+    await context.route(`${fakeHttpsSite}/**`, (route) => {
+      const name = new URL(route.request().url()).pathname.replace(/^\/$/, "/index.html");
+      try {
+        route.fulfill({ body: readFileSync(join(pages, name)), contentType: CONTENT_TYPES[extname(name)] ?? "text/plain" });
+      } catch {
+        route.fulfill({ status: 404, body: "not found" });
+      }
+    });
+    const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
+    const extensionId = new URL(worker.url()).host;
+    const site = async (scriptTag = "") => {
+      const port = await freePort();
+      servers.push(await listen(createSiteServer(pages, scriptTag), port));
+      return `http://localhost:${port}`;
+    };
+    return {
+      context,
+      extensionId,
+      daemonUrl: `http://127.0.0.1:${daemonPort}`,
+      configText,
+      site,
+      run,
+      stop,
+    };
+  } catch (error) {
+    await stop();
+    throw error;
+  }
+}
+
+type Stack = Awaited<ReturnType<typeof startStack>>;
+
+async function withStack(body: (stack: Stack) => Promise<void>): Promise<void> {
+  const stack = await startStack();
+  try {
+    await body(stack);
+  } finally {
+    await stack.stop();
+  }
+}
+
+async function optionsPage(stack: Stack): Promise<Page> {
+  const page = await stack.context.newPage();
+  await page.goto(`chrome-extension://${stack.extensionId}/options.html`);
+  return page;
+}
+
+/** The setup a user does: type the site, paste the config, press Add a site. */
+async function addSite(stack: Stack, options: Page, site: string): Promise<void> {
+  await options.getByLabel("Site").fill(site);
+  await options.getByLabel("Config").fill(stack.configText);
+  await options.getByRole("button", { name: "Add a site" }).click();
+  await expect(options.locator("li", { hasText: site })).toBeVisible();
+}
+
+const host = (page: Page) => page.locator(`#${brand.hostId}`);
+
+test("the extension has the fixed id", async () => {
+  await withStack(async (stack) => {
+    expect(`chrome-extension://${stack.extensionId}`).toBe(brand.extensionOrigin);
+  });
+});
+
+test("a site added in the options page gets the overlay with no script tag", async () => {
+  await withStack(async (stack) => {
+    const site = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, site.replace("http://", ""));
+    await expect(options.locator("li", { hasText: site }).getByLabel("On")).toBeChecked();
+
+    const page = await stack.context.newPage();
+    const asked: string[] = [];
+    page.on("request", (request) => asked.push(request.url()));
+    await page.goto(site);
+    await expect(host(page)).toBeAttached();
+    await expect(page.locator(".tb-modes")).toBeVisible();
+    expect(asked.filter((url) => url.includes(brand.bundle))).toEqual([]);
+  });
+});
+
+test("on an https site the overlay appears, a comment is sent through the extension, the CLI reads it and the reply comes back", async () => {
+  await withStack(async (stack) => {
+    const options = await optionsPage(stack);
+    await addSite(stack, options, fakeHttpsSite);
+    const page = await stack.context.newPage();
+    await page.goto(fakeHttpsSite);
+    await expect(page.locator(".tb-modes")).toBeVisible();
+    const id = await postComment(page, ".hero-title", "make this bigger");
+
+    const next = stack.run(["next"]);
+    expect(next).toContain("make this bigger");
+    expect(next).toContain(`page: ${fakeHttpsSite}/`);
+    expect(next).toContain(`THREAD ${id}`);
+    stack.run(["reply", id, "done, it is bigger"]);
+    await openPanel(page);
+    await expect(thread(page, id).getByText("done, it is bigger")).toBeVisible();
+  });
+});
+
+test("the page never sees the token", async () => {
+  await withStack(async (stack) => {
+    const token = (JSON.parse(stack.configText) as { token: string }).token;
+    const options = await optionsPage(stack);
+    await addSite(stack, options, fakeHttpsSite);
+    const page = await stack.context.newPage();
+    await page.goto(fakeHttpsSite);
+    await expect(page.locator(".tb-modes")).toBeVisible();
+    await postComment(page, ".hero-title", "look for the token");
+
+    const seen = await page.evaluate(
+      async ([secret, global, daemon]) => {
+        let found = 0;
+        const scan = (node: Node) => {
+          if (node.nodeType === 3 && node.textContent!.includes(secret!)) found++;
+          if (node instanceof Element) {
+            for (const attribute of node.attributes) if (attribute.value.includes(secret!)) found++;
+            if (node.shadowRoot) node.shadowRoot.childNodes.forEach(scan);
+          }
+          node.childNodes.forEach(scan);
+        };
+        scan(document);
+        const withoutToken = await fetch(`${daemon}/threads`).then((r) => r.status, () => "refused");
+        const stored = [localStorage, sessionStorage].some((store) => JSON.stringify(Object.entries(store)).includes(secret!));
+        return {
+          found,
+          stored,
+          cookie: document.cookie.includes(secret!),
+          globalValue: typeof (window as any)[global!],
+          withoutToken,
+        };
+      },
+      [token, brand.configGlobal, stack.daemonUrl],
+    );
+    expect(seen.found).toBe(0);
+    expect(seen.stored).toBe(false);
+    expect(seen.cookie).toBe(false);
+    expect(seen.globalValue).toBe("undefined");
+    expect(seen.withoutToken).toBe("refused");
+  });
+});
+
+test("with the script tag too there is only one overlay, in both orders", async () => {
+  await withStack(async (stack) => {
+    const tagged = await stack.site(`<script src="${stack.daemonUrl}/${brand.bundle}"></script>`);
+    const plain = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, tagged.replace("http://", ""));
+    await addSite(stack, options, plain.replace("http://", ""));
+
+    // the tag is in the page first
+    const first = await stack.context.newPage();
+    await first.goto(tagged);
+    await expect(host(first)).toHaveCount(1);
+    await first.waitForTimeout(1000);
+    await expect(host(first)).toHaveCount(1);
+
+    // the extension's overlay shows first, then the tag is added
+    const second = await stack.context.newPage();
+    await second.goto(plain);
+    await expect(host(second)).toBeAttached();
+    await second.addScriptTag({ url: `${stack.daemonUrl}/${brand.bundle}` });
+    await second.waitForTimeout(1000);
+    await expect(host(second)).toHaveCount(1);
+  });
+});
+
+test("turning a site off removes the overlay, on brings it back, remove deletes it", async () => {
+  await withStack(async (stack) => {
+    const site = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, site.replace("http://", ""));
+    const page = await stack.context.newPage();
+    await page.goto(site);
+    await expect(host(page)).toBeAttached();
+
+    const daemonCalls: string[] = [];
+    stack.context.on("request", (request) => {
+      if (request.url().startsWith(stack.daemonUrl)) daemonCalls.push(request.url());
+    });
+    await expect.poll(() => daemonCalls.length, "the overlay asks the daemon while on").toBeGreaterThan(0);
+    const row = options.locator("li", { hasText: site });
+    await row.getByLabel("On").uncheck();
+    await expect(host(page)).toHaveCount(0);
+    await page.waitForTimeout(500);
+    const callsWhenOff = daemonCalls.length;
+    await page.waitForTimeout(3500);
+    expect(daemonCalls.length).toBe(callsWhenOff);
+
+    await row.getByLabel("On").check();
+    await expect(host(page)).toBeAttached();
+
+    await row.getByRole("button", { name: "Remove" }).click();
+    await expect(options.locator("li", { hasText: site })).toHaveCount(0);
+    // the tab that was open when the site was removed keeps its overlay, and says why a comment cannot be sent
+    await page.locator('.tb-modes [data-mode="comment"]').click();
+    await page.hover(".hero-title");
+    await page.click(".hero-title");
+    await page.locator('[data-key="composer"]').fill("sent after the site was removed");
+    await page.locator('[data-key="send"]').click();
+    await expect(page.getByText("This site is not turned on in the extension")).toBeVisible();
+    const again = await stack.context.newPage();
+    await again.goto(site);
+    await again.waitForTimeout(1500);
+    await expect(host(again)).toHaveCount(0);
+  });
+});
+
+test("a site that was not added gets no overlay", async () => {
+  await withStack(async (stack) => {
+    const added = await stack.site();
+    const other = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, added.replace("http://", ""));
+    // the same host name with another port: the content script runs there, but the site is not on
+    const otherPort = await stack.context.newPage();
+    await otherPort.goto(other);
+    await otherPort.waitForTimeout(1500);
+    await expect(host(otherPort)).toHaveCount(0);
+    const address = await stack.context.newPage();
+    await address.goto(other.replace("localhost", "127.0.0.1"));
+    await address.waitForTimeout(1500);
+    await expect(host(address)).toHaveCount(0);
+  });
+});
+
+const registeredScripts = (options: Page) =>
+  options.evaluate(async () => ((await (globalThis as any).chrome.scripting.getRegisteredContentScripts()) as { id: string }[]).map((script) => script.id));
+
+test("Remove unregisters the script only when no other site uses the same pattern", async () => {
+  await withStack(async (stack) => {
+    const first = await stack.site();
+    const second = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, first.replace("http://", ""));
+    await addSite(stack, options, second.replace("http://", ""));
+    await addSite(stack, options, fakeHttpsSite);
+    expect((await registeredScripts(options)).sort()).toEqual(["http://localhost/*", `${fakeHttpsSite}/*`]);
+
+    await options.locator("li", { hasText: first }).getByRole("button", { name: "Remove" }).click();
+    await expect(options.locator("li", { hasText: first })).toHaveCount(0);
+    expect(await registeredScripts(options)).toContain("http://localhost/*");
+
+    await options.locator("li", { hasText: second }).getByRole("button", { name: "Remove" }).click();
+    await expect(options.locator("li", { hasText: second })).toHaveCount(0);
+    await expect.poll(() => registeredScripts(options)).toEqual([`${fakeHttpsSite}/*`]);
+  });
+});
+
+test("when Chrome refuses to register the script, nothing is saved and one plain line shows", async () => {
+  await withStack(async (stack) => {
+    const options = await optionsPage(stack);
+    await options.evaluate(() => {
+      (globalThis as any).chrome.scripting.registerContentScripts = () => Promise.reject(new Error("no"));
+    });
+    await options.getByLabel("Site").fill(fakeHttpsSite);
+    await options.getByLabel("Config").fill(stack.configText);
+    await options.getByRole("button", { name: "Add a site" }).click();
+    await expect(options.locator("#problem")).toHaveText("Chrome did not allow that site");
+    await expect(options.locator("#sites")).toHaveText("No sites yet.");
+    expect(await options.evaluate(async () => (await (globalThis as any).chrome.storage.local.get("sites")).sites)).toBeUndefined();
+  });
+});

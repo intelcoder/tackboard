@@ -7,7 +7,7 @@ const here = import.meta.dirname;
 
 // @app/shared also holds node-only helpers (config.ts imports node:fs). The overlay never
 // uses them, so the browser bundle sees that one module as empty.
-const emptySharedConfig: Plugin = {
+export const emptySharedConfig: Plugin = {
   name: "empty-shared-config",
   setup(b) {
     b.onLoad({ filter: /shared[\\/]src[\\/]config\.ts$/ }, () => ({ contents: "export {};", loader: "ts" }));

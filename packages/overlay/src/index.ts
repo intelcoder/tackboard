@@ -1,7 +1,7 @@
 import { brand } from "@app/shared";
 import type { ElementRef } from "@app/shared";
 import { createApi } from "./api.ts";
-import type { Api } from "./api.ts";
+import type { Api, ApiOptions } from "./api.ts";
 import { createH } from "./dom.ts";
 import { createHover } from "./hover.ts";
 import { createModeSwitch } from "./modes.ts";
@@ -19,7 +19,7 @@ import { createToast, toastText } from "./toast.ts";
 export type MountOptions = {
   document?: Document;
   window?: Window;
-  config: { base: string; token: string };
+  config: ApiOptions;
   viewport?: () => { w: number; h: number };
   /** Milliseconds between polls of the daemon (default 1500). */
   pollEvery?: number;
