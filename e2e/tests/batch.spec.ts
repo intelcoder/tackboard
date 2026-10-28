@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { brand } from "../../packages/shared/src/brand.ts";
 import { test, expect } from "../fixtures/harness.ts";
 import type { Harness } from "../fixtures/harness.ts";
-import { closePanel, fakeNotifications, modeButton, openPanel, outline, postComment, setMode } from "../fixtures/states.ts";
+import { chip, closePanel, fakeNotifications, modeButton, openPanel, outline, postComment, setMode } from "../fixtures/states.ts";
 
 const composer = (page: Page) => page.locator('[data-key="composer"]');
 const drafts = (page: Page) => page.locator('[data-key="drafts"]');
@@ -101,6 +101,50 @@ test("drafts reach the daemon only on Send all, and then arrive in order", async
   expect(await selectorsInDaemon(h)).toEqual(["#cta", "#far"]);
   expect(posts()).toBe(2);
   expect(alerts).toBe(0);
+});
+
+/** Adds two drafts, presses Send all and waits until the daemon holds both. Returns their ids, oldest first. */
+async function sendTwoTogether(h: Harness): Promise<string[]> {
+  await addDraft(h.page, "#cta", "make the button blue");
+  await addDraft(h.page, "#l4", "make this line bold");
+  await sendAll(h.page).click();
+  await expect(h.page.locator(".tb-thread")).toHaveCount(2);
+  await expect(h.page.locator(".tb-queued")).toHaveCount(0, { timeout: 15000 });
+  expect(await selectorsInDaemon(h)).toEqual(["#cta", "#l4"]);
+  const { stdout } = await h.agent(["status"]);
+  return stdout.split("\n").filter((line) => line.startsWith("#")).map((line) => line.trim().split(/\s+/)[1]!);
+}
+
+test("two comments sent together with Send all are taken together by next", async ({ harness: h }) => {
+  const [one, two] = await sendTwoTogether(h);
+  const taken = (await h.agent(["next"])).stdout;
+  expect(taken.startsWith(`2 pending threads claimed for you: ${one}, ${two}`)).toBe(true);
+  expect(taken.split("\n").filter((line) => line.startsWith("Read all of them"))).toHaveLength(1);
+  expect(taken.indexOf(`THREAD ${one} `)).toBeGreaterThan(0);
+  expect(taken.indexOf(`THREAD ${one} `)).toBeLessThan(taken.indexOf(`THREAD ${two} `));
+  expect(taken.indexOf("make the button blue")).toBeLessThan(taken.indexOf("make this line bold"));
+
+  expect((await h.agent(["status"])).stdout.match(/\breceived\b/g)).toHaveLength(2);
+  await expect(chip(h.page, one)).toHaveText("received");
+  await expect(chip(h.page, two)).toHaveText("received");
+
+  expect((await h.agent(["reply", one, "done one", "--ask"])).code).toBe(0);
+  expect((await h.agent(["reply", two, "done two", "--ask"])).code).toBe(0);
+  expect((await h.agent(["status"])).stdout.match(/waiting on you/g)).toHaveLength(2);
+  expect((await h.agent(["next"])).stdout).toContain("no pending threads");
+
+  // a comment sent later is taken alone, with no count line
+  const third = await postComment(h.page, "#l2", "a late one");
+  const alone = (await h.agent(["next"])).stdout;
+  expect(alone).toContain(`THREAD ${third} `);
+  expect(alone).not.toContain("pending threads claimed");
+});
+
+test("wait takes two comments sent together at once", async ({ harness: h }) => {
+  const [one, two] = await sendTwoTogether(h);
+  const taken = (await h.agent(["wait", "--timeout", "5"])).stdout;
+  expect(taken.startsWith(`2 pending threads claimed for you: ${one}, ${two}`)).toBe(true);
+  expect((await h.agent(["status"])).stdout.match(/\breceived\b/g)).toHaveLength(2);
 });
 
 test("with the daemon down, Send all queues the drafts and they arrive once and in order", async ({ harness: h }) => {

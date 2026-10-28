@@ -87,8 +87,7 @@ test("the playground works on every page and leaves this repo alone", async () =
     }
     const status = await runCli(play.folder, ["status"]);
     expect(status.split("\n").filter((l) => l.startsWith("#"))).toHaveLength(2);
-    const pages: string[] = [];
-    for (let i = 0; i < 2; i++) pages.push(/^page: (\S+)/m.exec(await runCli(play.folder, ["next"]))![1]!);
+    const pages = [...(await runCli(play.folder, ["next"])).matchAll(/^page: (\S+)/gm)].map((m) => m[1]!);
     expect(pages.sort()).toEqual(wanted.sort());
     expect(new Set(pages).size).toBe(2);
 

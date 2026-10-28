@@ -1,11 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
+import { createServer } from "node:http";
 import { chmodSync, mkdirSync, mkdtempSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brand, findConfig, statusLabel, writeConfig } from "@app/shared";
 import type { ListThreadsResponse, ThreadDto } from "@app/shared";
+import { formatThread } from "../src/format.ts";
 import { startStubDaemon } from "../../shared/test-support/stub_daemon.ts";
 import type { StubDaemon } from "../../shared/test-support/stub_daemon.ts";
 
@@ -316,4 +318,55 @@ test("init says why the skill could not be copied when .claude is read-only", { 
   } finally {
     chmodSync(join(dir, ".claude"), 0o755);
   }
+});
+
+test("next with three pending threads prints all three in order and claims all three", async () => {
+  await withStub(async (stub) => {
+    const ids = [(await post(stub, "one", "#a")).id, (await post(stub, "two", "#b")).id, (await post(stub, "three", "#c")).id];
+    const r = await cli(project(stub), ["next"]);
+    assert.equal(r.code, 0);
+    assert.ok(r.stdout.startsWith(`3 pending threads claimed for you: ${ids.join(", ")}`), r.stdout);
+    const at = ids.map((id) => r.stdout.indexOf(`THREAD ${id} `));
+    assert.ok(at[0]! > 0 && at[0]! < at[1]! && at[1]! < at[2]!, r.stdout);
+    assert.equal(r.stdout.split("\n----\n").length, 3);
+    assert.deepEqual((await list(stub)).threads.map((t) => t.status), ["received", "received", "received"]);
+    assert.ok((await cli(project(stub), ["next"])).stdout.includes("no pending threads"));
+  });
+});
+
+test("wait returns all pending threads at once", async () => {
+  await withStub(async (stub) => {
+    const a = await post(stub, "one", "#a");
+    const b = await post(stub, "two", "#b");
+    const r = await cli(project(stub), ["wait", "--timeout", "5"]);
+    assert.equal(r.code, 0);
+    assert.ok(r.stdout.startsWith(`2 pending threads claimed for you: ${a.id}, ${b.id}`), r.stdout);
+    assert.deepEqual((await list(stub)).threads.map((t) => t.status), ["received", "received"]);
+  });
+});
+
+test("next prints the threads it got when a later claim fails", async () => {
+  await withStub(async (stub) => {
+    const first = await post(stub, "only one gets out");
+    let claims = 0;
+    const fake = createServer((req, res) => {
+      res.setHeader("content-type", "application/json");
+      if (req.url?.startsWith("/notices")) return void res.end(JSON.stringify({ notices: [] }));
+      claims++;
+      if (claims === 1) return void res.end(JSON.stringify({ thread: first }));
+      res.statusCode = 500;
+      res.end(JSON.stringify({ message: "could not save" }));
+    });
+    await new Promise<void>((done) => fake.listen(0, "127.0.0.1", done));
+    try {
+      const dir = project(stub);
+      writeConfig(dir, { port: (fake.address() as { port: number }).port, token: stub.token, origins: [], userName: "alice" });
+      const r = await cli(dir, ["next"]);
+      assert.equal(r.code, 0);
+      assert.equal(r.stdout.trim(), formatThread(first));
+      assert.equal(claims, 2);
+    } finally {
+      fake.close();
+    }
+  });
 });

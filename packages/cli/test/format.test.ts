@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { Confidence, ThreadDto } from "@app/shared";
-import { formatNotice, formatThread } from "../src/format.ts";
+import { formatNotice, formatThread, formatThreads } from "../src/format.ts";
 
-function thread(confidence: Confidence, text = "make the title bigger"): ThreadDto {
+function thread(confidence: Confidence, text = "make the title bigger", id = "t7", n = 3): ThreadDto {
   return {
-    id: "t7",
-    n: 3,
+    id,
+    n,
     branch: "main",
     commit: "abc1234",
     url: "http://localhost:3000/pricing",
@@ -52,4 +52,22 @@ test("source confidence prints the file-first hint and component confidence the 
   assert.match(txt, /search the code for the text and classes/i);
   assert.doesNotMatch(txt, /component:/);
   assert.match(formatNotice({ id: "n1", at: 0, restoredToMessage: "m2", files: ["a.txt"], discardedThreads: ["t9"] }), /^NOTICE/);
+});
+
+test("formatThreads with one thread equals formatThread", () => {
+  const one = thread("text");
+  assert.equal(formatThreads([one]), formatThread(one));
+});
+
+test("formatThreads with three threads starts with the count and the ids, keeps number order and puts each thread block once", () => {
+  const three = [thread("text", "first comment", "ta", 1), thread("text", "second comment", "tb", 2), thread("text", "third comment", "tc", 3)];
+  const out = formatThreads(three);
+  const lines = out.split("\n");
+  assert.equal(lines[0], "3 pending threads claimed for you: ta, tb, tc");
+  assert.match(lines[1]!, /^Read all of them, do all the work, then reply on each one\./);
+  assert.match(lines[1]!, /Only the user closes a thread\.$/);
+  assert.equal(out.split("\n----\n").length, 3);
+  for (const id of ["ta", "tb", "tc"]) assert.equal(out.split(`THREAD ${id} `).length, 2);
+  assert.ok(out.indexOf("THREAD ta ") < out.indexOf("THREAD tb ") && out.indexOf("THREAD tb ") < out.indexOf("THREAD tc "));
+  assert.ok(out.includes(`\n\n----\n\n${formatThread(three[1]!)}`));
 });

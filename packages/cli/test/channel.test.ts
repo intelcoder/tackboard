@@ -85,6 +85,7 @@ test("initialize answers with the channel capability and the instructions, and o
       assert.equal(r.protocolVersion, "2025-06-18");
       assert.ok(r.instructions.includes(`${brand.cli} reply <id> "<what you changed>. Is it OK to close this?" --ask`));
       assert.match(r.instructions, /only the user closes/i);
+      assert.ok(r.instructions.includes("If several comments arrive together, do all of them first, then reply on each one."));
       c.send({ jsonrpc: "2.0", id: 2, method: "ping" });
       c.send({ jsonrpc: "2.0", id: 3, method: "tools/list" });
       await c.until(() => c.lines.some((l) => l.id === 3), "the tools/list answer");

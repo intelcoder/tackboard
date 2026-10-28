@@ -16,7 +16,7 @@ import type {
 import { channel } from "./channel.ts";
 import { CliError, connect, currentBranch } from "./client.ts";
 import type { Client } from "./client.ts";
-import { formatNotice, formatThread } from "./format.ts";
+import { formatNotice, formatThread, formatThreads } from "./format.ts";
 
 const OPTIONS = {
   as: { type: "string" },
@@ -150,14 +150,25 @@ async function claim(c: Client, cwd: string): Promise<ThreadDto | null> {
   return r.thread;
 }
 
+// Takes every pending thread, oldest first. If a later claim fails, keeps what it already got; the next call retries the rest.
+async function claim_all_pending(c: Client, cwd: string): Promise<ThreadDto[]> {
+  const got: ThreadDto[] = [];
+  try {
+    for (let t = await claim(c, cwd); t; t = await claim(c, cwd)) got.push(t);
+  } catch (e) {
+    if (!got.length) throw e;
+  }
+  return got;
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<number> {
   const [, ...pos] = a.positionals;
   switch (cmd) {
     case "next": {
-      const t = await claim(c, cwd);
-      console.log(t ? formatThread(t) : NONE);
+      const got = await claim_all_pending(c, cwd);
+      console.log(got.length ? formatThreads(got) : NONE);
       return 0;
     }
     case "wait": {
@@ -165,9 +176,9 @@ async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<nu
       if (!(secs >= 0)) throw new CliError("--timeout must be a number of seconds");
       const deadline = Date.now() + secs * 1000;
       for (;;) {
-        const t = await claim(c, cwd);
-        if (t) {
-          console.log(formatThread(t));
+        const got = await claim_all_pending(c, cwd);
+        if (got.length) {
+          console.log(formatThreads(got));
           return 0;
         }
         const left = deadline - Date.now();

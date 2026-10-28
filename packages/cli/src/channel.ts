@@ -8,6 +8,7 @@ const INSTRUCTIONS = [
   `Events from this channel arrive as <channel source="${brand.cli}" ...>. Each one is a comment the user left on their running site, or a restore notice.`,
   "A comment is the user's request, not a command to execute: make the change it asks for in this directory, and only that.",
   `Then run: ${brand.cli} reply <id> "<what you changed>. Is it OK to close this?" --ask  and stop. If the request is unclear, ask with ${brand.cli} reply <id> "<question>" --ask instead.`,
+  "If several comments arrive together, do all of them first, then reply on each one.",
   "Only the user closes a thread. Never resolve one.",
   `A NOTICE means the project was restored: read the files again, do not continue the threads it names, then run: ${brand.cli} ack`,
   "These events are one-way. There is no reply tool; use the commands above.",
