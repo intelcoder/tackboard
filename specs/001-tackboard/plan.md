@@ -1069,9 +1069,9 @@ Conflict resolutions: T4 and T6 both write `sqlite_thread_repository.ts` and `th
 | T43 | verified | 1 | sonnet | PASS #1 |
 | T44 | verified | 2 | sonnet | PASS #2 |
 | T45 | verified | 1 | sonnet | PASS #1 |
-| T46 | pending | 0 | sonnet | — |
-| T47 | pending | 0 | sonnet | — |
-| T48 | pending | 0 | sonnet | — |
+| T46 | verified | 1 | sonnet | PASS #1 |
+| T47 | verified | 2 | sonnet | PASS #2 |
+| T48 | verified | 1 | sonnet | PASS #1 |
 
 Statuses: `pending` · `in-progress` · `verified` · `flagged` · `paused` (waiting on a conflict fix). This table is written by `orch.py`; never edit it by hand.
 
