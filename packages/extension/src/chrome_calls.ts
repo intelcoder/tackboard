@@ -2,6 +2,7 @@ import type { Sites } from "./sites.ts";
 
 // Only the few `chrome` calls this extension uses, declared by hand so no extra package is needed.
 type Listeners<Args extends unknown[]> = { addListener(listener: (...args: Args) => unknown): void };
+type Tab = { id?: number; url?: string };
 type SavedScript = { id: string; matches: string[]; js: string[]; runAt: "document_idle"; persistAcrossSessions: boolean };
 
 export const chrome = (globalThis as unknown as {
@@ -22,11 +23,23 @@ export const chrome = (globalThis as unknown as {
     };
     runtime: {
       sendMessage(message: unknown): Promise<any>;
+      getURL(path: string): string;
       onMessage: Listeners<[message: any, sender: { tab?: { url?: string } }, reply: (answer: unknown) => void]>;
     };
     tabs: {
-      query(filter: { url: string[] }): Promise<{ id?: number }[]>;
+      query(filter: { url?: string[] }): Promise<Tab[]>;
       sendMessage(tabId: number, message: unknown): Promise<unknown>;
+      create(tab: { url: string }): Promise<unknown>;
+      onUpdated: Listeners<[tabId: number, changes: unknown, tab: Tab]>;
+      onActivated: Listeners<[active: { tabId: number }]>;
+      get(tabId: number): Promise<Tab>;
+    };
+    action: {
+      onClicked: Listeners<[tab: Tab]>;
+      setBadgeText(details: { tabId: number; text: string }): Promise<void>;
+      setBadgeBackgroundColor(details: { tabId: number; color: string }): Promise<void>;
+      setBadgeTextColor(details: { tabId: number; color: string }): Promise<void>;
+      setTitle(details: { tabId: number; title: string }): Promise<void>;
     };
   };
 }).chrome;

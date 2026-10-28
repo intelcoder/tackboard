@@ -317,6 +317,9 @@ test("Remove unregisters the script only when no other site uses the same patter
     await addSite(stack, options, first.replace("http://", ""));
     await addSite(stack, options, second.replace("http://", ""));
     await addSite(stack, options, fakeHttpsSite);
+    const open = await stack.context.newPage();
+    await open.goto(second);
+    await expect.poll(async () => (await badgeOn(stack, open)).text).toBe("ON");
     expect((await registeredScripts(options)).sort()).toEqual(["http://localhost/*", `${fakeHttpsSite}/*`]);
 
     await options.locator("li", { hasText: first }).getByRole("button", { name: "Remove" }).click();
@@ -326,6 +329,8 @@ test("Remove unregisters the script only when no other site uses the same patter
     await options.locator("li", { hasText: second }).getByRole("button", { name: "Remove" }).click();
     await expect(options.locator("li", { hasText: second })).toHaveCount(0);
     await expect.poll(() => registeredScripts(options)).toEqual([`${fakeHttpsSite}/*`]);
+    // the tab still open on the removed site loses its badge
+    await expect.poll(async () => (await badgeOn(stack, open)).text).toBe("");
   });
 });
 
@@ -341,5 +346,118 @@ test("when Chrome refuses to register the script, nothing is saved and one plain
     await expect(options.locator("#problem")).toHaveText("Chrome did not allow that site");
     await expect(options.locator("#sites")).toHaveText("No sites yet.");
     expect(await options.evaluate(async () => (await (globalThis as any).chrome.storage.local.get("sites")).sites)).toBeUndefined();
+  });
+});
+
+/** Playwright cannot press the real toolbar button, so this raises the same event the button raises. `tab` is a page of the context, or just an address. */
+async function clickToolbar(stack: Stack, tab: Page | { url: string }): Promise<void> {
+  const worker = stack.context.serviceWorkers()[0]!;
+  const address = typeof tab.url === "function" ? tab.url() : tab.url;
+  await worker.evaluate(async (wanted) => {
+    const chrome = (globalThis as any).chrome;
+    const found = ((await chrome.tabs.query({})) as { url?: string }[]).find((one) => one.url === wanted);
+    chrome.action.onClicked.dispatch(found ?? { url: wanted });
+  }, address);
+}
+
+/** The button's words and hover title on the tab that shows this page. */
+async function badgeOn(stack: Stack, page: Page): Promise<{ text: string; title: string; textColor: number[] }> {
+  const worker = stack.context.serviceWorkers()[0]!;
+  return worker.evaluate(async (wanted) => {
+    const chrome = (globalThis as any).chrome;
+    const tab = ((await chrome.tabs.query({})) as { id: number; url?: string }[]).find((one) => one.url === wanted)!;
+    return { text: await chrome.action.getBadgeText({ tabId: tab.id }), title: await chrome.action.getTitle({ tabId: tab.id }), textColor: await chrome.action.getBadgeTextColor({ tabId: tab.id }) };
+  }, page.url());
+}
+
+test("the toolbar click turns a site off and on with no reload, and the badge follows", async () => {
+  await withStack(async (stack) => {
+    const site = await stack.site();
+    const notAdded = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, site.replace("http://", ""));
+    const page = await stack.context.newPage();
+    await page.goto(site);
+    await expect(host(page)).toBeAttached();
+    await page.evaluate(() => ((window as any).marker = 1));
+    await expect.poll(async () => (await badgeOn(stack, page)).text).toBe("ON");
+
+    const daemonCalls: string[] = [];
+    stack.context.on("request", (request) => {
+      if (request.url().startsWith(stack.daemonUrl)) daemonCalls.push(request.url());
+    });
+    await clickToolbar(stack, page);
+    await expect(host(page)).toHaveCount(0);
+    await expect.poll(async () => (await badgeOn(stack, page)).text).toBe("OFF");
+    expect((await badgeOn(stack, page)).title).toContain("off for this site");
+    expect((await badgeOn(stack, page)).textColor).toEqual([255, 255, 255, 255]);
+    expect(await page.evaluate(() => (window as any).marker)).toBe(1);
+    await page.waitForTimeout(500);
+    const callsWhenOff = daemonCalls.length;
+    await page.waitForTimeout(3500);
+    expect(daemonCalls.length).toBe(callsWhenOff);
+
+    await clickToolbar(stack, page);
+    await expect(host(page)).toBeAttached();
+    await expect.poll(async () => (await badgeOn(stack, page)).text).toBe("ON");
+    expect((await badgeOn(stack, page)).textColor).toEqual([255, 255, 255, 255]);
+    expect(await page.evaluate(() => (window as any).marker)).toBe(1);
+
+    await page.goto(notAdded);
+    await expect.poll(async () => (await badgeOn(stack, page)).text).toBe("");
+  });
+});
+
+test("a toolbar click on a page that was not added opens the options page with the site filled in", async () => {
+  await withStack(async (stack) => {
+    const site = await stack.site();
+    const page = await stack.context.newPage();
+    await page.goto(site);
+    const opened = stack.context.waitForEvent("page");
+    await clickToolbar(stack, page);
+    const options = await opened;
+    await options.waitForLoadState();
+    expect(options.url()).toBe(`chrome-extension://${stack.extensionId}/options.html?site=${encodeURIComponent(site)}`);
+    await expect(options.getByLabel("Site")).toHaveValue(site);
+    await expect(options.getByLabel("Config")).toBeFocused();
+
+    // the text is only ever a value, never markup
+    const hostile = '"><img src=x onerror="window.__pwn=1">';
+    const careful = await stack.context.newPage();
+    await careful.goto(`chrome-extension://${stack.extensionId}/options.html?site=${encodeURIComponent(hostile)}`);
+    await expect(careful.getByLabel("Site")).toHaveValue(hostile);
+    expect(await careful.locator("img").count()).toBe(0);
+    expect(await careful.evaluate(() => (window as any).__pwn)).toBeUndefined();
+    await careful.close();
+
+    await options.getByLabel("Config").fill(stack.configText);
+    await options.getByRole("button", { name: "Add a site" }).click();
+    await expect(options.locator("li", { hasText: site }).getByLabel("On")).toBeChecked();
+    await page.reload();
+    await expect(host(page)).toBeAttached();
+  });
+});
+
+test("a toolbar click on a page that is not http or https opens the options page with the Site box empty", async () => {
+  await withStack(async (stack) => {
+    for (const url of ["about:blank", "chrome://version"]) {
+      const opened = stack.context.waitForEvent("page");
+      await clickToolbar(stack, { url });
+      const options = await opened;
+      await options.waitForLoadState();
+      expect(options.url()).toBe(`chrome-extension://${stack.extensionId}/options.html`);
+      await expect(options.getByLabel("Site")).toHaveValue("");
+      await expect(options.locator("#sites")).toHaveText("No sites yet.");
+    }
+  });
+});
+
+test("the toolbar button is registered and has no popup", async () => {
+  await withStack(async (stack) => {
+    const seen = await stack.context.serviceWorkers()[0]!.evaluate(() => {
+      const chrome = (globalThis as any).chrome;
+      return { listening: chrome.action.onClicked.hasListeners() as boolean, popup: chrome.runtime.getManifest().action.default_popup as string | undefined };
+    });
+    expect(seen).toEqual({ listening: true, popup: undefined });
   });
 });

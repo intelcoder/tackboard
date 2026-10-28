@@ -80,4 +80,11 @@ form.addEventListener("submit", async (event) => {
   await showSites();
 });
 
+// The toolbar button sends the address of the page it was clicked on.
+const wantedSite = new URLSearchParams(location.search).get("site");
+if (wantedSite) {
+  siteField.value = wantedSite;
+  configField.focus();
+}
+
 void showSites();

@@ -26,10 +26,11 @@ export async function buildExtension(outDir: string, extraHostPermissions: strin
     name: brand.name,
     version: "0.1.0",
     key: brand.extensionKey,
-    permissions: ["storage", "scripting"],
+    permissions: ["storage", "scripting", "activeTab"],
     optional_host_permissions: ["http://*/*", "https://*/*"],
     ...(extraHostPermissions.length > 0 && { host_permissions: extraHostPermissions }),
     background: { service_worker: "background.js" },
+    action: { default_title: brand.name },
     options_ui: { page: "options.html", open_in_tab: true },
   };
   writeFileSync(join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");

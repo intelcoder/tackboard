@@ -8,7 +8,7 @@ import { buildExtension } from "../build.ts";
 
 const manifestIn = (dir: string) => JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
 
-test("the manifest is version 3 with the fixed key, only storage and scripting, only optional host permissions and no content_scripts", async () => {
+test("the manifest is version 3 with the fixed key, only storage, scripting and activeTab, a button with no popup, only optional host permissions and no content_scripts", async () => {
   const dir = mkdtempSync(join(tmpdir(), "ext-build-"));
   try {
     await buildExtension(dir);
@@ -16,7 +16,9 @@ test("the manifest is version 3 with the fixed key, only storage and scripting, 
     assert.equal(manifest.manifest_version, 3);
     assert.equal(manifest.name, brand.name);
     assert.equal(manifest.key, brand.extensionKey);
-    assert.deepEqual(manifest.permissions, ["storage", "scripting"]);
+    assert.deepEqual(manifest.permissions, ["storage", "scripting", "activeTab"]);
+    assert.ok(manifest.action);
+    assert.equal(manifest.action.default_popup, undefined);
     assert.deepEqual(manifest.optional_host_permissions, ["http://*/*", "https://*/*"]);
     assert.equal(manifest.host_permissions, undefined);
     assert.equal(manifest.content_scripts, undefined);
