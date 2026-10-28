@@ -90,6 +90,9 @@ If it prints, the daemon is running. The `agent` line is only the name the agent
 - A build error: run `npm install` first, then `npm run build` again.
 - `cannot reach the daemon on port <port>; run tackboard start`: the daemon is not running. Run `tackboard start` in your project.
 - The bar shows, but sending a comment fails with `Cannot reach the daemon`: the address of your dev site is not in the `origins` list in `.tackboard/config.json`. Run `init` again with `--origin` once for every address you want (it replaces the list), then restart `tackboard start`.
+- Chrome extension, nothing shows on a site: the site was not added, `On` is unticked, or the tab was not reloaded after you added it. The address must match what you typed, port included (`localhost:4321` is not `localhost:3000`). Check the list on the options page.
+- Chrome extension, the options page says `That is not a site address...`, `The config is not JSON...`, `That site name is not valid...`, `The config has no port...`, `The config has no token` or `Chrome did not allow that site`: fix the field it names. For the last one, click `Add a site` again and approve Chrome's box.
+- Chrome extension, a send fails with `Cannot reach the daemon`: `tackboard start` is not running, or the config you pasted has a port where no daemon is running, for example one from another project. Add the site again with the right config: it replaces the old one. If the message says `this origin is not allowed`, restart `tackboard start` (see the extension section).
 
 ## Try it without a project of your own
 
@@ -112,6 +115,42 @@ Press Ctrl+C to stop. The folder stays where it is.
 ```
 
 The CLI's own lines (from `init`, the installed skill and the SQLite warning) print as well. Open the site address, comment on the page, and start your agent in the project folder it printed (the one line above does that). The pages are in the `site/` folder inside it, and only that folder is served: the project folder itself also holds the git data, the daemon token and the agent skill, and the site never shows them. Restore only touches that copy, never this repo or any project of yours. Add `?fill=20000` to a page address to add 20000 small items, for checking speed. To start over at any time, type `reset` (or `r`) and press Enter in the playground terminal. The pages go back to the first commit (edits, new files, branches, tags and stashes are removed), every comment and snapshot is cleared, and the daemon restarts on the same port with the same token, so a page you have open keeps working. The installed skill stays. Reset only ever acts on that copy folder and refuses with a reason if the folder is anything else. Ctrl+C stops the daemon and the server. The folder is left in place and every run makes a new one, so delete old ones yourself when you are done.
+
+## Use the Chrome extension (optional)
+
+The extension puts the comment bar on a site you choose, with no script tag in the site. It also works on an `https` dev address such as `https://xxx.com`. The script tag from Setup keeps working, and a page that has both shows one bar. The playground's pages already have the script tag, so use your own dev site to see what the extension does.
+
+You need Setup steps 1 to 4 and 6 (a built clone, `tackboard init` and `tackboard start` in your project). You do not need step 5 (the script tag), and you do not need `--origin` for the site: with the extension the site does not have to be in the `origins` list.
+
+1. Build it. Setup step 2 already did: `npm run build` also writes the extension to `packages/extension/dist/`.
+2. In Chrome, open `chrome://extensions`, turn on Developer mode (top right), click Load unpacked, and pick the `packages/extension/dist` folder. Tackboard is now in the list. Until you add a site in step 4, it has no access to any site.
+3. On the Tackboard card click Details, then Extension options. The page `Tackboard sites` opens in a tab.
+4. Under `Add a site`, fill in two fields and click `Add a site`:
+   - Site: your dev site, for example `https://xxx.com`, `xxx.com` or `localhost:4321`. With no `http://` or `https://`, `https://` is assumed, except for `localhost` and `127.0.0.1`, which get `http://`. No path, query or user name.
+   - Config: paste the whole `.tackboard/config.json` of your project. Only its `port` and `token` are used. The daemon address becomes `http://127.0.0.1:<port>`.
+
+   Chrome then asks you to approve that one site. Approve it. The site shows in the list with `On` checked. Until you approve, nothing is saved.
+5. Open the site, or reload it if it was already open. The bar appears. Comment as described below.
+
+Chrome's approval is for the host name, not the port: approving `localhost:4321` also lets the extension run on other `localhost` ports, but the bar shows only on the address you added.
+
+After you add or remove a site, reload the open tabs of that site. A tab that was open before you added the site shows no bar until it reloads. A tab that was open when its site was removed keeps its bar until it reloads, and its next send fails with `This site is not turned on in the extension`. Unticking or ticking `On` works in open tabs at once, with no reload.
+
+To change a site: untick `On` to take the bar away without forgetting the site, or click `Remove` to forget it and give back Chrome's approval for it. The sites and the token are saved in this Chrome profile only, and are not synced to other computers.
+
+Adding a site puts the comment bar on every page of that site. Add only sites you control, never one that real visitors use.
+
+What this means for safety:
+
+- The token and the daemon address stay in the extension. The page never gets them, and the page's own `fetch` to the daemon without the token is refused. The extension makes every call to the daemon itself and sends only to `http://127.0.0.1:<port>` of a site you added.
+- The only daemon change is that it also accepts requests from this one extension (its id is fixed). The daemon still asks for the token and still checks the address the request was sent to, and a web page cannot pretend to be the extension.
+- A page on a site you added can press the overlay's buttons by reaching into the bar's own part of the page, including Restore, just as it can with the script tag.
+
+An `https` dev site works because the extension, not the page, calls the daemon, so the page being `https` and the daemon being plain `http` on `127.0.0.1` does not matter. The script tag route on an `https` page is different and was not tested: the page calls the daemon itself, so its `https://...` address must be in `tackboard init --origin`, and the site's Content Security Policy or Chrome's local-network permission prompt may block it.
+
+If you update the clone, run `npm run build` again, click the reload arrow on the Tackboard card in `chrome://extensions`, and restart `tackboard start`. A daemon started before the extension existed does not accept it, and every send fails until it is restarted.
+
+Limits: Chrome only (no Firefox or Safari), loaded from the folder (not on the Chrome Web Store), no toolbar button, and the extension cannot read React's data on the page, so a comment made through it is not expected to carry a React component name.
 
 ## Comment on the page
 
@@ -229,7 +268,7 @@ The agent finds out on its next command: the output starts with a `NOTICE` block
 - Only you close a thread, with Resolve in the panel, also while it is `waiting on you`. The agent cannot resolve: the daemon refuses an agent resolve request.
 - "History" in the panel lists threads removed by a restore and threads whose branch is no longer a local git branch. Branches named `HEAD` (detached) and `no-git` are never treated this way.
 - Restore resets git's staging area to HEAD, so changes you had staged but not committed are not kept as staged. Ignored files are left alone.
-- A web page can read the token from the overlay file. What stops a foreign site from using it is the list of allowed origins, which the daemon checks on every request that carries an `Origin` header. The daemon does not check the `Referer` of the overlay file request.
+- A web page can read the token from the overlay file. What stops a foreign site from using it is the list of allowed origins, which the daemon checks on every request that carries an `Origin` header. The daemon does not check the `Referer` of the overlay file request. With the Chrome extension the token is not in the page at all: it stays in the extension, which makes the calls.
 
 ## Tests
 
@@ -242,4 +281,4 @@ npm test
 npm run test:e2e
 ```
 
-`npm test` runs the unit and integration tests with the Node test runner. `npm run test:e2e` builds first, then runs the browser tests in Chromium with no retries. Run one file with `npx playwright test -c e2e/playwright.config.ts e2e/tests/<name>.spec.ts`.
+`npm test` runs the unit and integration tests with the Node test runner. `npm run test:e2e` builds first, then runs the browser tests in Chromium with no retries. The extension tests load the extension into Chromium. Run one file with `npx playwright test -c e2e/playwright.config.ts e2e/tests/<name>.spec.ts`.
