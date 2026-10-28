@@ -26,7 +26,7 @@ export async function buildExtension(outDir: string, extraHostPermissions: strin
     name: brand.name,
     version: "0.1.0",
     key: brand.extensionKey,
-    permissions: ["storage", "scripting", "activeTab"],
+    permissions: ["storage", "scripting", "activeTab", "clipboardRead"],
     optional_host_permissions: ["http://*/*", "https://*/*"],
     ...(extraHostPermissions.length > 0 && { host_permissions: extraHostPermissions }),
     background: { service_worker: "background.js" },

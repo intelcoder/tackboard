@@ -3,7 +3,7 @@ import type { Sites } from "./sites.ts";
 // Only the few `chrome` calls this extension uses, declared by hand so no extra package is needed.
 type Listeners<Args extends unknown[]> = { addListener(listener: (...args: Args) => unknown): void };
 type Tab = { id?: number; url?: string };
-type SavedScript = { id: string; matches: string[]; js: string[]; runAt: "document_idle"; persistAcrossSessions: boolean };
+type SavedScript = { id: string; matches: string[]; js: string[]; runAt: "document_idle"; allFrames?: boolean; persistAcrossSessions: boolean };
 
 export const chrome = (globalThis as unknown as {
   chrome: {
