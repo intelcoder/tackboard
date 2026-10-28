@@ -89,9 +89,11 @@ test("user can reopen and release", async ({ harness: h }) => {
 
   const second = await postComment(page, "#l4", "second comment");
   expect(second).not.toBe(first);
-  // the oldest pending thread is claimed first, so claim the reopened one and then the new one
-  expect(idOf((await h.agent(["next"])).stdout)).toBe(first);
-  expect(idOf((await h.agent(["next"])).stdout)).toBe(second);
+  // next takes every pending thread, oldest first: the reopened one and then the new one
+  const both = (await h.agent(["next"])).stdout;
+  expect(idOf(both)).toBe(first);
+  expect(both.indexOf(`THREAD ${first} `)).toBeLessThan(both.indexOf(`THREAD ${second} `));
+  expect(both.indexOf(`THREAD ${second} `)).toBeGreaterThan(0);
   await expect(chip(page, second)).toHaveText("received", { timeout: 3000 });
   await thread(page, second).locator(`[data-key="release-${second}"]`).click();
   await expect(chip(page, second)).toHaveText("pending");

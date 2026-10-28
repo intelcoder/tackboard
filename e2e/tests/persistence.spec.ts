@@ -16,8 +16,8 @@ test("persistence", async ({ harness: h }) => {
 
   // build up state: a resolved thread with a discarded reply, a later thread that the restore discards, and a pending notice
   const first = await postComment(page, "#cta", "first comment");
-  const second = await postComment(page, "#l4", "second comment");
   expect((await h.agent(["next"])).stdout).toContain(first);
+  const second = await postComment(page, "#l4", "second comment");
   writeFileSync(join(h.repo, "edited.txt"), "made by the agent\n");
   await h.agent(["reply", first, "I made a file"]);
   await thread(page, first).locator(`[data-key="top-${first}"]`).first().click();

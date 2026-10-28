@@ -13,5 +13,8 @@ test("claim race", async ({ harness: h }) => {
   expect(printed).toHaveLength(3);
   expect(new Set(printed).size).toBe(3);
   expect([...printed].sort()).toEqual([...posted].sort());
-  expect(runs.filter((run) => run.stdout.includes("no pending threads"))).toHaveLength(7);
+  // each run either got threads or was told there were none; no run was left out
+  const got = runs.filter((run) => run.stdout.includes("THREAD "));
+  const none = runs.filter((run) => run.stdout.includes("no pending threads"));
+  expect(got.length + none.length).toBe(10);
 });

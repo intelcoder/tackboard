@@ -47,6 +47,15 @@ export function formatThread(t: ThreadDto): string {
   return out.join("\n");
 }
 
+export function formatThreads(threads: ThreadDto[]): string {
+  if (threads.length === 1) return formatThread(threads[0]!);
+  const top = [
+    `${threads.length} pending threads claimed for you: ${threads.map((t) => t.id).join(", ")}`,
+    'Read all of them, do all the work, then reply on each one. Each thread below says "and stop": with several threads that means stop working on that thread, not on the others. Only the user closes a thread.',
+  ];
+  return [...top, "", threads.map(formatThread).join("\n\n----\n\n")].join("\n");
+}
+
 export function formatNotice(n: Notice): string {
   const files = n.files.length ? n.files.join(", ") : "(none)";
   const lines = [
