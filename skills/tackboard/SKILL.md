@@ -38,7 +38,7 @@ The user can rewind the project to an earlier message. Your next command then st
 ## If something is wrong
 
 - `tackboard: command not found`: the command is not on the PATH. Ask the user to follow the install steps in the Tackboard README.
-- `cannot reach the daemon`: the daemon is not running. Ask the user to run `tackboard start` in the project folder and leave it open. Do not start it yourself unless they ask.
+- `cannot reach the daemon`: the daemon is not running. Ask the user to run `tackboard start` in the project folder and leave it open. Do not start it yourself unless they ask. If it is running, the site in the Chrome extension may hold another project's config (wrong port or token): the user adds the site again with this project's `.tackboard/config.json`.
 - `no tackboard project found here`: you are in the wrong folder, or the user has not run `tackboard init` yet.
 
 ## Your name
@@ -56,7 +56,7 @@ tackboard init --origin http://localhost:3001
 tackboard start
 ```
 
-The worktree then has its own port, and the script tag that `init` prints must go on that worktree's dev site. Comments made on that site are stamped with the worktree's branch, and `next` there gets them.
+The worktree then has its own port. Add the worktree's dev site in the Tackboard Chrome extension with that worktree's `.tackboard/config.json`, or put the script tag that `init` prints on that site. Comments made on that site are stamped with the worktree's branch, and `next` there gets them.
 
 Two agents in the same folder do not collide: each thread goes to only one of them, and the one that asks first takes everything pending. Give each its own `--as` name.
 

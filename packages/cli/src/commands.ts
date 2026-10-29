@@ -104,7 +104,8 @@ async function init(cwd: string, a: Args): Promise<number> {
     console.log(`warning: not a git repository; threads are kept on branch "no-git" and restore is unavailable.`);
   }
   console.log(`initialised ${brand.dataDir}/${brand.configFile} (port ${port}, user ${config.userName})`);
-  console.log(`Add this to your dev site, then run: ${brand.cli} start`);
+  console.log(`Run: ${brand.cli} start. Then add your dev site in the ${brand.name} Chrome extension (copy ${brand.dataDir}/${brand.configFile} first; see README "Use the Chrome extension").`);
+  console.log(`Or, without the extension, add this to your dev site:`);
   console.log(`<script src="http://127.0.0.1:${port}/${brand.bundle}"></script>`);
   install_skill(cwd);
   return 0;

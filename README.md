@@ -45,7 +45,8 @@ It prints:
 
 ```
 initialised .tackboard/config.json (port 47321, user sam)
-Add this to your dev site, then run: tackboard start
+Run: tackboard start. Then add your dev site in the Tackboard Chrome extension (copy .tackboard/config.json first; see README "Use the Chrome extension").
+Or, without the extension, add this to your dev site:
 <script src="http://127.0.0.1:47321/tackboard.js"></script>
 installed skill .claude/skills/tackboard/SKILL.md
 ```
