@@ -1,3 +1,4 @@
+import { brand } from "@app/shared";
 import { chrome, loadSites, saveSites } from "./chrome_calls.ts";
 import { pairSites } from "./discover.ts";
 import { answerMessage, answerScreenshot } from "./proxy.ts";
@@ -11,7 +12,12 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     const tab = { url: sender.tab.url, windowId: sender.tab.windowId ?? -2 };
     // is_on pairs a local page first, so a page that has not asked yet is not turned away.
     void answer(tab.url, { kind: "is_on", method: "", path: "" })
-      .then(async () => answerScreenshot(await loadSites(), { tab }, (windowId) => chrome.tabs.captureVisibleTab(windowId, { format: "png" })))
+      .then(async () => answerScreenshot(await loadSites(), { tab }, async (windowId) => {
+        if (!(await chrome.permissions.contains({ origins: ["<all_urls>"] }))) {
+          throw new Error(`Turn on Screenshots in the extension options first (chrome://extensions, ${brand.name}, Details, Extension options)`);
+        }
+        return chrome.tabs.captureVisibleTab(windowId, { format: "png" });
+      }))
       .then(reply);
     return true;
   }

@@ -10,7 +10,7 @@ import type { BrowserContext, Frame, Page } from "@playwright/test";
 import { buildExtension } from "../../packages/extension/build.ts";
 import { brand } from "../../packages/shared/src/brand.ts";
 import { createSiteServer } from "../../scripts/playground.ts";
-import { openPanel, postComment, thread } from "../fixtures/states.ts";
+import { openPanel, postComment, setMode, thread } from "../fixtures/states.ts";
 
 // The service worker's own requests are only reported to the context when this is set.
 process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = "1";
@@ -38,9 +38,9 @@ function listen(server: Server, port: number): Promise<Server> {
 const CONTENT_TYPES: Record<string, string> = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript" };
 
 /** The extension is built with the test sites already allowed, because Playwright cannot click Chrome's approval box. */
-async function startStack() {
+async function startStack(extraPermissions: string[] = []) {
   const folder = mkdtempSync(join(tmpdir(), "tb-ext-"));
-  const extensionFolder = await buildExtension(join(folder, "extension"), ["http://localhost/*", fakeHttpsSite + "/*"]);
+  const extensionFolder = await buildExtension(join(folder, "extension"), ["http://localhost/*", fakeHttpsSite + "/*", ...extraPermissions]);
   const project = join(folder, "project");
   const daemonPort = await freePort();
   const run = (args: string[]) => execFileSync("node", [cli, ...args], { cwd: project, encoding: "utf8" });
@@ -102,6 +102,7 @@ async function startStack() {
       context,
       extensionId,
       daemonUrl: `http://127.0.0.1:${daemonPort}`,
+      project,
       configText,
       site,
       run,
@@ -115,8 +116,8 @@ async function startStack() {
 
 type Stack = Awaited<ReturnType<typeof startStack>>;
 
-async function withStack(body: (stack: Stack) => Promise<void>): Promise<void> {
-  const stack = await startStack();
+async function withStack(body: (stack: Stack) => Promise<void>, extraPermissions: string[] = []): Promise<void> {
+  const stack = await startStack(extraPermissions);
   try {
     await body(stack);
   } finally {
@@ -680,4 +681,44 @@ test("the clipboard is not read when the options page opens without ?site=", asy
     expect(await page.evaluate(() => (window as any).__reads)).toBe(0);
     await expect(page.getByLabel("Config")).toHaveValue("");
   });
+});
+
+test("a ticked Attach screenshot box sends a picture of just that element, with no overlay in it; unticked sends none", async () => {
+  await withStack(async (stack) => {
+    const options = await optionsPage(stack);
+    await addSite(stack, options, fakeHttpsSite);
+    const page = await stack.context.newPage();
+    await page.goto(fakeHttpsSite);
+    await expect(page.locator(".tb-modes")).toBeVisible();
+
+    const pick = async (selector: string) => {
+      await setMode(page, "comment");
+      await page.hover(selector);
+      await page.click(selector);
+      await page.locator('[data-key="composer"]').fill("too tight");
+    };
+    await pick(".hero-title");
+    await expect(page.locator('[data-key="attach-shot"]')).not.toBeChecked();
+    await page.locator('[data-key="attach-shot"]').check();
+    await page.locator('[data-key="send"]').click();
+    await page.locator(".tb-thread.active").waitFor();
+    const box = (await page.locator(".hero-title").boundingBox())!;
+
+    const next = stack.run(["next"]);
+    const path = /screenshot: (\S+\.png)/.exec(next)?.[1];
+    expect(path).toMatch(/^\.tackboard\/shots\/.+\.png$/);
+    const png = readFileSync(join(stack.project, path!));
+    expect(png.subarray(1, 4).toString()).toBe("PNG");
+    // The size is in the PNG header: width then height, 4 bytes each, at byte 16.
+    expect(Math.abs(png.readUInt32BE(16) - box.width)).toBeLessThanOrEqual(2);
+    expect(Math.abs(png.readUInt32BE(20) - box.height)).toBeLessThanOrEqual(2);
+    // The overlay was put back after the picture.
+    await expect(host(page)).toBeVisible();
+
+    await pick(".hero-title");
+    await page.locator('[data-key="send"]').click();
+    await page.locator(".tb-thread.active").waitFor();
+    expect(stack.run(["next"])).not.toContain("screenshot:");
+    // Chrome's approval box cannot be clicked by a test, so this build already holds <all_urls>.
+  }, ["<all_urls>"]);
 });

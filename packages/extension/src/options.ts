@@ -109,3 +109,17 @@ const fileHint = find("file_hint");
 void chrome.extension.isAllowedFileSchemeAccess().then((allowed) => (fileHint.hidden = allowed)).catch(() => {});
 
 void showSites();
+
+// Screenshots: Chrome only captures a tab for an extension that holds <all_urls>, so the user turns that on here, once.
+const ALL_URLS = { origins: ["<all_urls>"] };
+const shots = find<HTMLInputElement>("shots");
+const shotsProblem = find("shots_problem");
+void chrome.permissions.contains(ALL_URLS).then((has) => (shots.checked = has));
+shots.addEventListener("change", async () => {
+  shotsProblem.textContent = "";
+  // Chrome only shows its approval box for the click, so nothing slow comes before the request.
+  const wanted = shots.checked;
+  const done = wanted ? await chrome.permissions.request(ALL_URLS).catch(() => false) : !(await chrome.permissions.remove(ALL_URLS).catch(() => false));
+  if (wanted && !done) shotsProblem.textContent = "Chrome did not allow screenshots";
+  shots.checked = await chrome.permissions.contains(ALL_URLS);
+});

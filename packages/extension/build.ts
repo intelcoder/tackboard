@@ -6,6 +6,7 @@ import { emptySharedConfig } from "../overlay/build.ts";
 import { LOCAL_PATTERNS } from "./src/sites.ts";
 
 const here = import.meta.dirname;
+const ALL_URLS = "<all_urls>";
 
 /** Builds the unpacked extension into `outDir`. `extraHostPermissions` is only for tests that cannot click Chrome's approval box. */
 export async function buildExtension(outDir: string, extraHostPermissions: string[] = []): Promise<string> {
@@ -28,7 +29,8 @@ export async function buildExtension(outDir: string, extraHostPermissions: strin
     version: "0.1.0",
     key: brand.extensionKey,
     permissions: ["storage", "scripting", "activeTab", "clipboardRead"],
-    optional_host_permissions: ["http://*/*", "https://*/*"],
+    // <all_urls> is only for screenshots: Chrome will not capture a tab without it. The options page asks for it when the user turns Screenshots on.
+    optional_host_permissions: ["http://*/*", "https://*/*", ALL_URLS],
     // Local pages are on from the start (no site to add); the daemon address is 127.0.0.1.
     host_permissions: [...new Set(["http://localhost/*", "http://127.0.0.1/*", ...extraHostPermissions])],
     content_scripts: [{ matches: LOCAL_PATTERNS, js: ["content.js"], run_at: "document_idle", all_frames: true }],

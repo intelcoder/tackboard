@@ -16,6 +16,7 @@
   .address { flex: 1 1 12rem; overflow-wrap: anywhere; }
   .empty { color: GrayText; }
   label { display: block; font-weight: 600; margin: 16px 0 4px; }
+  label.inline { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }
   li label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }
   input[type="text"], textarea { box-sizing: border-box; width: 100%; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: Canvas; color: CanvasText; }
   textarea { min-height: 8rem; font-family: ui-monospace, monospace; font-size: 0.875rem; }
@@ -33,6 +34,10 @@
   <h1 id="title"></h1>
   <ul id="sites"></ul>
   <p id="file_hint" hidden>To use pages opened from your computer (file://), open this extension's card in chrome://extensions and turn on "Allow access to file URLs".</p>
+  <h2>Screenshots</h2>
+  <p class="warning">Lets a comment carry a picture of the element it is about. Chrome asks for access to all sites because it will not take a picture of a tab without it. A picture is taken only when you tick "Attach screenshot" on a comment, and it goes to your own daemon, nowhere else.</p>
+  <label class="inline"><input type="checkbox" id="shots"> Allow screenshots</label>
+  <p class="problem" id="shots_problem" role="alert"></p>
   <h2>Add a site</h2>
   <p class="warning">Pages on localhost and files on your computer work by themselves while the daemon is running, with nothing to add. Adding a site puts the comment bar on every page of that site. The daemon token stays inside this extension. Add only sites you control, never one that real visitors use.</p>
   <form id="add">
