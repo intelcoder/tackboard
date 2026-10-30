@@ -188,6 +188,10 @@ If you update the clone, run `npm run build` again, then click the reload arrow 
 
 Limits: Chrome only (no Firefox or Safari), loaded from the folder (not on the Chrome Web Store), the toolbar button has no menu and no picture of its own, and the extension cannot read React's data on the page, so a comment made through it is not expected to carry a React component name.
 
+### Working on the extension itself
+
+Run `npm run dev:extension` and load `packages/extension/dist` once. After that, every save under `packages/extension`, `packages/overlay` or `packages/shared` rebuilds the extension, reloads it in Chrome, and refreshes your open `localhost`, `127.0.0.1` and `file` tabs. The refresh drops unsent drafts and the send queue. Only this dev build listens for the reload (on port 35729); the normal build does not.
+
 ## Comment on the page
 
 Reload your dev site. A small bar appears with two tools and a comments button:

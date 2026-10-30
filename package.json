@@ -9,6 +9,7 @@
     "test": "node --test \"packages/*/test/*.test.ts\"",
     "test:e2e": "npm run build && playwright test -c e2e/playwright.config.ts",
     "build": "node scripts/build.ts",
+    "dev:extension": "node scripts/dev_extension.ts",
     "playground": "node scripts/playground.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
