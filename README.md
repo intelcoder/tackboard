@@ -190,7 +190,7 @@ Limits: Chrome only (no Firefox or Safari), loaded from the folder (not on the C
 
 ### Working on the extension itself
 
-Run `npm run dev:extension` and load `packages/extension/dist` once. After that, every save under `packages/extension`, `packages/overlay` or `packages/shared` rebuilds the extension, reloads it in Chrome, and refreshes your open `localhost`, `127.0.0.1` and `file` tabs. The refresh drops unsent drafts and the send queue. Only this dev build listens for the reload (on port 35729); the normal build does not.
+Run `npm run dev:extension` and load `packages/extension/dist` once. After that, every save under `packages/extension`, `packages/overlay` or `packages/shared` rebuilds the extension, reloads it in Chrome, and refreshes every open tab that shows the bar. The refresh drops unsent drafts and the send queue. Only this dev build listens for the reload (on port 35729); the normal build does not. The script prints a line and exits if that port is taken, because another copy is already running.
 
 ## Comment on the page
 

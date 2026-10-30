@@ -9,37 +9,35 @@ const PORT = 35729;
 const root = join(import.meta.dirname, "..");
 const dist = join(root, "packages/extension/dist");
 
-// Added to the background script of this dev build only. The service worker stays awake while the stream is open (the server sends a line every 20 s).
-const devClient = `
+// Added to the dev build only. The background script listens for the rebuild and reloads the extension; it stays awake while the stream is open (the server sends a line every 20 s).
+// The old content script of an open tab is orphaned by that reload (chrome.runtime.id goes away), so it reloads its own tab, which then gets the new one.
+const backgroundClient = `
+;(async function listen() {
+  try {
+    const res = await fetch("http://127.0.0.1:${PORT}/events");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (decoder.decode(value).includes("reload")) chrome.runtime.reload();
+    }
+  } catch {}
+  setTimeout(listen, 1000);
+})();
+`;
+const contentClient = `
 ;(() => {
-  const c = chrome;
-  c.storage.local.get("devReload").then(async ({ devReload }) => {
-    if (!devReload) return;
-    await c.storage.local.remove("devReload");
-    for (const tab of await c.tabs.query({ url: ["http://localhost/*", "http://127.0.0.1/*", "file:///*"] })) c.tabs.reload(tab.id);
-  });
-  (async function listen() {
-    try {
-      const res = await fetch("http://127.0.0.1:${PORT}/events");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (decoder.decode(value).includes("reload")) {
-          await c.storage.local.set({ devReload: true });
-          c.runtime.reload();
-        }
-      }
-    } catch {}
-    setTimeout(listen, 1000);
-  })();
+  const timer = setInterval(() => {
+    if (!chrome.runtime?.id) { clearInterval(timer); location.reload(); }
+  }, 500);
 })();
 `;
 
 async function build(): Promise<void> {
   await buildExtension(dist);
-  appendFileSync(join(dist, "background.js"), devClient);
+  appendFileSync(join(dist, "background.js"), backgroundClient);
+  appendFileSync(join(dist, "content.js"), contentClient);
 }
 
 const listeners = new Set<ServerResponse>();
@@ -49,7 +47,12 @@ createServer((req, res) => {
   res.write(": hello\n\n");
   listeners.add(res);
   req.on("close", () => listeners.delete(res));
-}).listen(PORT, "127.0.0.1");
+})
+  .on("error", (error: NodeJS.ErrnoException) => {
+    console.error(error.code === "EADDRINUSE" ? `port ${PORT} is taken: is npm run dev:extension already running?` : error.message);
+    process.exit(1);
+  })
+  .listen(PORT, "127.0.0.1");
 setInterval(() => listeners.forEach((res) => res.write(": ping\n\n")), 20_000);
 
 await build();
