@@ -15,14 +15,21 @@ export async function shot(page: Page, name: string): Promise<string> {
   return path;
 }
 
-export const modeButton = (page: Page, mode: "hidden" | "view" | "comment") => page.locator(`.tb-modes [data-mode="${mode}"]`);
+// One eye button shows and hides the overlay, so "hidden" and "view" are the same button; its aria-pressed says which.
+export const modeButton = (page: Page, mode: "hidden" | "view" | "comment") => page.locator(`.tb-modes [data-mode="${mode === "hidden" ? "view" : mode}"]`);
 export const panelToggle = (page: Page) => page.locator(".tb-modes [data-panel]");
 export const badge = (page: Page) => page.locator(".tb-modes .badge");
 export const outline = (page: Page) => page.locator(".tb-outline");
 export const crumbs = (page: Page) => page.locator(".tb-crumbs button");
 
 export async function setMode(page: Page, mode: "hidden" | "view" | "comment"): Promise<void> {
-  await modeButton(page, mode).click();
+  const eye = modeButton(page, "view");
+  const shown = (await eye.getAttribute("aria-pressed")) === "true";
+  if (mode === "hidden") return void (shown && (await eye.click()));
+  if (!shown) await eye.click();
+  if (mode === "comment") return void (await modeButton(page, "comment").click());
+  // Esc leaves comment mode
+  if ((await modeButton(page, "comment").getAttribute("aria-pressed")) === "true") await page.keyboard.press("Escape");
 }
 
 export async function openPanel(page: Page): Promise<void> {

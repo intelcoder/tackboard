@@ -250,7 +250,7 @@ test("with the script tag too there is only one overlay, in both orders", async 
   });
 });
 
-test("turning a site off removes the overlay, on brings it back, remove deletes it", async () => {
+test("turning a site off removes the overlay, on brings it back, remove turns a local site off and keeps its row", async () => {
   await withStack(async (stack) => {
     const site = await stack.site();
     const options = await optionsPage(stack);
@@ -275,15 +275,11 @@ test("turning a site off removes the overlay, on brings it back, remove deletes 
     await row.getByLabel("On").check();
     await expect(host(page)).toBeAttached();
 
+    // a local page comes back by itself, so Remove turns it off and keeps the row
     await row.getByRole("button", { name: "Remove" }).click();
-    await expect(options.locator("li", { hasText: site })).toHaveCount(0);
-    // the tab that was open when the site was removed keeps its overlay, and says why a comment cannot be sent
-    await page.locator('.tb-modes [data-mode="comment"]').click();
-    await page.hover(".hero-title");
-    await page.click(".hero-title");
-    await page.locator('[data-key="composer"]').fill("sent after the site was removed");
-    await page.locator('[data-key="send"]').click();
-    await expect(page.getByText("This site is not turned on in the extension")).toBeVisible();
+    await expect(row.getByLabel("On")).not.toBeChecked();
+    // turned off, so the tab that is open loses its overlay too
+    await expect(host(page)).toHaveCount(0);
     const again = await stack.context.newPage();
     await again.goto(site);
     await again.waitForTimeout(1500);
@@ -330,26 +326,22 @@ async function addFrame(page: Page, address: string): Promise<Frame> {
 
 test("Remove unregisters the script only when no other site uses the same pattern", async () => {
   await withStack(async (stack) => {
-    const first = await stack.site();
-    const second = await stack.site();
+    // Chrome's patterns ignore the port, so two ports of one host share one script.
+    const first = `${fakeHttpsSite}:8443`;
     const options = await optionsPage(stack);
-    await addSite(stack, options, first.replace("http://", ""));
-    await addSite(stack, options, second.replace("http://", ""));
+    // the plain one first: addSite looks for a row by text, and its text is part of the other's
     await addSite(stack, options, fakeHttpsSite);
-    const open = await stack.context.newPage();
-    await open.goto(second);
-    await expect.poll(async () => (await badgeOn(stack, open)).text).toBe("ON");
-    expect((await registeredScripts(options)).sort()).toEqual(["http://localhost/*", `${fakeHttpsSite}/*`]);
+    await addSite(stack, options, first);
+    const row = (site: string) => options.locator(`li:has(.address:text-is("${site}"))`);
+    expect(await registeredScripts(options)).toEqual([`${fakeHttpsSite}/*`]);
 
-    await options.locator("li", { hasText: first }).getByRole("button", { name: "Remove" }).click();
-    await expect(options.locator("li", { hasText: first })).toHaveCount(0);
-    expect(await registeredScripts(options)).toContain("http://localhost/*");
+    await row(first).getByRole("button", { name: "Remove" }).click();
+    await expect(row(first)).toHaveCount(0);
+    expect(await registeredScripts(options)).toEqual([`${fakeHttpsSite}/*`]);
 
-    await options.locator("li", { hasText: second }).getByRole("button", { name: "Remove" }).click();
-    await expect(options.locator("li", { hasText: second })).toHaveCount(0);
-    await expect.poll(() => registeredScripts(options)).toEqual([`${fakeHttpsSite}/*`]);
-    // the tab still open on the removed site loses its badge
-    await expect.poll(async () => (await badgeOn(stack, open)).text).toBe("");
+    await row(fakeHttpsSite).getByRole("button", { name: "Remove" }).click();
+    await expect(row(fakeHttpsSite)).toHaveCount(0);
+    await expect.poll(() => registeredScripts(options)).toEqual([]);
   });
 });
 
@@ -586,7 +578,7 @@ test("a frame of an added host inside a page of a host that was not added shows 
 async function optionsWithClipboard(stack: Stack, answer: string): Promise<Page> {
   const page = await stack.context.newPage();
   await page.addInitScript(`window.__reads = 0; navigator.clipboard.readText = () => { window.__reads++; return ${answer}; };`);
-  await page.goto(`chrome-extension://${stack.extensionId}/options.html?site=${encodeURIComponent("http://localhost:1")}`);
+  await page.goto(`chrome-extension://${stack.extensionId}/options.html?site=${encodeURIComponent(fakeHttpsSite)}`);
   await expect.poll(() => page.evaluate(() => (window as any).__reads)).toBe(1);
   return page;
 }

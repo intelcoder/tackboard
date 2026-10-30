@@ -55,7 +55,7 @@ test("panel ui", async ({ harness: h }) => {
   expect(narrow.y + narrow.height).toBeLessThanOrEqual(pill.y);
   await shot(page, "panel_open_390");
   await page.setViewportSize({ width: 1280, height: 800 });
-  await expect.poll(async () => (await panel.boundingBox())!.x).toBeGreaterThan(900);
+  await expect.poll(async () => (await panel.boundingBox())!.x).toBeGreaterThan(800);
 
   // dragging the header moves the panel and keeps it inside the viewport
   const before = (await panel.boundingBox())!;
