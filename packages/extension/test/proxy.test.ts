@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { brand } from "@app/shared";
-import { answerMessage, callDaemon } from "../src/proxy.ts";
+import { answerMessage, answerScreenshot, callDaemon } from "../src/proxy.ts";
 
 const origin = "https://dev.example.test";
 const sites = { [origin]: { daemon: "http://127.0.0.1:4321", token: "secret", on: true } };
@@ -69,4 +69,19 @@ test("the site is the tab's own address, a site field in the message is ignored"
   await answerMessage(both, sender, message, fetchFn);
   assert.equal(seen[0]!.url, "http://127.0.0.1:4321/threads");
   assert.equal(await answerMessage({ [origin]: { ...sites[origin]!, on: false }, "https://evil.test": both["https://evil.test"] }, sender, { ...message, kind: "is_on" }), false);
+});
+
+test("a screenshot is taken of the sender's window only for a site that is on", async () => {
+  const windows: number[] = [];
+  const capture = async (windowId: number) => (windows.push(windowId), "data:image/png;base64,AAAA");
+  assert.deepEqual(await answerScreenshot(sites, { tab: { url: `${origin}/page`, windowId: 7 } }, capture), { dataUrl: "data:image/png;base64,AAAA" });
+  assert.deepEqual(windows, [7]);
+  const off = { [origin]: { ...sites[origin], on: false } };
+  assert.ok("error" in (await answerScreenshot(off, { tab: { url: `${origin}/page`, windowId: 7 } }, capture)));
+  assert.deepEqual(windows, [7], "no capture for a site that is off");
+});
+
+test("a refused capture comes back as an error line", async () => {
+  const refuse = async () => { throw new Error("Cannot access contents of the page"); };
+  assert.deepEqual(await answerScreenshot(sites, { tab: { url: origin + "/", windowId: 1 } }, refuse), { error: "Cannot access contents of the page" });
 });

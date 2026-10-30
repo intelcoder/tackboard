@@ -26,7 +26,7 @@ export const chrome = (globalThis as unknown as {
     runtime: {
       sendMessage(message: unknown): Promise<any>;
       getURL(path: string): string;
-      onMessage: Listeners<[message: any, sender: { tab?: { url?: string } }, reply: (answer: unknown) => void]>;
+      onMessage: Listeners<[message: any, sender: { tab?: { url?: string; windowId?: number } }, reply: (answer: unknown) => void]>;
     };
     tabs: {
       query(filter: { url?: string[] }): Promise<Tab[]>;
@@ -35,6 +35,7 @@ export const chrome = (globalThis as unknown as {
       onUpdated: Listeners<[tabId: number, changes: Record<string, unknown>, tab: Tab]>;
       onActivated: Listeners<[active: { tabId: number }]>;
       get(tabId: number): Promise<Tab>;
+      captureVisibleTab(windowId: number, options: { format: "png" }): Promise<string>;
     };
     action: {
       onClicked: Listeners<[tab: Tab]>;

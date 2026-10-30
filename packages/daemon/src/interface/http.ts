@@ -9,6 +9,7 @@ import { DomainError } from "../domain/errors.ts";
 import type { Clock } from "../domain/repositories.ts";
 import { SystemClock } from "../infrastructure/clock.ts";
 import { GitCheckpointStore } from "../infrastructure/git_checkpoint_store.ts";
+import { FileScreenshotStore } from "../infrastructure/file_screenshot_store.ts";
 import { GitInfoReader } from "../infrastructure/git_info.ts";
 import { SqliteThreadRepository } from "../infrastructure/sqlite_thread_repository.ts";
 import { PostCommentHandler } from "../application/commands/post_comment.ts";
@@ -59,7 +60,8 @@ function need_selector(value: unknown, name: string): string {
 
 function read_element(value: unknown): ElementRef {
   if (typeof value !== "object" || value === null) throw new DomainError("invalid", "element is required");
-  const e = value as Partial<ElementRef>;
+  // `screenshot` is a path the daemon chose; a client cannot supply one.
+  const { screenshot: _ignored, ...e } = value as Partial<ElementRef>;
   const rect = e.rect;
   if (typeof rect !== "object" || rect === null) throw new DomainError("invalid", "element.rect is required");
   return {
@@ -71,6 +73,17 @@ function read_element(value: unknown): ElementRef {
     rect,
     confidence: e.confidence === "source" || e.confidence === "component" ? e.confidence : "text",
   };
+}
+
+const PNG_START = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+function read_screenshot(value: unknown): Buffer | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") throw new DomainError("invalid", "screenshot must be base64 text");
+  const png = Buffer.from(value, "base64");
+  if (png.length > LIMITS.screenshot) throw new DomainError("too_large", `screenshot is larger than ${LIMITS.screenshot} bytes`);
+  if (!png.subarray(0, PNG_START.length).equals(PNG_START)) throw new DomainError("invalid", "screenshot must be a PNG");
+  return png;
 }
 
 function read_viewport(value: unknown): { w: number; h: number } {
@@ -89,7 +102,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
   const git = new GitInfoReader(opts.projectDir);
   const checkpoints = new GitCheckpointStore(opts.projectDir);
 
-  const post_comment = new PostCommentHandler(repo, clock, git);
+  const post_comment = new PostCommentHandler(repo, clock, git, new FileScreenshotStore(opts.projectDir));
   const post_agent_comment = new PostAgentCommentHandler(repo, clock, git);
   const claim_next = new ClaimNextThreadHandler(repo, clock, git, checkpoints);
   const reply = new ReplyToThreadHandler(repo, clock, checkpoints);
@@ -148,6 +161,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
       url: need_text(b.url, "url"),
       viewport: read_viewport(b.viewport),
       text: need_text(b.text, "text"),
+      screenshot: read_screenshot(b.screenshot),
     });
     return c.json(thread, 201);
   });

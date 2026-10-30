@@ -26,6 +26,7 @@ export function describeThread(t: ThreadDto): string {
   out.push(`  html: ${clip(el.html, 500)}`);
   if (el.component?.length) out.push(`  component: ${el.component.join(" > ")}`);
   if (el.source) out.push(`  source: ${el.source}`);
+  if (el.screenshot) out.push(`  screenshot: ${el.screenshot} (a picture of the element as the user saw it; open it to look)`);
   out.push(`  confidence: ${el.confidence}`);
   if (earlier.length) {
     out.push("", "Earlier messages:");

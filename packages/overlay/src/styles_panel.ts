@@ -108,7 +108,7 @@ export const panelCss = `
 .tb-drafts .tb-queued .text{opacity:1;background:none;border:0;border-radius:0;padding:0;max-width:100%;color:var(--tb-fg)}
 
 /* Composer and RestoreConfirm */
-.tb-composer{display:flex;flex-direction:column;gap:8px;padding:10px 12px;min-width:0;overflow:auto}
+.tb-attach{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer}.tb-attach:has(:disabled){cursor:default;opacity:.7}.tb-composer{display:flex;flex-direction:column;gap:8px;padding:10px 12px;min-width:0;overflow:auto}
 .tb-composer-top{display:flex;align-items:center;gap:6px;min-width:0}
 .tb-composer .tb-composer-top .target{align-self:center}
 .tb-composer-top .tb-hint{margin-left:auto;flex:none;white-space:nowrap}

@@ -27,6 +27,8 @@ export type MountOptions = {
   onPick?: (ref: ElementRef, el: Element) => void;
   /** Called when a pin is clicked. The panel opens that thread either way. */
   onPin?: (threadId: string) => void;
+  /** A data URL of the visible tab. Given, the comment box offers to attach a screenshot of the element. */
+  screenshot?: () => Promise<string>;
 };
 
 export type Overlay = {
@@ -81,7 +83,7 @@ export function mountOverlay(options: MountOptions): Overlay {
     },
   });
   const panel = createPanel({
-    document: doc, window: win, layer: panelLayer, h, store, api, viewport,
+    document: doc, window: win, layer: panelLayer, h, store, api, viewport, host, captureTab: options.screenshot,
     refresh: poller.now, showToast: toast.show,
   });
   const pins = createPins({

@@ -111,3 +111,10 @@ test("a batch prints the instructions block once, and no thread block has its ow
   assert.match(out, /tackboard reply <id> "<question>" --ask/);
   assert.match(out, /Only the user closes a thread\./);
 });
+
+test("a thread with a screenshot prints its path", () => {
+  const t = thread("text");
+  t.element.screenshot = ".tackboard/shots/t7.png";
+  assert.match(describeThread(t), /screenshot: \.tackboard\/shots\/t7\.png/);
+  assert.doesNotMatch(describeThread(thread("text")), /screenshot/);
+});

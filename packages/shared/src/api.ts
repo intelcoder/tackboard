@@ -12,6 +12,8 @@ export const LIMITS = {
   html: 4096,
   elementText: 120,
   selector: 1000,
+  /** Bytes of the PNG after decoding. Its base64 text still has to fit in `body`. */
+  screenshot: 1_000_000,
 } as const;
 
 export const ERROR_STATUS: Record<ErrorCode, number> = {
@@ -51,6 +53,8 @@ export type PostThreadRequest = {
   url: string;
   viewport: { w: number; h: number };
   text: string;
+  /** A PNG of the element, as base64 text. */
+  screenshot?: string;
 };
 export type PostAgentThreadRequest = {
   agent: string;

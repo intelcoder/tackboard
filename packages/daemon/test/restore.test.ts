@@ -22,6 +22,8 @@ import { AckNoticesHandler } from "../src/application/commands/ack_notices.ts";
 import { GetNoticesHandler } from "../src/application/queries/get_notices.ts";
 import { git } from "./daemon_setup.ts";
 
+const noShots = { save(): string { throw new Error("no screenshots in this test"); } };
+
 const MIN = 60_000;
 const folders: string[] = [];
 after(() => {
@@ -82,7 +84,7 @@ function setup(options: Options = {}) {
   const store = options.wrap_store ? options.wrap_store(real_store) : real_store;
   return {
     dir, repo, real_repo, clock, store, real_store,
-    post: new PostCommentHandler(repo, c, info),
+    post: new PostCommentHandler(repo, c, info, noShots),
     claim: new ClaimNextThreadHandler(repo, c, info, store),
     reply: new ReplyToThreadHandler(repo, c, store),
     resolve: new ResolveThreadHandler(repo, c, store),

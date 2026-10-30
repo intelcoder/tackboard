@@ -34,3 +34,8 @@ export interface GitInfo {
   commit(): CommitSha;
   branches(): string[];
 }
+
+export interface ScreenshotStore {
+  /** Keeps the PNG for a thread and returns its path from the project folder. */
+  save(threadId: string, png: Buffer): string;
+}

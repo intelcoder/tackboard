@@ -5,6 +5,7 @@ import type { Api } from "./api.ts";
 import type { H } from "./dom.ts";
 import { createFinder } from "./element_ref.ts";
 import { notificationState, permissionAsked, permissionBanner, rememberNotNow } from "./notifications.ts";
+import { elementScreenshot, whyNoShot } from "./screenshot.ts";
 import { createSendQueue } from "./send_queue.ts";
 import type { QueueItem } from "./send_queue.ts";
 import { badgeCount, clampToViewport, errorText, isSendKey, restoreDisabledReason, visibleThreads } from "./panel_logic.ts";
@@ -23,6 +24,10 @@ export type PanelOptions = {
   store: Store;
   api: Api;
   viewport: () => { w: number; h: number };
+  /** The overlay's own element, hidden while a screenshot is taken. */
+  host: HTMLElement;
+  /** A data URL of the visible tab. Without it the comment box has no screenshot checkbox. */
+  captureTab?: () => Promise<string>;
   /** Ask the poller for fresh data now. */
   refresh(): void;
   showToast(text: string): void;
@@ -39,7 +44,7 @@ export type Panel = {
 };
 
 type ToSend =
-  | { kind: "comment"; ref: ElementRef; url: string; viewport: { w: number; h: number }; text: string }
+  | { kind: "comment"; ref: ElementRef; url: string; viewport: { w: number; h: number }; text: string; screenshot?: string }
   | { kind: "reply"; threadId: string; text: string };
 
 type CommentToSend = Extract<ToSend, { kind: "comment" }>;
@@ -66,7 +71,7 @@ export function createPanel(o: PanelOptions): Panel {
   let tab: Tab = "open";
   let showHistory = false;
   let historyOpenId: string | null = null;
-  let composer: { ref: ElementRef } | null = null;
+  let composer: { ref: ElementRef; attach: boolean } | null = null;
   let composerDraft = "";
   let confirming: { threadId: string; messageId: string } | null = null;
   let notice: string | null = null;
@@ -219,7 +224,7 @@ export function createPanel(o: PanelOptions): Panel {
       tab = "open";
       return;
     }
-    const t = await api.postThread({ element: job.ref, url: job.url, viewport: job.viewport, text: job.text }, signal);
+    const t = await api.postThread({ element: job.ref, url: job.url, viewport: job.viewport, text: job.text, screenshot: job.screenshot }, signal);
     saveThread(t);
     tab = "open";
     store.set({ mode: "view", activeThreadId: t.id, panelOpen: true });
@@ -258,7 +263,7 @@ export function createPanel(o: PanelOptions): Panel {
   };
 
   const compose = (ref: ElementRef) => {
-    composer = { ref };
+    composer = { ref, attach: false };
     focusId = null;
     composerDraft = "";
     showHistory = false;
@@ -270,10 +275,31 @@ export function createPanel(o: PanelOptions): Panel {
     store.set({ composing: false });
   };
 
-  const send = () => {
+  const composerElement = () => (composer ? finder.find({ id: "composer", url: win.location.href, element: composer.ref }) : null);
+
+  /** The comment as typed, with a screenshot of the element when the box is ticked. Null when there is nothing to send or the picture failed (the box stays open and says why). */
+  const buildJob = async (): Promise<CommentToSend | null> => {
     const text = composerDraft.trim();
-    if (!composer || !text) return;
-    sendQueue.add({ kind: "comment", ref: composer.ref, url: win.location.href, viewport: o.viewport(), text });
+    const started = composer;
+    if (!started || !text) return null;
+    const job: CommentToSend = { kind: "comment", ref: started.ref, url: win.location.href, viewport: o.viewport(), text };
+    if (started.attach && o.captureTab) {
+      try {
+        const el = composerElement();
+        if (!el) throw new Error("The element is not on the page");
+        job.screenshot = await elementScreenshot({ el, win, host: o.host, captureTab: o.captureTab });
+      } catch (e) {
+        o.showToast(`Screenshot failed: ${(e as Error).message}`);
+        return null;
+      }
+    }
+    return composer === started ? job : null;
+  };
+
+  const send = async () => {
+    const job = await buildJob();
+    if (!job) return;
+    sendQueue.add(job);
     closeComposer();
   };
 
@@ -285,10 +311,10 @@ export function createPanel(o: PanelOptions): Panel {
     else badge.setAttribute("hidden", "");
   };
 
-  const addDraft = () => {
-    const text = composerDraft.trim();
-    if (!composer || !text) return;
-    drafts.push({ id: `draft-${++draftNumber}`, job: { kind: "comment", ref: composer.ref, url: win.location.href, viewport: o.viewport(), text } });
+  const addDraft = async () => {
+    const job = await buildJob();
+    if (!job) return;
+    drafts.push({ id: `draft-${++draftNumber}`, job });
     showDraftCount();
     o.showToast(`Draft added (${drafts.length})`);
     closeComposer();
@@ -357,6 +383,17 @@ export function createPanel(o: PanelOptions): Panel {
     return h("div", { class: "tb-tabs" }, tabButton("open", "Open"), tabButton("resolved", "Resolved"));
   };
 
+  const attachBox = (): HTMLElement | null => {
+    if (!o.captureTab || !composer) return null;
+    const el = composerElement();
+    const why = el ? whyNoShot(el, win) : "The element is not on the page";
+    const current = composer;
+    return h("label", { class: "tb-attach", title: why }, h("input", {
+      type: "checkbox", "data-key": "attach-shot", checked: current.attach && !why, disabled: !!why,
+      onchange: (ev: Event) => { current.attach = (ev.target as HTMLInputElement).checked; },
+    }), " Attach screenshot", why ? h("span", { class: "tb-hint" }, ` ${why}`) : null);
+  };
+
   const composerView = (): HTMLElement => {
     const s = store.get();
     const box = h("textarea", {
@@ -377,6 +414,7 @@ export function createPanel(o: PanelOptions): Panel {
         h("span", { class: "tb-hint" }, `to ${s.agent.name ?? "the agent"}`),
         h("button", { type: "button", class: "tb-x", "aria-label": "Cancel", title: "Cancel", "data-key": "cancel", onclick: closeComposer }, "✕")),
       box,
+      attachBox(),
       h("div", { class: "tb-row" },
         h("button", { type: "button", class: "tb-btn", "data-key": "send", onclick: send }, "Send now"),
         h("button", { type: "button", class: "tb-btn primary", "data-key": "draft", onclick: addDraft }, "Add draft")));

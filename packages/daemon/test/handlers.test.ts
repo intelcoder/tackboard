@@ -18,6 +18,8 @@ import { GetThreadHandler } from "../src/application/queries/get_thread.ts";
 import { ListThreadsHandler } from "../src/application/queries/list_threads.ts";
 import { GetHistoryHandler } from "../src/application/queries/get_history.ts";
 
+const noShots = { save(): string { throw new Error("no screenshots in this test"); } };
+
 const MIN = 60_000;
 
 /** A checkpoint store for a project without git: every call says no_git, so handlers make no checkpoints. */
@@ -59,7 +61,7 @@ function setup(store: CheckpointStore = noCheckpoints) {
   const g: GitInfo = git;
   return {
     repo, clock, git,
-    post: new PostCommentHandler(repo, c, g),
+    post: new PostCommentHandler(repo, c, g, noShots),
     postAgent: new PostAgentCommentHandler(repo, c, g),
     claim: new ClaimNextThreadHandler(repo, c, g, store),
     reply: new ReplyToThreadHandler(repo, c, store),

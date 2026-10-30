@@ -18,6 +18,20 @@ export function answerMessage(
   return message.kind === "is_on" ? isOn(sites, origin) : callDaemon(sites, origin, message, fetchFn);
 }
 
+/** Takes a picture of the visible part of the sender's window. Only for a site that is turned on. */
+export async function answerScreenshot(
+  sites: Sites,
+  sender: { tab: { url: string; windowId: number } },
+  capture: (windowId: number) => Promise<string>,
+): Promise<{ dataUrl: string } | { error: string }> {
+  if (!isOn(sites, siteKey(sender.tab.url) ?? "")) return { error: "This site is not turned on in the extension" };
+  try {
+    return { dataUrl: await capture(sender.tab.windowId) };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
+
 /** Sends one call to the daemon of a site that is on. The page side gives only a path. */
 export async function callDaemon(
   sites: Sites,

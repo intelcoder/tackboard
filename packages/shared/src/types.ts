@@ -9,6 +9,8 @@ export type ElementRef = {
   rect: { x: number; y: number; w: number; h: number };
   component?: string[];
   source?: string;
+  /** Path of the screenshot file, from the project folder. Only the daemon sets it. */
+  screenshot?: string;
   confidence: Confidence;
 };
 

@@ -1,9 +1,9 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { brand, paths } from "@app/shared";
+import { brand, LIMITS, paths } from "@app/shared";
 import type { ElementRef, HistoryEvent, ListThreadsResponse, ThreadDto } from "@app/shared";
 import { git, make_plain_folder, make_repo, ORIGIN, remove, start_daemon } from "./daemon_setup.ts";
 import type { Running } from "./daemon_setup.ts";
@@ -242,4 +242,33 @@ test("invalid input is 400 invalid and a missing JSON body is handled", () =>
     assert.equal(bad_json.status, 400);
     const unknown = await d.call("GET", "/nothing-here");
     assert.equal(unknown.status, 404);
+  }));
+
+// 1x1 transparent PNG
+const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+test("a posted screenshot is saved to a file and the thread points at it", () =>
+  with_daemon(async (d) => {
+    const res = await d.call("POST", paths.threads, { ...post_body("too tight"), screenshot: PNG });
+    assert.equal(res.status, 201);
+    const t = (await res.json()) as ThreadDto;
+    assert.equal(t.element.screenshot, `${brand.dataDir}/shots/${t.id}.png`);
+    assert.deepEqual(readFileSync(join(d.dir, t.element.screenshot!)), Buffer.from(PNG, "base64"));
+  }));
+
+test("a client cannot choose the screenshot path", () =>
+  with_daemon(async (d) => {
+    const t = (await (await d.call("POST", paths.threads, post_body("x", { ...element, screenshot: "/etc/passwd" }))).json()) as ThreadDto;
+    assert.equal(t.element.screenshot, undefined);
+  }));
+
+test("a screenshot that is not a PNG or is too big is refused", () =>
+  with_daemon(async (d) => {
+    const notPng = await d.call("POST", paths.threads, { ...post_body("x"), screenshot: Buffer.from("hello").toString("base64") });
+    assert.equal(notPng.status, 400);
+    const big = Buffer.concat([Buffer.from(PNG, "base64"), Buffer.alloc(LIMITS.screenshot)]).toString("base64");
+    const tooBig = await d.call("POST", paths.threads, { ...post_body("x"), screenshot: big });
+    assert.equal(tooBig.status, 413);
+    const list = (await (await d.call("GET", paths.threads)).json()) as ListThreadsResponse;
+    assert.equal(list.threads.length, 0);
   }));
