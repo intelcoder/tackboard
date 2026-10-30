@@ -2,7 +2,7 @@
 // through `h` (text nodes), never through any HTML parsing.
 import { statusLabel } from "@app/shared";
 import type { ElementRef, MessageDto, ThreadDto, ThreadStatus } from "@app/shared";
-import type { H } from "./dom.ts";
+import type { Child, H } from "./dom.ts";
 import { isSendKey } from "./panel_logic.ts";
 
 export function statusChip(h: H, status: ThreadStatus | "discarded"): HTMLElement {
@@ -16,12 +16,73 @@ export function targetLabel(ref: ElementRef): string {
   return ref.selector;
 }
 
+/** `code`, **bold**, *italic* and [text](http link) inside one line. Built as nodes, never parsed as HTML. */
+function inline(h: H, line: string): (Node | string)[] {
+  const out: (Node | string)[] = [];
+  const re = /`([^`]+)`|\*\*([^*]+)\*\*|(?<![\w*])\*([^*\s][^*]*?)\*(?![\w*])|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  let at = 0;
+  for (let m = re.exec(line); m; m = re.exec(line)) {
+    if (m.index > at) out.push(line.slice(at, m.index));
+    if (m[1] !== undefined) out.push(h("code", null, m[1]));
+    else if (m[2] !== undefined) out.push(h("b", null, m[2]));
+    else if (m[3] !== undefined) out.push(h("i", null, m[3]));
+    else out.push(h("a", { href: m[5], target: "_blank", rel: "noopener noreferrer" }, m[4]));
+    at = re.lastIndex;
+  }
+  if (at < line.length) out.push(line.slice(at));
+  return out;
+}
+
+/** The markdown an agent writes: fenced code, bullet and numbered lists, paragraphs, and the inline marks above. */
+export function markdown(h: H, text: string): Child[] {
+  const out: Child[] = [];
+  let para: string[] = [];
+  let list: HTMLElement | null = null;
+  const flush = () => {
+    if (para.length) {
+      const p = h("p", null);
+      para.forEach((l, i) => { if (i) p.append(h("br", null)); p.append(...inline(h, l)); });
+      out.push(p);
+    }
+    para = [];
+  };
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    if (line.startsWith("```")) {
+      flush();
+      list = null;
+      const code: string[] = [];
+      for (i++; i < lines.length && !lines[i]!.startsWith("```"); i++) code.push(lines[i]!);
+      out.push(h("pre", null, h("code", null, code.join("\n"))));
+      continue;
+    }
+    const item = /^\s*(?:[-*]|\d+\.)\s+(.*)$/.exec(line);
+    if (item) {
+      if (para.length) flush();
+      const tag = /^\s*\d/.test(line) ? "ol" : "ul";
+      // a blank line between items keeps the list going; a different kind of list starts a new one
+      if (!list || list.tagName.toLowerCase() !== tag) {
+        list = h(tag, null);
+        out.push(list);
+      }
+      list.append(h("li", null, ...inline(h, item[1]!)));
+    } else if (!line.trim()) flush();
+    else {
+      list = null;
+      para.push(line);
+    }
+  }
+  flush();
+  return out;
+}
+
 export function messageView(h: H, message: MessageDto, showDiscarded: boolean): HTMLElement {
   const side = message.author === "user" ? "me" : message.author === "system" ? "system" : "agent";
   const dimmed = showDiscarded && message.discarded;
   return h("div", { class: `tb-msg ${side}${dimmed ? " tb-discarded" : ""}` },
     side === "agent" ? h("span", { class: "who" }, message.author) : null,
-    h("span", { class: "text" }, message.text),
+    side === "agent" ? h("div", { class: "text md" }, ...markdown(h, message.text)) : h("span", { class: "text" }, message.text),
     dimmed ? statusChip(h, "discarded") : null);
 }
 

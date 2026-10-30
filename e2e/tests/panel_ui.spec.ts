@@ -46,9 +46,9 @@ test("panel ui", async ({ harness: h }) => {
   await expect(badge(page)).toBeHidden();
   await shot(page, "panel_open_1280");
 
-  // at 390 px wide the untouched panel is 320 px, inside the screen and clear of the pill
+  // at 390 px wide the untouched panel is 362 px (screen minus the 14 px gutters), inside the screen and clear of the pill
   await page.setViewportSize({ width: 390, height: 800 });
-  await expect.poll(async () => (await panel.boundingBox())!.width).toBe(320);
+  await expect.poll(async () => (await panel.boundingBox())!.width).toBe(362);
   const narrow = (await panel.boundingBox())!;
   const pill = (await page.locator(".tb-modes").boundingBox())!;
   expect(inside(narrow, 390, 800)).toBe(true);

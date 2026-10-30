@@ -20,17 +20,12 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
     paths.forEach((d, i) => svg.append(h("path", { d, "stroke-dasharray": name === "comment" && i === 0 ? "2 3" : null })));
     return svg;
   };
-  const tool = (mode: Mode, label: string) =>
-    h("button", {
-      type: "button",
-      "data-mode": mode,
-      "aria-label": label,
-      title: label,
-      "aria-pressed": "false",
-      onclick: () => store.set({ mode }),
-    }, icon(mode));
+  const tool = (mode: Mode, label: string, onclick: () => void) =>
+    h("button", { type: "button", "data-mode": mode, "aria-label": label, title: label, "aria-pressed": "false", onclick }, icon(mode));
 
-  const buttons = [tool("hidden", "Hidden"), tool("view", "View comments"), tool("comment", "Add comment")];
+  // One eye button shows or hides the overlay; Add comment is the other tool.
+  const eye = tool("view", "Hide comments", () => store.set({ mode: store.get().mode === "hidden" ? "view" : "hidden" }));
+  const buttons = [eye, tool("comment", "Add comment", () => store.set({ mode: "comment" }))];
   const badge = h("span", { class: "badge", hidden: true });
   // the panel keeps this one up to date: how many drafts are not sent yet
   const draftBadge = h("span", { class: "draft-count", hidden: true });
@@ -49,6 +44,14 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
   const sync = () => {
     const s = store.get();
     for (const b of buttons) b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === s.mode));
+    // the eye is "on" whenever the overlay shows, and slashed when it is hidden
+    const shown = s.mode !== "hidden";
+    eye.setAttribute("aria-pressed", String(shown));
+    if (eye.getAttribute("title") !== (shown ? "Hide comments" : "Show comments")) {
+      eye.setAttribute("aria-label", shown ? "Hide comments" : "Show comments");
+      eye.setAttribute("title", shown ? "Hide comments" : "Show comments");
+      eye.replaceChildren(icon(shown ? "view" : "hidden"));
+    }
     toggle.setAttribute("aria-pressed", String(s.panelOpen));
     if (s.mode === "hidden") toggle.setAttribute("disabled", "");
     else toggle.removeAttribute("disabled");
@@ -59,5 +62,15 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
   };
   store.subscribe(sync);
   sync();
+  // Esc leaves comment mode (the comment box keeps its own keys while it is open)
+  const onEsc = (e: KeyboardEvent) => {
+    const s = store.get();
+    if (!pill.isConnected) return void pill.ownerDocument.removeEventListener("keydown", onEsc, true);
+    if (e.key !== "Escape" || s.mode !== "comment" || s.composing) return;
+    // one Esc leaves comment mode; the panel's own Esc handler must not also close the panel
+    e.stopImmediatePropagation();
+    store.set({ mode: "view" });
+  };
+  pill.ownerDocument.addEventListener("keydown", onEsc, true);
   return pill;
 }

@@ -340,3 +340,14 @@ test("a refused resolve by the agent takes no checkpoint and changes nothing", (
   assert.deepEqual(s.history.handle({}), before.history);
   assert.equal(s.resolve.handle({ id: posted.id, by: "user" }).status, "resolved");
 });
+
+test("history can be narrowed to a page and a branch", () => {
+  const s = setup();
+  const home = s.post.handle(postArgs("home"));
+  const order = s.post.handle({ ...postArgs("order"), url: "http://localhost:3000/order#top" });
+  const ids = (q: { url?: string; branch?: string }) => [...new Set(s.history.handle(q).map((e) => e.threadId))];
+  assert.deepEqual(ids({ url: "http://localhost:3000" }), [home.id]);
+  assert.deepEqual(ids({ url: "http://localhost:3000/order/" }), [order.id]);
+  assert.deepEqual(ids({ branch: home.branch }).sort(), [home.id, order.id].sort());
+  assert.deepEqual(ids({ branch: "nope" }), []);
+});

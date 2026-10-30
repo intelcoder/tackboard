@@ -190,11 +190,11 @@ Limits: Chrome only (no Firefox or Safari), loaded from the folder (not on the C
 
 ## Comment on the page
 
-Reload your dev site. A small bar appears with three tools and a comments button:
+Reload your dev site. A small bar appears with two tools and a comments button:
 
-- Hidden: the overlay shows nothing.
-- View comments: the page shows pins for existing comments. This is the mode on load.
-- Add comment: hover to outline an element, click it, and type your comment. Hold Control over an element to see its margin, padding and gaps.
+- The eye button toggles the overlay: on, the page shows pins for existing comments (the mode on load); off, the overlay shows nothing.
+- The **comment bubble** is the small round marker the page shows on each element that has a thread (the number in it is the thread number). Click it to open the comments panel on just that thread, scrolled down to the latest message. Esc closes the panel. The floating chat button in the bar opens the panel with all the threads.
+- Add comment: hover to outline an element, click it, and type your comment. Esc leaves this mode. Hold Control over an element to see its margin, padding and gaps.
 
 In the reply box, Enter sends and Shift+Enter adds a line. In the comment box, Enter (or `Add draft`) keeps the comment as a draft instead of sending it, and Shift+Enter adds a line. The draft waits in the panel (under `Drafts`, where each draft can be removed) and you can pick the next element; a small second badge on the comments button counts the drafts. `Send all` sends the drafts in order, as ordinary comments. `Send now` (or Ctrl or Cmd plus Enter) sends just that one comment at once. Each comment is its own thread. When the agent asks (`tackboard next` or `tackboard wait`) it takes every pending thread at once, so comments sent together are normally handed over together, in order. A comment that arrives a moment after the agent asked comes with its next `next` or `wait`.
 
@@ -227,7 +227,7 @@ The daemon stamps each page comment with the branch of the folder it runs in, an
 | `tackboard channel [--as name]` | Runs the Claude Code channel server that pushes comments into a session (see "Push comments into Claude Code (optional)"). Started by Claude Code from `.mcp.json`, not by hand. |
 | `tackboard ack` | Confirms a restore notice (see below). |
 | `tackboard status` | Shows the branch and the threads. If it prints, the daemon is running. |
-| `tackboard history [id]` | Lists what happened, including exactly what the agent was given when it claimed a thread. |
+| `tackboard history [id] [--branch <name>] [--url <page>] [--json]` | Lists what happened, including exactly what the agent was given when it claimed a thread. `--branch` and `--url` keep only the events of threads on that branch and/or page (the `#hash` and a trailing `/` of the page are ignored). `--json` prints the raw events, for a change log or a summary: each `replied` event holds the agent's message, and each `claimed` event holds the thread as the agent saw it. The same filters work over HTTP: `GET /history?branch=..&url=..`, and `GET /threads?url=..`. |
 
 Example output of `tackboard next`:
 

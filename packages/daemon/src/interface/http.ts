@@ -138,7 +138,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
   app.get(paths.threads, (c) => {
     const state = c.req.query("state");
     if (state !== undefined && state !== "open" && state !== "resolved") throw new DomainError("invalid", "state must be open or resolved");
-    return c.json(list_threads.handle({ branch: c.req.query("branch") || undefined, state }));
+    return c.json(list_threads.handle({ branch: c.req.query("branch") || undefined, state, url: c.req.query("url") || undefined }));
   });
 
   app.post(paths.threads, (c) => {
@@ -205,7 +205,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
     return c.json({ ok: true });
   });
 
-  app.get(paths.history, (c) => c.json({ events: get_history.handle({ threadId: c.req.query("threadId") || undefined }) }));
+  app.get(paths.history, (c) => c.json({ events: get_history.handle({ threadId: c.req.query("threadId") || undefined, branch: c.req.query("branch") || undefined, url: c.req.query("url") || undefined }) }));
 
   return {
     listen: () =>

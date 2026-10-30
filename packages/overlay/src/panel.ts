@@ -33,6 +33,8 @@ export type Panel = {
   compose(ref: ElementRef, el: Element): void;
   /** Open a thread in the list. With `scroll`, also bring the element into view, outline it and pulse its pin. */
   openThread(id: string, scroll?: boolean): void;
+  /** Open the panel on just this thread (a pin was clicked). Closing the panel, then opening it from the toolbar button, shows the whole list. */
+  showOnly(id: string): void;
   destroy(): void;
 };
 
@@ -45,6 +47,7 @@ type CommentToSend = Extract<ToSend, { kind: "comment" }>;
 const FLASH_MS = 1800;
 const SAVED_KEY = `${brand.configGlobal}:notify-later`;
 const BLOCKED_KEY = `${brand.configGlobal}:blocked-hint-hidden`;
+const DRAWER_KEY = `${brand.configGlobal}:drawer`;
 
 function storageOf(win: Window): Storage | undefined {
   try {
@@ -85,6 +88,28 @@ export function createPanel(o: PanelOptions): Panel {
   };
 
   const panel = h("div", { class: "tb-panel", role: "dialog", "aria-label": "Comments", hidden: true });
+  // Drawer: the panel docks to the right edge, full height and wider, to read long replies. Remembered per browser.
+  let drawer = false;
+  try {
+    drawer = storage?.getItem(DRAWER_KEY) === "1";
+  } catch {
+    // not remembered
+  }
+  panel.classList.toggle("drawer", drawer);
+  const toggleDrawer = () => {
+    drawer = !drawer;
+    panel.classList.toggle("drawer", drawer);
+    try {
+      storage?.setItem(DRAWER_KEY, drawer ? "1" : "0");
+    } catch {
+      // not remembered
+    }
+    // leave any dragged position behind, and redraw the header label
+    for (const k of ["left", "top", "right", "bottom", "maxHeight"] as const) panel.style[k] = "";
+    moved = null;
+    lastLook = "";
+    draw();
+  };
   const flashLayer = h("div", { class: "tb-flash-layer" });
   layer.append(panel, flashLayer);
 
@@ -145,6 +170,7 @@ export function createPanel(o: PanelOptions): Panel {
     const t = store.get().threads.find((x) => x.id === id);
     if (!t) return;
     if (confirming && confirming.threadId !== id) confirming = null;
+    if (focusId !== id) focusId = null;
     goTo(t);
     markRead(t);
     if (!scroll) return;
@@ -157,6 +183,12 @@ export function createPanel(o: PanelOptions): Panel {
     }, FLASH_MS);
   };
 
+  // Set when a pin is clicked: the list shows only that thread.
+  let focusId: string | null = null;
+  const showOnly = (id: string) => {
+    openThread(id);
+    focusId = id;
+  };
   const toggleThread = (t: ThreadDto) => {
     if (store.get().activeThreadId === t.id) {
       confirming = null;
@@ -227,6 +259,7 @@ export function createPanel(o: PanelOptions): Panel {
 
   const compose = (ref: ElementRef) => {
     composer = { ref };
+    focusId = null;
     composerDraft = "";
     showHistory = false;
     store.set({ composing: true, panelOpen: true, activeThreadId: null });
@@ -299,12 +332,14 @@ export function createPanel(o: PanelOptions): Panel {
       h("span", { class: "tb-head-right" },
         h("span", { class: `tb-agent${agent.online ? "" : " off"}`, title: agent.online ? "Agent is connected" : "Agent is not connected" },
           h("span", { class: "dot" }), agent.name ?? "no agent"),
+        h("button", { type: "button", class: "tb-x", "aria-label": drawer ? "Float panel" : "Dock as drawer", title: drawer ? "Float panel" : "Dock as drawer", "aria-pressed": String(drawer), "data-key": "drawer", onclick: toggleDrawer }, drawer ? "❐" : "▌"),
         h("button", { type: "button", class: "tb-x", "aria-label": "Close comments", title: "Close", "data-key": "close", onclick: close }, "✕")));
   };
 
   const close = () => {
     composer = null;
     confirming = null;
+    focusId = null;
     store.set({ panelOpen: false, composing: false });
   };
 
@@ -408,7 +443,8 @@ export function createPanel(o: PanelOptions): Panel {
       if (!s.error) list.append(emptyState(h, "Loading comments…"));
       return list;
     }
-    const shown = visibleThreads(s.threads, tab);
+    const only = focusId ? s.threads.find((t) => t.id === focusId) : undefined;
+    const shown = only ? [only] : visibleThreads(s.threads, tab);
     if (!shown.length) {
       const none = visibleThreads(s.threads, "open").length + visibleThreads(s.threads, "resolved").length === 0;
       list.append(none
@@ -456,10 +492,11 @@ export function createPanel(o: PanelOptions): Panel {
   const draw = () => {
     if (panel.hasAttribute("hidden")) return;
     const s = store.get();
+    if (focusId && !s.threads.some((t) => t.id === focusId)) focusId = null;
     const detachedIds = s.threads.filter((t) => !finder.find(t)).map((t) => t.id);
     const look = JSON.stringify([
       s.threads, s.history, s.branch, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
-      tab, showHistory, historyOpenId, composer?.ref.selector ?? null, sendQueue.items(), drafts, confirming, notice,
+      tab, showHistory, historyOpenId, composer?.ref.selector ?? null, focusId, sendQueue.items(), drafts, confirming, notice,
       notificationState(), dismissed, blockedHidden, detachedIds,
     ]);
     if (look === lastLook) return;
@@ -490,7 +527,7 @@ export function createPanel(o: PanelOptions): Panel {
           h("b", null, "History")));
         panel.append(historyView());
       } else {
-        if (s.loaded && s.threads.length) panel.append(tabs());
+        if (!focusId && s.loaded && s.threads.length) panel.append(tabs());
         const list = listView();
         const comments = sendQueue.items().flatMap((item) => (item.job.kind === "comment" ? [queuedView(item, targetLabel(item.job.ref))] : []));
         // the drafts and the waiting comments scroll with the list, so they can never squeeze it
@@ -511,7 +548,10 @@ export function createPanel(o: PanelOptions): Panel {
     if (list) list.scrollTop = scrolled;
     if (s.activeThreadId !== lastActive) {
       lastActive = s.activeThreadId;
-      (panel.querySelector(".tb-thread.active") as HTMLElement | null)?.scrollIntoView?.({ block: "nearest" });
+      // a thread opens at its latest message: bring the reply box (just under it) into view
+      const active = panel.querySelector(".tb-thread.active") as HTMLElement | null;
+      const end = active?.querySelector(".tb-reply") ?? active?.querySelector(".tb-convo > :last-child") ?? active;
+      (end as HTMLElement | null)?.scrollIntoView?.({ block: "nearest" });
     }
     const confirmKey = confirming ? `${confirming.threadId}/${confirming.messageId}` : null;
     if (confirmKey !== lastConfirm) {
@@ -554,7 +594,7 @@ export function createPanel(o: PanelOptions): Panel {
   const startDrag = (ev: Event) => {
     const e = ev as PointerEvent;
     const target = e.target as Element | null;
-    if (!target?.closest(".tb-head") || target.closest("button")) return;
+    if (drawer || !target?.closest(".tb-head") || target.closest("button")) return;
     const r = panel.getBoundingClientRect();
     const dx = e.clientX - r.left;
     const dy = e.clientY - r.top;
@@ -579,6 +619,13 @@ export function createPanel(o: PanelOptions): Panel {
   };
   panel.addEventListener("pointerdown", startDrag);
 
+  const onEsc = (e: KeyboardEvent) => {
+    const at = e.composedPath()[0] as HTMLElement | undefined;
+    const typing = !!at && (/^(input|textarea|select)$/i.test(at.tagName) || at.isContentEditable);
+    if (e.defaultPrevented || e.isComposing || typing) return;
+    if (e.key === "Escape" && store.get().panelOpen && store.get().mode !== "comment" && !panel.hasAttribute("hidden") && !composer) close();
+  };
+  doc.addEventListener("keydown", onEsc, true);
   const onResize = () => place();
   win.addEventListener("resize", onResize);
 
@@ -592,7 +639,10 @@ export function createPanel(o: PanelOptions): Panel {
       panel.removeAttribute("hidden");
       lastLook = "";
       place();
-    } else if (!visible && was) panel.setAttribute("hidden", "");
+    } else if (!visible && was) {
+      panel.setAttribute("hidden", "");
+      focusId = null;
+    }
     draw();
     if (visible && !was && composer) (panel.querySelector('[data-key="composer"]') as HTMLElement | null)?.focus?.();
   };
@@ -605,10 +655,12 @@ export function createPanel(o: PanelOptions): Panel {
       (panel.querySelector('[data-key="composer"]') as HTMLElement | null)?.focus?.();
     },
     openThread,
+    showOnly,
     destroy() {
       unsub();
       sendQueue.destroy();
       win.removeEventListener("resize", onResize);
+      doc.removeEventListener("keydown", onEsc, true);
       for (const t of timers) clearTimeout(t);
       panel.remove();
       flashLayer.remove();

@@ -87,7 +87,7 @@ export function mountOverlay(options: MountOptions): Overlay {
   const pins = createPins({
     document: doc, window: win, layer: pinLayer, h, store, viewport,
     onPin: (id) => {
-      panel.openThread(id);
+      panel.showOnly(id);
       options.onPin?.(id);
     },
   });

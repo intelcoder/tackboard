@@ -29,6 +29,9 @@ const OPTIONS = {
   selector: { type: "string" },
   mention: { type: "string" },
   timeout: { type: "string" },
+  branch: { type: "string" },
+  url: { type: "string" },
+  json: { type: "boolean" },
 } as const;
 
 const USAGE = [
@@ -42,7 +45,7 @@ const USAGE = [
   "  wait [--timeout s] [--as name]",
   "  ack [--as name]",
   "  status",
-  "  history [id]",
+  "  history [id] [--branch <name>] [--url <page>] [--json]",
   "  channel [--as name]",
 ].join("\n");
 
@@ -254,7 +257,15 @@ async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<nu
     }
     case "history": {
       const id = pos[0];
-      const r = await c.get<HistoryResponse>(paths.history, id ? { threadId: id } : undefined);
+      const query: Record<string, string> = {};
+      if (id) query.threadId = id;
+      if (a.values.branch) query.branch = a.values.branch;
+      if (a.values.url) query.url = a.values.url;
+      const r = await c.get<HistoryResponse>(paths.history, query);
+      if (a.values.json) {
+        console.log(JSON.stringify(r.events, null, 2));
+        return 0;
+      }
       if (!r.events.length) console.log("no history");
       for (const e of r.events) {
         console.log(`${e.seq}  ${new Date(e.at).toISOString()}  ${e.type}  ${e.threadId ?? "-"}`);

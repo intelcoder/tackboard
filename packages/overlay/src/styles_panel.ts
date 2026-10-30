@@ -5,8 +5,10 @@ export const panelCss = `
 .tb-panel,.tb-toast{pointer-events:auto}
 
 /* CommentsPanel */
-.tb-panel{position:fixed;right:14px;bottom:78px;z-index:9;width:min(320px,calc(100vw - 28px));max-height:min(400px,calc(100vh - 100px));background:var(--tb-bg);border:1px solid var(--tb-line);border-radius:10px;box-shadow:0 8px 24px rgba(16,24,40,.18);display:flex;flex-direction:column;overflow:hidden}
+.tb-panel{position:fixed;right:14px;bottom:78px;z-index:9;width:min(420px,calc(100vw - 28px));max-height:min(400px,calc(100vh - 100px));background:var(--tb-bg);border:1px solid var(--tb-line);border-radius:10px;box-shadow:0 8px 24px rgba(16,24,40,.18);display:flex;flex-direction:column;overflow:hidden}
 .tb-panel[hidden]{display:none}
+.tb-panel.drawer{top:0;right:0;bottom:68px;left:auto;width:min(460px,100vw);max-height:none;border-radius:0 0 0 10px;border-width:0 0 1px 1px}
+.tb-panel.drawer .tb-head{cursor:default}
 /* the panel clips and scrolls, so focus rings go inside the edge instead of outside it */
 .tb-panel button:focus-visible,.tb-panel textarea:focus-visible{outline-offset:-2px}
 .tb-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid var(--tb-line);cursor:grab;user-select:none;touch-action:none;flex:none}
@@ -55,27 +57,35 @@ export const panelCss = `
 .tb-num[data-s="waiting"]{background:var(--st-waiting);color:#fff}
 .tb-num[data-s="resolved"]{background:var(--st-resolved);color:#fff}
 .tb-unread{width:8px;height:8px;border-radius:50%;background:var(--tb-accent);flex:none}
-.tb-preview{color:var(--tb-muted);font-size:12.5px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;padding-left:30px;overflow-wrap:anywhere}
+.tb-preview{color:var(--tb-muted);font-size:12.5px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;padding-left:0;overflow-wrap:anywhere}
 .tb-preview b{color:var(--tb-fg);font-weight:500}
-.tb-note{padding-left:30px;font:500 11px var(--mono);color:var(--st-waiting)}
+.tb-note{padding-left:0;font:500 11px var(--mono);color:var(--st-waiting)}
 .tb-section{padding:8px 14px 4px;font:500 11px var(--mono);color:var(--tb-muted);border-bottom:1px solid var(--tb-line)}
 
 /* Message */
-.tb-convo{display:flex;flex-direction:column;gap:8px;padding-left:30px;min-width:0}
+.tb-convo{display:flex;flex-direction:column;gap:8px;padding-left:0;min-width:0}
 .tb-msg{display:flex;flex-direction:column;gap:2px;min-width:0}
 .tb-msg .who{font:500 11px var(--mono);color:var(--agent)}
 .tb-msg .text{white-space:pre-wrap;overflow-wrap:anywhere;padding:6px 10px;max-width:92%}
+.tb-msg .md{white-space:normal}
+.tb-msg .md p,.tb-msg .md ul,.tb-msg .md ol,.tb-msg .md pre{margin:0 0 6px}
+.tb-msg .md>:last-child{margin-bottom:0}
+.tb-msg .md ul,.tb-msg .md ol{padding-left:18px}
+.tb-msg .md code{font:12px var(--mono);background:var(--tb-soft);padding:0 3px;border-radius:3px}
+.tb-msg .md pre{overflow-x:auto;background:var(--tb-soft);padding:6px 8px;border-radius:6px;white-space:pre}
+.tb-msg .md pre code{background:none;padding:0}
+.tb-msg .md a{color:inherit;text-decoration:underline}
 .tb-msg.me{align-items:flex-end}
 .tb-msg.me .text{background:var(--tb-soft);border-radius:10px 10px 2px 10px}
-.tb-msg.agent .text{background:var(--agent-bg);border-radius:10px 10px 10px 2px}
+.tb-msg.agent .text{max-width:100%;background:var(--agent-bg);border-radius:10px 10px 10px 2px}
 .tb-msg.system{align-items:center;font-size:12px;color:var(--tb-muted)}
 .tb-msg.system .text{max-width:100%;text-align:center}
 .tb-discarded{opacity:.55}
 .tb-msg.tb-discarded{align-items:flex-start}
 
-.tb-reply{display:flex;gap:6px;padding-left:30px;align-items:flex-end}
+.tb-reply{display:flex;gap:6px;padding-left:0;align-items:flex-end}
 .tb-reply textarea{flex:1;min-width:0;border:1px solid var(--tb-line);border-radius:6px;padding:6px 9px;background:var(--tb-bg);color:var(--tb-fg);font:inherit;resize:vertical;min-height:32px;max-height:120px}
-.tb-row.tb-actions{padding-left:30px;justify-content:flex-start}
+.tb-row.tb-actions{padding-left:0;justify-content:flex-start}
 
 /* messages waiting to be sent: faded, with their status under them */
 .tb-queued{display:flex;flex-direction:column;gap:2px;align-items:flex-start;min-width:0}
