@@ -20,7 +20,9 @@ export const chrome = (globalThis as unknown as {
       registerContentScripts(scripts: SavedScript[]): Promise<void>;
       unregisterContentScripts(filter: { ids: string[] }): Promise<void>;
       getRegisteredContentScripts(filter: { ids: string[] }): Promise<SavedScript[]>;
+      executeScript(injection: { target: { tabId: number; allFrames: boolean }; files: string[] }): Promise<unknown>;
     };
+    extension: { isAllowedFileSchemeAccess(): Promise<boolean> };
     runtime: {
       sendMessage(message: unknown): Promise<any>;
       getURL(path: string): string;

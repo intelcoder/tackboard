@@ -18,6 +18,7 @@ const chrome = {
     },
     onChanged: adder("storageChanged"),
   },
+  scripting: { unregisterContentScripts: async () => {} },
   runtime: { onMessage: adder("message"), getURL: (path: string) => path },
   tabs: {
     query: async () => [{ id: 1, url: "https://xxx.com/" }],

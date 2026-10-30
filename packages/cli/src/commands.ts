@@ -17,10 +17,12 @@ import { channel } from "./channel.ts";
 import { CliError, connect, currentBranch } from "./client.ts";
 import type { Client } from "./client.ts";
 import { formatNotice, formatThread, formatThreads } from "./format.ts";
+import { claudeCommand, runAgent, writeMcpJson } from "./launch.ts";
 
 const OPTIONS = {
   as: { type: "string" },
   ask: { type: "boolean" },
+  agent: { type: "boolean" },
   origin: { type: "string", multiple: true },
   port: { type: "string" },
   user: { type: "string" },
@@ -32,7 +34,8 @@ const OPTIONS = {
 const USAGE = [
   `usage: ${brand.cli} <command>`,
   "  init [--origin <url>] [--port <n>] [--user <name>]",
-  "  start",
+  "  start [--agent]",
+  "  claude [claude options]",
   "  next [--as name]",
   "  reply <id> <text> [--ask] [--as name]",
   '  comment --selector <css> <text> [--mention me] [--as name]',
@@ -50,15 +53,26 @@ function parse(argv: string[]) {
   return parseArgs({ args: argv, options: OPTIONS, allowPositionals: true });
 }
 
-function freePort(): Promise<number> {
+function tryPort(port: number): Promise<number> {
   return new Promise((res, rej) => {
     const s = createServer();
     s.once("error", rej);
-    s.listen(0, "127.0.0.1", () => {
-      const port = (s.address() as { port: number }).port;
-      s.close(() => res(port));
+    s.listen(port, "127.0.0.1", () => {
+      const got = (s.address() as { port: number }).port;
+      s.close(() => res(got));
     });
   });
+}
+
+/** The fixed port the extension looks on when it is free (or already this project's own), else the project's old port, else any free one. */
+async function choosePort(same: { port: number } | undefined): Promise<number> {
+  try {
+    return await tryPort(brand.pairPort);
+  } catch {
+    if (same) return same.port;
+    console.log(`warning: port ${brand.pairPort} is taken (another project's daemon?), so the extension cannot find this daemon by itself; paste the config there instead`);
+    return tryPort(0);
+  }
 }
 
 function clean_origin(given: string): string {
@@ -77,7 +91,7 @@ function clean_origin(given: string): string {
 async function init(cwd: string, a: Args): Promise<number> {
   const existing = findConfig(cwd);
   const same = existing && resolve(existing.dir) === resolve(cwd) ? existing.config : undefined;
-  const port = a.values.port ? Number(a.values.port) : (same?.port ?? (await freePort()));
+  const port = a.values.port ? Number(a.values.port) : await choosePort(same);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new CliError("--port must be a number from 1 to 65535");
   const origins = a.values.origin?.map(clean_origin);
   const config = {
@@ -87,6 +101,13 @@ async function init(cwd: string, a: Args): Promise<number> {
     userName: a.values.user ?? same?.userName ?? userInfo().username,
   };
   writeConfig(cwd, config);
+  // The channel entry for Claude Code. A file made here has this machine's paths in it, so it stays out of git.
+  let mcp: ReturnType<typeof writeMcpJson> | undefined;
+  try {
+    mcp = writeMcpJson(cwd);
+  } catch (e) {
+    console.log(`warning: ${(e as Error).message}`);
+  }
   try {
     const rel = execFileSync("git", ["rev-parse", "--git-path", "info/exclude"], {
       cwd,
@@ -94,19 +115,20 @@ async function init(cwd: string, a: Args): Promise<number> {
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
     const file = isAbsolute(rel) ? rel : join(cwd, rel);
-    const line = `${brand.dataDir}/`;
     const have = existsSync(file) ? readFileSync(file, "utf8").split("\n") : [];
-    if (!have.includes(line)) {
+    const add = [`${brand.dataDir}/`, ...(mcp === "created" ? [".mcp.json"] : [])].filter((line) => !have.includes(line));
+    if (add.length) {
       mkdirSync(join(file, ".."), { recursive: true });
-      appendFileSync(file, `${have.length && have[have.length - 1] !== "" ? "\n" : ""}${line}\n`);
+      appendFileSync(file, `${have.length && have[have.length - 1] !== "" ? "\n" : ""}${add.join("\n")}\n`);
     }
   } catch {
     console.log(`warning: not a git repository; threads are kept on branch "no-git" and restore is unavailable.`);
   }
   console.log(`initialised ${brand.dataDir}/${brand.configFile} (port ${port}, user ${config.userName})`);
-  console.log(`Run: ${brand.cli} start. Then add your dev site in the ${brand.name} Chrome extension (copy ${brand.dataDir}/${brand.configFile} first; see README "Use the Chrome extension").`);
+  console.log(`Run: ${brand.cli} start. The ${brand.name} Chrome extension then works on localhost pages and local files by itself: nothing to add or paste (see README "Use the Chrome extension").`);
   console.log(`Or, without the extension, add this to your dev site:`);
   console.log(`<script src="http://127.0.0.1:${port}/${brand.bundle}"></script>`);
+  if (mcp) console.log(`${mcp === "present" ? "kept" : "wrote"} .mcp.json (the Claude Code channel). Then run ${brand.cli} claude: it starts the daemon if needed and Claude Code with comments pushed in. For no open session, run ${brand.cli} start --agent.`);
   install_skill(cwd);
   return 0;
 }
@@ -133,7 +155,7 @@ function install_skill(cwd: string): void {
   console.log(`installed skill ${shown}`);
 }
 
-function start(cwd: string): Promise<number> {
+function start(cwd: string, agent = false): Promise<number> {
   const found = findConfig(cwd);
   if (!found) throw new CliError(`no ${brand.cli} project found here; run ${brand.cli} init`);
   const entry = resolve(import.meta.dirname, "../../daemon/src/interface/main.ts");
@@ -141,7 +163,17 @@ function start(cwd: string): Promise<number> {
   return new Promise((res) => {
     const child = spawn("node", [entry, found.dir], { stdio: "inherit" });
     for (const signalName of ["SIGINT", "SIGTERM"] as const) process.on(signalName, () => child.kill(signalName));
-    child.on("exit", (code) => res(code ?? 0));
+    const stop = { done: false };
+    // --agent: a headless Claude Code answers each comment, so no session has to be open.
+    if (agent) {
+      const c = connect(cwd);
+      console.log(`${brand.cli} agent: on. Each comment is answered by a headless claude that may edit files in ${found.dir}. Ctrl+C stops it.`);
+      void runAgent(() => claim(c, cwd), found.dir, stop);
+    }
+    child.on("exit", (code) => {
+      stop.done = true;
+      res(code ?? 0);
+    });
   });
 }
 
@@ -249,11 +281,13 @@ async function run_channel(cwd: string, a: Args): Promise<number> {
 
 export async function run(argv: string[], cwd: string): Promise<number> {
   try {
+    // Everything after `claude` belongs to claude, so it is not parsed here.
+    if (argv[0] === "claude") return await claudeCommand(argv.slice(1), cwd);
     const a = parse(argv);
     const cmd = a.positionals[0];
     if (!cmd) throw new CliError(USAGE);
     if (cmd === "init") return await init(cwd, a);
-    if (cmd === "start") return await start(cwd);
+    if (cmd === "start") return await start(cwd, a.values.agent);
     if (cmd === "channel") return await run_channel(cwd, a);
     if (cmd === "resolve") throw new CliError(`only the user closes a thread; ask with: ${brand.cli} reply <id> "<text>" --ask`);
     if (!["next", "wait", "reply", "comment", "ack", "status", "history"].includes(cmd)) throw new CliError(USAGE);

@@ -3,6 +3,7 @@ import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { brand } from "@app/shared";
 import { emptySharedConfig } from "../overlay/build.ts";
+import { LOCAL_PATTERNS } from "./src/sites.ts";
 
 const here = import.meta.dirname;
 
@@ -28,7 +29,9 @@ export async function buildExtension(outDir: string, extraHostPermissions: strin
     key: brand.extensionKey,
     permissions: ["storage", "scripting", "activeTab", "clipboardRead"],
     optional_host_permissions: ["http://*/*", "https://*/*"],
-    ...(extraHostPermissions.length > 0 && { host_permissions: extraHostPermissions }),
+    // Local pages are on from the start (no site to add); the daemon address is 127.0.0.1.
+    host_permissions: [...new Set(["http://localhost/*", "http://127.0.0.1/*", ...extraHostPermissions])],
+    content_scripts: [{ matches: LOCAL_PATTERNS, js: ["content.js"], run_at: "document_idle", all_frames: true }],
     background: { service_worker: "background.js" },
     action: { default_title: brand.name },
     options_ui: { page: "options.html", open_in_tab: true },

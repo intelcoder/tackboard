@@ -1,5 +1,6 @@
 import { brand } from "@app/shared";
 import type { Sites } from "./sites.ts";
+import { siteKey } from "./sites.ts";
 
 export type CallMessage = { kind: "call"; method: string; path: string; body?: string };
 export type Answer = { status: number; text: string } | { error: string };
@@ -13,7 +14,7 @@ export function answerMessage(
   message: { kind: string; method: string; path: string; body?: string },
   fetchFn: typeof fetch = fetch,
 ): Promise<Answer | boolean> | boolean {
-  const origin = new URL(sender.tab.url).origin;
+  const origin = siteKey(sender.tab.url) ?? "";
   return message.kind === "is_on" ? isOn(sites, origin) : callDaemon(sites, origin, message, fetchFn);
 }
 

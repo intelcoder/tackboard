@@ -32,8 +32,9 @@
 <main>
   <h1 id="title"></h1>
   <ul id="sites"></ul>
+  <p id="file_hint" hidden>To use pages opened from your computer (file://), open this extension's card in chrome://extensions and turn on "Allow access to file URLs".</p>
   <h2>Add a site</h2>
-  <p class="warning">Adding a site puts the comment bar on every page of that site. The daemon token stays inside this extension. Add only sites you control, never one that real visitors use.</p>
+  <p class="warning">Pages on localhost and files on your computer work by themselves while the daemon is running, with nothing to add. Adding a site puts the comment bar on every page of that site. The daemon token stays inside this extension. Add only sites you control, never one that real visitors use.</p>
   <form id="add">
     <label for="site">Site</label>
     <input type="text" id="site" placeholder="https://xxx.com or localhost:4321" autocomplete="off" spellcheck="false">

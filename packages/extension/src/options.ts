@@ -1,6 +1,6 @@
 import { brand } from "@app/shared";
 import { chrome, loadSites, saveSites } from "./chrome_calls.ts";
-import { patternStillUsed, readConfigText, siteFrom } from "./sites.ts";
+import { LOCAL_PATTERNS, isLocalKey, patternStillUsed, readConfigText, siteFrom, siteKey } from "./sites.ts";
 
 const find = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const list = find("sites");
@@ -44,6 +44,12 @@ async function showSites(): Promise<void> {
 
 async function removeSite(origin: string): Promise<void> {
   const sites = await loadSites();
+  const pattern = siteFrom(origin);
+  // Local pages are injected by the manifest and come back by themselves, so Remove turns them off and keeps the row.
+  if (origin === "file://" || ("pattern" in pattern && LOCAL_PATTERNS.includes(pattern.pattern))) {
+    if (sites[origin]) await saveSites({ ...sites, [origin]: { ...sites[origin], on: false } });
+    return void (await showSites());
+  }
   delete sites[origin];
   await saveSites(sites);
   await showSites();
@@ -64,12 +70,15 @@ form.addEventListener("submit", async (event) => {
   // Chrome only shows its approval box for the click, so nothing slow comes before the request.
   const hadIt = await chrome.permissions.contains({ origins: [site.pattern] });
   try {
-    if (!(await chrome.permissions.request({ origins: [site.pattern] }))) throw new Error("refused");
-    // allFrames: the overlay also mounts inside iframes of the site, such as Storybook's preview. Re-registering moves older sites onto it too.
-    await chrome.scripting.unregisterContentScripts({ ids: [site.pattern] }).catch(() => {});
-    await chrome.scripting.registerContentScripts([
-      { id: site.pattern, matches: [site.pattern], js: ["content.js"], runAt: "document_idle", allFrames: true, persistAcrossSessions: true },
-    ]);
+    // The manifest already covers local pages, so only other sites need Chrome's approval and a saved script.
+    if (!LOCAL_PATTERNS.includes(site.pattern)) {
+      if (!(await chrome.permissions.request({ origins: [site.pattern] }))) throw new Error("refused");
+      // allFrames: the overlay also mounts inside iframes of the site, such as Storybook's preview. Re-registering moves older sites onto it too.
+      await chrome.scripting.unregisterContentScripts({ ids: [site.pattern] }).catch(() => {});
+      await chrome.scripting.registerContentScripts([
+        { id: site.pattern, matches: [site.pattern], js: ["content.js"], runAt: "document_idle", allFrames: true, persistAcrossSessions: true },
+      ]);
+    }
     await saveSites({ ...(await loadSites()), [site.origin]: { ...config, on: true } });
   } catch (error) {
     problem.textContent = `Chrome did not allow that site (${error instanceof Error ? error.message : error})`;
@@ -86,10 +95,17 @@ const wantedSite = new URLSearchParams(location.search).get("site");
 if (wantedSite) {
   siteField.value = wantedSite;
   configField.focus();
+  if (isLocalKey(siteKey(wantedSite))) {
+    problem.textContent = `No ${brand.name} daemon was found on port ${brand.pairPort}. Run "${brand.cli} start" in your project and click the button again, or paste the config below.`;
+  }
   // Fill the config from the clipboard when it holds one, so only the approval click is left.
   void navigator.clipboard.readText().then((text) => {
     if (configField.value === "" && "token" in readConfigText(text)) configField.value = text;
   }).catch(() => {});
 }
+
+// Local files need a switch only the user can turn on, on the extension's card.
+const fileHint = find("file_hint");
+void chrome.extension.isAllowedFileSchemeAccess().then((allowed) => (fileHint.hidden = allowed)).catch(() => {});
 
 void showSites();

@@ -45,7 +45,7 @@ It prints:
 
 ```
 initialised .tackboard/config.json (port 47321, user sam)
-Run: tackboard start. Then add your dev site in the Tackboard Chrome extension (copy .tackboard/config.json first; see README "Use the Chrome extension").
+Run: tackboard start. The Tackboard Chrome extension then works on localhost pages and local files by itself: nothing to add or paste (see README "Use the Chrome extension").
 Or, without the extension, add this to your dev site:
 <script src="http://127.0.0.1:47321/tackboard.js"></script>
 installed skill .claude/skills/tackboard/SKILL.md
@@ -120,12 +120,12 @@ The CLI's own lines (from `init`, the installed skill and the SQLite warning) pr
 
 ## Use the Chrome extension (optional)
 
-The extension puts the comment bar on a site you choose, with no script tag in the site. It also works on an `https` dev address such as `https://xxx.com`. The script tag from Setup keeps working, and a page that has both shows one bar. The playground's pages already have the script tag, so use your own dev site to see what the extension does.
+The extension puts the comment bar on your pages with no script tag in the site. Pages on `localhost`, `127.0.0.1` and local files (`file://`) work by themselves while `tackboard start` is running: `tackboard init` puts the daemon on port 47800 when it is free, the extension finds it there and gets the token from it, and nothing is added or pasted. Any other site (such as `https://xxx.com`) is added on the options page, as in steps 3 to 5. It also works on an `https` dev address such as `https://xxx.com`. The script tag from Setup keeps working, and a page that has both shows one bar. The playground's pages already have the script tag, so use your own dev site to see what the extension does.
 
 You need Setup steps 1 to 4 and 6 (a built clone, `tackboard init` and `tackboard start` in your project). You do not need step 5 (the script tag), and you do not need `--origin` for the site: with the extension the site does not have to be in the `origins` list.
 
 1. Build it. Setup step 2 already did: `npm run build` also writes the extension to `packages/extension/dist/`.
-2. In Chrome, open `chrome://extensions`, turn on Developer mode (top right), click Load unpacked, and pick the `packages/extension/dist` folder. Tackboard is now in the list. Until you add a site in step 4, it has no access to any site.
+2. In Chrome, open `chrome://extensions`, turn on Developer mode (top right), click Load unpacked, and pick the `packages/extension/dist` folder. Tackboard is now in the list. Chrome may first ask you to approve the extension for localhost. For `file://` pages, also open the card, click Details and turn on `Allow access to file URLs` (only you can turn that on; the options page reminds you). If port 47800 was taken when you ran `tackboard init` (another project's daemon), `init` warns you and the extension cannot find that daemon by itself: use steps 3 and 4 for it. Steps 3 to 5 are for other sites.
 3. On the Tackboard card click Details, then Extension options. The page `Tackboard sites` opens in a tab.
 4. Under `Add a site`, fill in two fields and click `Add a site`:
    - Site: your dev site, for example `https://xxx.com`, `xxx.com` or `localhost:4321`. With no `http://` or `https://`, `https://` is assumed, except for `localhost` and `127.0.0.1`, which get `http://`. No path, query or user name.
@@ -172,12 +172,12 @@ The click was tested in Playwright's Chromium by sending the same event the butt
 
 To change a site without the button: untick `On` on the options page to take the bar away without forgetting the site, or click `Remove` to forget it and give back Chrome's approval for it. The sites and the token are saved in this Chrome profile only, and are not synced to other computers.
 
-Adding a site puts the comment bar on every page of that site. Add only sites you control, never one that real visitors use.
+Adding a site puts the comment bar on every page of that site. Add only sites you control, never one that real visitors use. On `localhost`, the bar shows on every localhost page while the daemon runs, including apps that are not yours to comment on; the toolbar button turns it off for one address, and `Remove` on the options page does the same and keeps it off.
 
 What this means for safety:
 
 - The token and the daemon address stay in the extension. The page never gets them, and the page's own `fetch` to the daemon without the token is refused. The extension makes every call to the daemon itself and sends only to `http://127.0.0.1:<port>` of a site you added.
-- The only daemon change is that it also accepts requests from this one extension (its id is fixed). The daemon still asks for the token and still checks the address the request was sent to, and a web page cannot pretend to be the extension.
+- The daemon has one open door: `GET /pair` hands the token to the extension, and only when the request carries the extension's own origin (its id is fixed). A web page cannot send that origin, and a request with no origin, or any other, gets 403. Any program already running on your computer can still fake the origin, but it could already read `.tackboard/config.json`. Apart from that, the daemon also accepts requests from this one extension. The daemon still asks for the token and still checks the address the request was sent to, and a web page cannot pretend to be the extension.
 - The clipboard is read only to fill the Config box, as described above, and the text is never sent anywhere.
 - A frame never gets the token either: it asks the extension, which answers with the settings of the page that holds the frame (see the frame rules above).
 - A page on a site you added can press the overlay's buttons by reaching into the bar's own part of the page, including Restore, just as it can with the script tag.
@@ -319,6 +319,10 @@ claude --dangerously-load-development-channels server:tackboard
 From then on every comment you leave on the page reaches the session by itself, as a line like `← tackboard: THREAD t1 ...`, and the thread shows `received` on the page. If Claude is busy, comments wait and arrive together on its next turn. Claude is told to make the change, then run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask`. Only you close a thread. Say nothing special to Claude: no `tackboard wait` is needed.
 
 Claude Code asks you to confirm a few things the first time; what it asks, and what an account needs for channels, is described on https://code.claude.com/docs/en/channels.md. Channels are a research preview, so the flag may change; if it stops working or is not available to you, use `tackboard wait` instead. `tackboard channel` answers MCP protocol revisions up to 2025-11-25; if Claude Code starts asking for the newer 2026-07-28 revision and the channel stops arriving, set `MCP_PROTOCOL_NEGOTIATION=legacy` as described on https://code.claude.com/docs/en/mcp.md.
+
+**One command.** `tackboard init` writes the `.mcp.json` for you (with this machine's paths, so it stays out of git), and `tackboard claude` does the rest: it starts the daemon if it is not running and starts Claude Code with the channel on. Anything you type after it goes to `claude`, for example `tackboard claude --resume`. You still confirm Claude Code's development-channel prompt the first time.
+
+**No open session.** `tackboard start --agent` runs the daemon and, for each new comment, a headless `claude -p` in the project folder. That agent may edit files there and may run only `tackboard reply`; it has no other shell access. It works on one comment at a time, replies with the usual "Is it OK to close this?", and you close the thread. It edits your code with nobody watching, so use it on a project under git and look at the diff. If `claude` is not installed it says so and the comments stay pending; if a run fails the thread comes back after 30 minutes. Ctrl+C stops it.
 
 `tackboard channel` checks the daemon every 2 seconds, takes every pending thread of the current branch the same way `tackboard next` does, and sends each one as its own event. A thread that was claimed and never answered can be claimed and sent again after 30 minutes. If the daemon is not running it keeps trying and writes one line to stderr. `--as <name>` or `TACKBOARD_AGENT` sets the agent name, as for the other commands.
 

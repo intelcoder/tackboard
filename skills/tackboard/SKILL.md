@@ -17,6 +17,8 @@ The user clicks things on their dev site and leaves comments. You read the comme
 
 If comments reach you as channel events (`<channel source="tackboard" ...>`, started by the user with `tackboard channel` in `.mcp.json`), the loop is the same: do the work, run `tackboard reply <id> "<what you changed>. Is it OK to close this?" --ask` once for each event, and stop. Several events may come together: do all of them first, then reply on each one. Do not run `tackboard wait` or `tackboard next` for those; the event already claimed the thread.
 
+The user starts such a session with `tackboard claude` (it starts the daemon if needed, then Claude Code with the channel on; `tackboard init` writes the `.mcp.json` it uses). With `tackboard start --agent` there is no open session: the daemon runs a headless Claude Code for each comment, which may edit files and run only `tackboard reply`. Reply the same way.
+
 Other commands:
 
 - `tackboard status` shows the branch and the threads. If it answers, the daemon is running. It does not show whether any agent is working.

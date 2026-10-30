@@ -23,8 +23,8 @@ test("a click on a page of the same host on another port is not the saved site",
   assert.deepEqual(whatClickDoes(sites, "http://localhost:4322/"), { kind: "add", site: "http://localhost:4322" });
 });
 
-test("a click on chrome://, about:, file: and no address asks to add with no site", () => {
-  for (const address of ["chrome://version", "about:blank", "file:///tmp/a.html", "chrome-extension://abc/options.html", undefined]) {
+test("a click on chrome://, about: and no address asks to add with no site", () => {
+  for (const address of ["chrome://version", "about:blank", "chrome-extension://abc/options.html", undefined]) {
     assert.deepEqual(whatClickDoes(sites, address), { kind: "add" }, String(address));
   }
 });
@@ -44,7 +44,7 @@ test("the badge says ON, OFF or nothing, and the words differ, and the title say
 });
 
 test("a page with no readable address or not a web page gets the site list title", () => {
-  for (const address of ["chrome://version", "about:blank", "file:///tmp/a.html", "chrome-extension://abc/options.html", undefined]) {
+  for (const address of ["chrome://version", "about:blank", "chrome-extension://abc/options.html", undefined]) {
     const badge = badgeFor(sites, address);
     assert.equal(badge.text, "", String(address));
     assert.match(badge.title, /click to open the site list/, String(address));

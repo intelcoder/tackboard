@@ -1,15 +1,6 @@
 import { brand } from "@app/shared";
 import type { Sites } from "./sites.ts";
-
-/** The origin of a web page address, or nothing for chrome://, about:, file: and a missing address. */
-function webOrigin(tabUrl: string | undefined): string | undefined {
-  try {
-    const url = new URL(tabUrl ?? "");
-    return url.protocol === "http:" || url.protocol === "https:" ? url.origin : undefined;
-  } catch {
-    return undefined;
-  }
-}
+import { siteKey as webOrigin } from "./sites.ts";
 
 export type Click = { kind: "flip"; origin: string; on: boolean } | { kind: "add"; site?: string };
 

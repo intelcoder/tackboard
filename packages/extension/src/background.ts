@@ -1,14 +1,37 @@
 import { chrome, loadSites, saveSites } from "./chrome_calls.ts";
+import { pairSites } from "./discover.ts";
 import { answerMessage } from "./proxy.ts";
 import type { Sites } from "./sites.ts";
-import { siteFrom } from "./sites.ts";
+import { LOCAL_PATTERNS, isLocalKey, siteFrom, siteKey } from "./sites.ts";
 import { badgeFor, badgeNeedsUpdate, whatClickDoes } from "./toolbar.ts";
 
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
   if (!sender.tab?.url) return;
-  void loadSites().then(async (sites) => reply(await answerMessage(sites, { tab: { url: sender.tab!.url! } }, message)));
+  void answer(sender.tab.url, message).then(reply);
   return true;
 });
+
+/** Local pages (localhost, 127.0.0.1, file) pair with the daemon on the fixed port, so no config is pasted. Other sites use what the user saved. */
+async function answer(url: string, message: { kind: string; method: string; path: string; body?: string }) {
+  let sites = await loadSites();
+  const local = isLocalKey(siteKey(url));
+  const pair = async () => {
+    const next = local ? await pairSites(sites, url) : sites;
+    if (next !== sites) await saveSites(next);
+    sites = next;
+  };
+  if (local && message.kind === "is_on") await pair();
+  const result = await answerMessage(sites, { tab: { url } }, message);
+  // A daemon that moved or restarted has a new token: pair again once and retry.
+  if (local && typeof result === "object" && "error" in result) {
+    await pair();
+    return answerMessage(sites, { tab: { url } }, message);
+  }
+  return result;
+}
+
+// The manifest already injects the overlay on these pages, so a script saved for the same pages by an older version would inject it twice.
+chrome.scripting.unregisterContentScripts({ ids: LOCAL_PATTERNS }).catch(() => {});
 
 // Tabs of saved sites check again when the saved sites change.
 chrome.storage.onChanged.addListener(async (changes) => {
@@ -55,7 +78,16 @@ chrome.tabs.onActivated.addListener(({ tabId }) =>
 
 // A click on the button turns a saved site on or off, or opens the setup for a site that is not added.
 chrome.action.onClicked.addListener(async (tab) => {
-  const sites = await loadSites();
+  let sites = await loadSites();
+  // A local page that is not saved yet pairs with the daemon right here, so there is no setup to open. The click is the permission to put the bar in this tab now, with no reload.
+  if (tab.url && isLocalKey(siteKey(tab.url)) && !sites[siteKey(tab.url)!]) {
+    const paired = await pairSites(sites, tab.url);
+    if (paired !== sites) {
+      await saveSites(paired);
+      if (tab.id !== undefined) await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["content.js"] }).catch(() => {});
+      return;
+    }
+  }
   const click = whatClickDoes(sites, tab.url);
   if (click.kind === "flip") return saveSites({ ...sites, [click.origin]: { ...sites[click.origin]!, on: click.on } });
   const query = click.site ? `?site=${encodeURIComponent(click.site)}` : "";

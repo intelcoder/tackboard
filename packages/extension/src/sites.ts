@@ -49,3 +49,20 @@ export function patternStillUsed(sites: Sites, pattern: string): boolean {
     return "pattern" in site && site.pattern === pattern;
   });
 }
+
+/** Pages the extension is on for without a pasted config: it pairs with the daemon itself. file:/// also needs Chrome's "Allow access to file URLs". */
+export const LOCAL_PATTERNS = ["http://localhost/*", "http://127.0.0.1/*", "file:///*"];
+
+/** The key a tab's page is saved under: its origin, or file:// for any local file. Nothing for chrome://, about: and a missing address. */
+export function siteKey(tabUrl: string | undefined): string | undefined {
+  try {
+    const url = new URL(tabUrl ?? "");
+    if (url.protocol === "file:") return "file://";
+    return url.protocol === "http:" || url.protocol === "https:" ? url.origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** True for file:// and for http://localhost or http://127.0.0.1 on any port. */
+export const isLocalKey = (key: string | undefined) => key === "file://" || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(key ?? "");

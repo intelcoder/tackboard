@@ -158,3 +158,19 @@ test("the extension origin on a wrong Host is forbidden_host", () =>
     assert.equal(r.status, 403);
     assert.equal(JSON.parse(r.body).error, "forbidden_host");
   }));
+
+test("/pair hands the token only to the extension's own origin and needs no token", () =>
+  with_daemon(async (d) => {
+    const ok = await d.call("GET", brand.pairPath, undefined, { origin: brand.extensionOrigin, [brand.tokenHeader]: "" });
+    assert.equal(ok.status, 200);
+    const body = await ok.json();
+    assert.equal(body.pair, 1);
+    assert.equal(body.token, d.token);
+    assert.equal(body.port, d.port);
+    assert.equal(ok.headers.get("access-control-allow-origin"), brand.extensionOrigin);
+    // Another web page, or a request with no Origin, gets nothing.
+    assert.equal((await d.call("GET", brand.pairPath, undefined, { origin: "http://evil.example.com" })).status, 403);
+    assert.equal((await d.call("GET", brand.pairPath, undefined, { origin: ORIGIN })).status, 403);
+    assert.equal((await raw(d.port, brand.pairPath, { host: `127.0.0.1:${d.port}` })).status, 403);
+    assert.equal((await raw(d.port, brand.pairPath, { host: "evil.example.com", origin: brand.extensionOrigin })).status, 403);
+  }));

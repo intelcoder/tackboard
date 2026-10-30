@@ -65,6 +65,11 @@ export function security(opts: SecurityOptions): MiddlewareHandler {
       return c.body(null, 204);
     }
 
+    // The extension asks here for the token, so only its own origin may. A web page cannot send that Origin; a request with none is refused.
+    if (c.req.path === brand.pairPath) {
+      return origin === brand.extensionOrigin && c.req.method === "GET" ? next() : refuse(c, "forbidden_origin", "only the extension may pair");
+    }
+
     const needs_token = !(c.req.method === "GET" && open_paths.has(c.req.path));
     if (needs_token && !same_token(c.req.header(brand.tokenHeader), opts.token)) {
       return refuse(c, "unauthorized", "missing or wrong token");
