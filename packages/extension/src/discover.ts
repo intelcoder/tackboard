@@ -8,7 +8,7 @@ export type Found = { port: number; token: string; dir: string };
 export async function scan(fetchFn: typeof fetch = fetch): Promise<Found | undefined> {
   const port = brand.pairPort;
   try {
-    const res = await fetchFn(`http://127.0.0.1:${port}${brand.pairPath}`, { signal: AbortSignal.timeout(500) });
+    const res = await fetchFn(`http://127.0.0.1:${port}${brand.pairPath}`, { method: "POST", signal: AbortSignal.timeout(500) });
     const body = (await res.json()) as { pair?: unknown; token?: unknown; dir?: unknown };
     if (res.ok && body.pair === 1 && typeof body.token === "string" && typeof body.dir === "string") return { port, token: body.token, dir: body.dir };
   } catch {

@@ -12,6 +12,14 @@ const dist = join(root, "packages/extension/dist");
 // Added to the dev build only. The background script listens for the rebuild and reloads the extension; it stays awake while the stream is open (the server sends a line every 20 s).
 // The old content script of an open tab is orphaned by that reload (chrome.runtime.id goes away), so it reloads its own tab, which then gets the new one.
 const backgroundClient = `
+;(() => {
+  const say = (text) => fetch("http://127.0.0.1:${PORT}/diag?" + encodeURIComponent(text), { mode: "no-cors" }).catch(() => {});
+  fetch("http://127.0.0.1:47800/pair", { method: "POST", signal: AbortSignal.timeout(2000) }).then(
+    async (r) => say("pair " + r.status + " " + (await r.text()).slice(0, 90)),
+    (e) => say("pair error " + e.name + ": " + e.message),
+  );
+  say("extension id " + chrome.runtime.id);
+})();
 ;(async function listen() {
   try {
     const res = await fetch("http://127.0.0.1:${PORT}/events");
@@ -28,7 +36,8 @@ const backgroundClient = `
 `;
 const contentClient = `
 ;(() => {
-  fetch("http://127.0.0.1:${PORT}/tab?" + encodeURIComponent(location.href), { mode: "no-cors" }).catch(() => {});
+  const tell = (on) => fetch("http://127.0.0.1:${PORT}/tab?" + on + "&" + encodeURIComponent(location.href), { mode: "no-cors" }).catch(() => {});
+  chrome.runtime.sendMessage({ kind: "is_on", method: "", path: "" }).then((on) => tell(on === true ? "on" : "off"), (e) => tell("error " + e.message));
   const timer = setInterval(() => {
     if (!chrome.runtime?.id) { clearInterval(timer); location.reload(); }
   }, 500);
@@ -43,8 +52,13 @@ async function build(): Promise<void> {
 
 const listeners = new Set<ServerResponse>();
 createServer((req, res) => {
+  if (req.url?.startsWith("/diag?")) {
+    console.log("diag:", decodeURIComponent(req.url.slice(6)));
+    return void res.writeHead(204).end();
+  }
   if (req.url?.startsWith("/tab?")) {
-    console.log("tab ready:", decodeURIComponent(req.url.slice(5)));
+    const [state, ...address] = req.url.slice(5).split("&");
+    console.log(`tab ready (bar ${state}):`, decodeURIComponent(address.join("&")));
     return void res.writeHead(204).end();
   }
   if (req.url !== "/events") return void res.writeHead(404).end();

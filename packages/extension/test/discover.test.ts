@@ -20,9 +20,11 @@ test("siteKey and isLocalKey: files share one key, localhost keeps its port, oth
 
 test("scan asks the fixed port and accepts only our daemon's answer", async () => {
   let asked = "";
-  const spy = (async (url: string) => ((asked = url), { ok: true, json: async () => pairAnswer })) as unknown as typeof fetch;
+  let method = "";
+  const spy = (async (url: string, init: RequestInit) => ((asked = url), (method = init.method ?? "GET"), { ok: true, json: async () => pairAnswer })) as unknown as typeof fetch;
   assert.deepEqual(await scan(spy), { port: brand.pairPort, token: "tok", dir: "/p" });
   assert.equal(asked, `http://127.0.0.1:${brand.pairPort}${brand.pairPath}`);
+  assert.equal(method, "POST", "Chrome sends no Origin on a GET from an extension; the daemon needs one");
   assert.equal(await scan(daemon({ hello: 1 })), undefined);
   assert.equal(await scan(daemon(pairAnswer, false)), undefined);
   assert.equal(await scan(down), undefined);

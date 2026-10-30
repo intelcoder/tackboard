@@ -134,7 +134,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
   app.get(paths.health, (c) => c.json({ ok: true }));
 
   // security() lets only the extension's origin reach this; it hands over the token so the extension needs no pasted config.
-  app.get(brand.pairPath, (c) => c.json({ pair: 1, port: address()?.port ?? opts.port, token: opts.token, dir: opts.projectDir }));
+  app.post(brand.pairPath, (c) => c.json({ pair: 1, port: address()?.port ?? opts.port, token: opts.token, dir: opts.projectDir }));
 
   app.get(`/${brand.bundle}`, (c) => {
     let bundle: string;

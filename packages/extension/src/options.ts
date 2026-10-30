@@ -119,7 +119,10 @@ shots.addEventListener("change", async () => {
   shotsProblem.textContent = "";
   // Chrome only shows its approval box for the click, so nothing slow comes before the request.
   const wanted = shots.checked;
-  const done = wanted ? await chrome.permissions.request(ALL_URLS).catch(() => false) : !(await chrome.permissions.remove(ALL_URLS).catch(() => false));
-  if (wanted && !done) shotsProblem.textContent = "Chrome did not allow screenshots";
+  let why = "";
+  const done = wanted
+    ? await chrome.permissions.request(ALL_URLS).catch((error: Error) => ((why = error.message), false))
+    : !(await chrome.permissions.remove(ALL_URLS).catch(() => false));
+  if (wanted && !done) shotsProblem.textContent = `Chrome did not allow screenshots${why ? ` (${why})` : ""}`;
   shots.checked = await chrome.permissions.contains(ALL_URLS);
 });
