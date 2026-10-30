@@ -28,6 +28,7 @@ const backgroundClient = `
 `;
 const contentClient = `
 ;(() => {
+  fetch("http://127.0.0.1:${PORT}/tab?" + encodeURIComponent(location.href), { mode: "no-cors" }).catch(() => {});
   const timer = setInterval(() => {
     if (!chrome.runtime?.id) { clearInterval(timer); location.reload(); }
   }, 500);
@@ -42,6 +43,10 @@ async function build(): Promise<void> {
 
 const listeners = new Set<ServerResponse>();
 createServer((req, res) => {
+  if (req.url?.startsWith("/tab?")) {
+    console.log("tab ready:", decodeURIComponent(req.url.slice(5)));
+    return void res.writeHead(204).end();
+  }
   if (req.url !== "/events") return void res.writeHead(404).end();
   res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
   res.write(": hello\n\n");
