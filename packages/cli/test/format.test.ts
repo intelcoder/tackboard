@@ -127,3 +127,11 @@ test("a thread with attached page errors prints each line", () => {
   assert.match(out, /\n    error: TypeError: x is undefined\n    network: GET \/api\/a 500/);
   assert.doesNotMatch(describeThread(thread("text")), /page errors/);
 });
+
+test("a thread about several elements prints each extra one", () => {
+  const t = thread("text");
+  t.element.also = [{ ...t.element, selector: "#second", tag: "h2", text: "Second", source: "src/A.tsx:4" }];
+  const out = describeThread(t);
+  assert.match(out, /also this element: <h2>  selector: #second  text: Second  source: src\/A\.tsx:4/);
+  assert.doesNotMatch(describeThread(thread("text")), /also this element/);
+});

@@ -27,6 +27,9 @@ export function describeThread(t: ThreadDto): string {
   if (el.component?.length) out.push(`  component: ${el.component.join(" > ")}`);
   if (el.source) out.push(`  source: ${el.source}`);
   if (el.screenshot) out.push(`  screenshot: ${el.screenshot} (a picture of the element as the user saw it; open it to look)`);
+  for (const more of el.also ?? []) {
+    out.push(`  also this element: <${more.tag}>  selector: ${more.selector}  text: ${clip(more.text, 60)}${more.source ? `  source: ${more.source}` : ""}`);
+  }
   if (el.pageErrors?.length) {
     out.push("  page errors (what the page logged or failed to load before the comment; the user attached them):");
     for (const e of el.pageErrors) out.push(`    ${e.kind}: ${e.text}`);

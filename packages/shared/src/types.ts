@@ -15,6 +15,8 @@ export type ElementRef = {
   screenshot?: string;
   /** Console errors, warnings and failed requests of the page, when the user attached them. */
   pageErrors?: PageError[];
+  /** Other elements the same comment is about (the user added them). Each has no `also` of its own. */
+  also?: ElementRef[];
   confidence: Confidence;
 };
 

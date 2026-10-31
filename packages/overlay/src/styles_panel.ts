@@ -44,6 +44,9 @@ export const panelCss = `
 .tb-foot{padding:6px 14px;border-top:1px solid var(--tb-line);display:flex;justify-content:flex-end;flex:none}
 .tb-link{border:0;background:none;color:var(--tb-accent);font:500 12px var(--body);padding:3px 4px;border-radius:4px}
 .tb-link:hover{text-decoration:underline}
+.tb-more{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.tb-more:empty{display:none}
+.tb-chip{display:inline-flex;align-items:center;gap:4px;font:500 11px var(--mono);color:var(--tb-accent);background:var(--tb-accent-soft);padding:2px 4px 2px 6px;border-radius:3px;max-width:100%}
+.tb-chip button{border:0;background:none;color:inherit;font:inherit;padding:0 2px;cursor:pointer}
 
 /* ThreadItem */
 .tb-thread{padding:10px 14px;border-bottom:1px solid var(--tb-line);display:flex;flex-direction:column;gap:8px;min-width:0}

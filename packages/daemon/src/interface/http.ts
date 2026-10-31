@@ -63,7 +63,7 @@ function need_selector(value: unknown, name: string): string {
 function read_element(value: unknown): ElementRef {
   if (typeof value !== "object" || value === null) throw new DomainError("invalid", "element is required");
   // `screenshot` is a path the daemon chose and `pageErrors` come in their own field; a client cannot slip either in here.
-  const { screenshot: _ignored, pageErrors: _ignoredErrors, ...e } = value as Partial<ElementRef>;
+  const { screenshot: _ignored, pageErrors: _ignoredErrors, also: _ignoredAlso, ...e } = value as Partial<ElementRef>;
   const rect = e.rect;
   if (typeof rect !== "object" || rect === null) throw new DomainError("invalid", "element.rect is required");
   return {
@@ -86,6 +86,19 @@ function read_screenshot(value: unknown): Buffer | undefined {
   if (png.length > LIMITS.screenshot) throw new DomainError("too_large", `screenshot is larger than ${LIMITS.screenshot} bytes`);
   if (!png.subarray(0, PNG_START.length).equals(PNG_START)) throw new DomainError("invalid", "screenshot must be a PNG");
   return png;
+}
+
+/** The other elements of a comment: each read like the first, the broken ones dropped, at most LIMITS.also kept. */
+function read_also(value: unknown): ElementRef[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const more: ElementRef[] = [];
+  for (const v of value) {
+    try {
+      const e = read_element(v);
+      more.push({ ...e, html: e.html.slice(0, LIMITS.html), text: e.text.slice(0, LIMITS.elementText) });
+    } catch {}
+  }
+  return more.length ? more.slice(0, LIMITS.also) : undefined;
 }
 
 const ERROR_KINDS = ["error", "warn", "network"];
@@ -176,6 +189,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
       text: need_text(b.text, "text"),
       screenshot: read_screenshot(b.screenshot),
       pageErrors: read_page_errors(b.pageErrors),
+      also: read_also(b.also),
     });
     return c.json(thread, 201);
   });

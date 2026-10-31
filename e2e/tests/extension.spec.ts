@@ -749,3 +749,33 @@ test("a ticked Attach page errors box sends the console error, the rejection and
     expect(await comment(false)).not.toContain("page errors");
   });
 });
+
+test("a screenshot of a comment about two elements covers the area of both", async () => {
+  await withStack(async (stack) => {
+    const options = await optionsPage(stack);
+    await addSite(stack, options, fakeHttpsSite);
+    const page = await stack.context.newPage();
+    await page.goto(fakeHttpsSite);
+    await expect(page.locator(".tb-modes")).toBeVisible();
+    await setMode(page, "comment");
+    await page.hover(".hero-title");
+    await page.click(".hero-title");
+    await page.locator('[data-key="composer"]').fill("space between these");
+    await page.locator('[data-key="add-element"]').click();
+    await page.hover(".hero-lead");
+    await page.click(".hero-lead");
+    await page.locator('[data-key="attach-shot"]').check();
+    await page.locator('[data-key="send"]').click();
+    await page.locator(".tb-thread.active").waitFor();
+    const a = (await page.locator(".hero-title").boundingBox())!;
+    const b = (await page.locator(".hero-lead").boundingBox())!;
+    const union = { w: Math.max(a.x + a.width, b.x + b.width) - Math.min(a.x, b.x), h: Math.max(a.y + a.height, b.y + b.height) - Math.min(a.y, b.y) };
+
+    const next = stack.run(["next"]);
+    expect(next).toContain("also this element");
+    const png = readFileSync(join(stack.project, /screenshot: (\S+\.png)/.exec(next)![1]!));
+    expect(Math.abs(png.readUInt32BE(16) - union.w)).toBeLessThanOrEqual(2);
+    expect(Math.abs(png.readUInt32BE(20) - union.h)).toBeLessThanOrEqual(2);
+    expect(png.readUInt32BE(20)).toBeGreaterThan(a.height + 1);
+  }, ["<all_urls>"]);
+});

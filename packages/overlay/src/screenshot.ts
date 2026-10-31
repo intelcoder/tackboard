@@ -5,9 +5,12 @@ export type Box = { x: number; y: number; w: number; h: number };
 
 const MIN_SHOWING = 4;
 
-const boxOf = (el: Element): Box => {
-  const r = el.getBoundingClientRect();
-  return { x: r.x, y: r.y, w: r.width, h: r.height };
+/** One element's box, or the box around several (a comment about more than one element is pictured as the area they cover together). */
+const boxOf = (els: Element | Element[]): Box => {
+  const rects = [els].flat().map((el) => el.getBoundingClientRect());
+  const x = Math.min(...rects.map((r) => r.x));
+  const y = Math.min(...rects.map((r) => r.y));
+  return { x, y, w: Math.max(...rects.map((r) => r.right)) - x, h: Math.max(...rects.map((r) => r.bottom)) - y };
 };
 
 /** The part of the box that is inside the window, or null when less than 4 px of it shows. */
@@ -38,7 +41,7 @@ function base64Of(bytes: Uint8Array): string {
 }
 
 export type ShotOptions = {
-  el: Element;
+  el: Element | Element[];
   win: Window;
   /** The overlay's own element. It is hidden while the picture is taken. */
   host: HTMLElement;
@@ -53,7 +56,7 @@ const nextFrames = (win: Window) =>
   });
 
 /** Why a picture cannot be taken of this element right now, or null when it can. */
-export function whyNoShot(el: Element, win: Window): string | null {
+export function whyNoShot(el: Element | Element[], win: Window): string | null {
   if (win !== win.top) return "Screenshots are not available inside a frame";
   return visiblePart(boxOf(el), { w: win.innerWidth, h: win.innerHeight })
     ? null

@@ -330,7 +330,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 320, height: 640 }]) 
     await expect(page.locator(".tb-composer button", { hasText: "Cancel" })).toHaveCount(0);
 
     // the action row holds only Send now and Add draft: below the box, on one line, right-aligned
-    await expect(page.locator(".tb-composer button")).toHaveCount(3);
+    await expect(page.locator(".tb-composer button:not([data-key=\"add-element\"])")).toHaveCount(3);
     expect(sendNow.top).toBeGreaterThanOrEqual(box.bottom - 0.5);
     expect(addDraftBox.top).toBeGreaterThanOrEqual(box.bottom - 0.5);
     expect(Math.abs(sendNow.top - addDraftBox.top)).toBeLessThan(2);

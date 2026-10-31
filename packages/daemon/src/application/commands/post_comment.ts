@@ -10,6 +10,7 @@ export type PostCommentCommand = {
   text: string;
   screenshot?: Buffer;
   pageErrors?: PageError[];
+  also?: ElementRef[];
 };
 
 export class PostCommentHandler {
@@ -36,7 +37,7 @@ export class PostCommentHandler {
       commit: this.git.commit(),
       url: cmd.url,
       viewport: cmd.viewport,
-      element: { ...cmd.element, html: cmd.element.html.slice(0, LIMITS.html), text: cmd.element.text.slice(0, LIMITS.elementText), ...(screenshot ? { screenshot } : {}), ...(cmd.pageErrors ? { pageErrors: cmd.pageErrors } : {}) },
+      element: { ...cmd.element, html: cmd.element.html.slice(0, LIMITS.html), text: cmd.element.text.slice(0, LIMITS.elementText), ...(screenshot ? { screenshot } : {}), ...(cmd.pageErrors ? { pageErrors: cmd.pageErrors } : {}), ...(cmd.also ? { also: cmd.also } : {}) },
       text: cmd.text,
       now,
       seq: this.repo.nextSeq(),

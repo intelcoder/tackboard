@@ -286,3 +286,21 @@ test("attached page errors are kept: newest 20, cut short, odd lines dropped, no
     assert.equal((await post({})).element.pageErrors, undefined);
     assert.equal((await post({}, { ...element, pageErrors: [{ kind: "error", text: "forged" }] })).element.pageErrors, undefined);
   }));
+
+test("a comment's other elements are kept (at most 5, read like the first), and none come from the element", () =>
+  with_daemon(async (d) => {
+    const more = (n: number) => ({ ...element, selector: `#m${n}`, html: "x".repeat(LIMITS.html + 10), text: "y".repeat(LIMITS.elementText + 10) });
+    const post = async (extra: object, el: object = element) =>
+      (await (await d.call("POST", paths.threads, { ...post_body("x", el as typeof element), ...extra })).json()) as ThreadDto;
+    const kept = (await post({ also: [null, "x", { selector: "" }, ...Array.from({ length: 8 }, (_, i) => more(i))] })).element.also!;
+    assert.deepEqual(kept.map((e) => e.selector), ["#m0", "#m1", "#m2", "#m3", "#m4"]);
+    assert.equal(kept[0]!.html.length, LIMITS.html);
+    assert.equal(kept[0]!.text.length, LIMITS.elementText);
+    assert.equal((await post({ also: [] })).element.also, undefined);
+    assert.equal((await post({})).element.also, undefined);
+    assert.equal((await post({}, { ...element, also: [more(1)] })).element.also, undefined);
+    // an element inside `also` cannot carry its own extras or a screenshot path
+    const nested = (await post({ also: [{ ...more(1), also: [more(2)], screenshot: "/etc/passwd" }] })).element.also![0]!;
+    assert.equal(nested.also, undefined);
+    assert.equal(nested.screenshot, undefined);
+  }));

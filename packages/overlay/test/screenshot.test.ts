@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bytesOfDataUrl, inPicture, visiblePart } from "../src/screenshot.ts";
+import { bytesOfDataUrl, inPicture, visiblePart, whyNoShot } from "../src/screenshot.ts";
 
 const view = { w: 1000, h: 800 };
 
@@ -23,4 +23,16 @@ test("a sharper picture scales the box by the width ratio", () => {
 test("bytes come out of a data URL", () => {
   assert.deepEqual([...bytesOfDataUrl("data:image/png;base64,aGk=")], [104, 105]);
   assert.throws(() => bytesOfDataUrl("not a data url"), /picture/);
+});
+
+// whyNoShot only reads a box from each element and the window's size.
+const el = (x: number, y: number, w: number, h: number) => ({ getBoundingClientRect: () => ({ x, y, width: w, height: h, right: x + w, bottom: y + h }) }) as unknown as Element;
+const win = { innerWidth: 1000, innerHeight: 800 } as unknown as Window;
+(win as { top: Window }).top = win;
+
+test("several elements are pictured as the area they cover together", () => {
+  assert.equal(whyNoShot(el(0, 900, 100, 50), win), "Scroll the element into view to attach a screenshot");
+  // one on screen, one below: together they still overlap the screen
+  assert.equal(whyNoShot([el(0, 900, 100, 50), el(10, 10, 100, 50)], win), null);
+  assert.equal(whyNoShot([el(0, 900, 100, 50), el(0, 1000, 100, 50)], win), "Scroll the element into view to attach a screenshot");
 });

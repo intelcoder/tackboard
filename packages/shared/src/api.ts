@@ -18,6 +18,8 @@ export const LIMITS = {
   /** How many page errors a comment keeps (the newest), and the longest line of each. */
   pageErrors: 20,
   pageErrorText: 300,
+  /** How many more elements one comment can point at, besides the first. */
+  also: 5,
 } as const;
 
 export const ERROR_STATUS: Record<ErrorCode, number> = {
@@ -61,6 +63,8 @@ export type PostThreadRequest = {
   screenshot?: string;
   /** Page errors the user chose to attach. */
   pageErrors?: PageError[];
+  /** More elements the same comment is about. */
+  also?: ElementRef[];
 };
 export type PostAgentThreadRequest = {
   agent: string;

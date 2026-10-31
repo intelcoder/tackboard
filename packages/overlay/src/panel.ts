@@ -1,5 +1,5 @@
 // The comments panel: a floating window with the thread list, the comment box and History.
-import { brand } from "@app/shared";
+import { brand, LIMITS } from "@app/shared";
 import type { ElementRef, PageError, ThreadDto } from "@app/shared";
 import type { Api } from "./api.ts";
 import type { H } from "./dom.ts";
@@ -46,7 +46,7 @@ export type Panel = {
 };
 
 type ToSend =
-  | { kind: "comment"; ref: ElementRef; url: string; viewport: { w: number; h: number }; text: string; screenshot?: string; pageErrors?: PageError[] }
+  | { kind: "comment"; ref: ElementRef; url: string; viewport: { w: number; h: number }; text: string; screenshot?: string; pageErrors?: PageError[]; also?: ElementRef[] }
   | { kind: "reply"; threadId: string; text: string };
 
 type CommentToSend = Extract<ToSend, { kind: "comment" }>;
@@ -73,7 +73,9 @@ export function createPanel(o: PanelOptions): Panel {
   let tab: Tab = "open";
   let showHistory = false;
   let historyOpenId: string | null = null;
-  let composer: { ref: ElementRef; attach: boolean; attachErrors: boolean } | null = null;
+  let composer: { ref: ElementRef; also: ElementRef[]; attach: boolean; attachErrors: boolean } | null = null;
+  /** True while the user is choosing one more element for the open comment box; the next pick is added to it. */
+  let adding = false;
   let composerDraft = "";
   let confirming: { threadId: string; messageId: string } | null = null;
   let notice: string | null = null;
@@ -226,7 +228,7 @@ export function createPanel(o: PanelOptions): Panel {
       tab = "open";
       return;
     }
-    const t = await api.postThread({ element: job.ref, url: job.url, viewport: job.viewport, text: job.text, screenshot: job.screenshot, pageErrors: job.pageErrors }, signal);
+    const t = await api.postThread({ element: job.ref, url: job.url, viewport: job.viewport, text: job.text, screenshot: job.screenshot, pageErrors: job.pageErrors, also: job.also }, signal);
     saveThread(t);
     tab = "open";
     store.set({ mode: "view", activeThreadId: t.id, panelOpen: true });
@@ -265,7 +267,14 @@ export function createPanel(o: PanelOptions): Panel {
   };
 
   const compose = (ref: ElementRef) => {
-    composer = { ref, attach: false, attachErrors: false };
+    if (adding && composer) {
+      adding = false;
+      if (![composer.ref, ...composer.also].some((r) => r.selector === ref.selector)) composer.also.push(ref);
+      store.set({ composing: true });
+      return;
+    }
+    adding = false;
+    composer = { ref, also: [], attach: false, attachErrors: false };
     focusId = null;
     composerDraft = "";
     showHistory = false;
@@ -274,21 +283,25 @@ export function createPanel(o: PanelOptions): Panel {
 
   const closeComposer = () => {
     composer = null;
+    adding = false;
     store.set({ composing: false });
   };
 
   const composerElement = () => (composer ? finder.find({ id: "composer", url: win.location.href, element: composer.ref }) : null);
+  /** The comment's elements that are on the page now, the first one first. */
+  const composerElements = (): Element[] =>
+    composer ? [composer.ref, ...composer.also].flatMap((ref, i) => finder.find({ id: `composer${i}`, url: win.location.href, element: ref }) ?? []) : [];
 
   /** The comment as typed, with a screenshot of the element when the box is ticked. Null when there is nothing to send or the picture failed (the box stays open and says why). */
   const buildJob = async (): Promise<CommentToSend | null> => {
     const text = composerDraft.trim();
     const started = composer;
     if (!started || !text) return null;
-    const job: CommentToSend = { kind: "comment", ref: started.ref, url: win.location.href, viewport: o.viewport(), text };
+    const job: CommentToSend = { kind: "comment", ref: started.ref, url: win.location.href, viewport: o.viewport(), text, ...(started.also.length ? { also: [...started.also] } : {}) };
     if (started.attach && o.captureTab) {
       try {
-        const el = composerElement();
-        if (!el) throw new Error("The element is not on the page");
+        const el = composerElements();
+        if (!composerElement()) throw new Error("The element is not on the page");
         job.screenshot = await elementScreenshot({ el, win, host: o.host, captureTab: o.captureTab });
       } catch (e) {
         o.showToast(`Screenshot failed: ${(e as Error).message}`);
@@ -391,13 +404,27 @@ export function createPanel(o: PanelOptions): Panel {
 
   const attachBox = (): HTMLElement | null => {
     if (!o.captureTab || !composer) return null;
-    const el = composerElement();
-    const why = el ? whyNoShot(el, win) : "The element is not on the page";
+    const el = composerElements();
+    const why = composerElement() ? whyNoShot(el, win) : "The element is not on the page";
     const current = composer;
     return h("label", { class: "tb-attach", title: why }, h("input", {
       type: "checkbox", "data-key": "attach-shot", checked: current.attach && !why, disabled: !!why,
       onchange: (ev: Event) => { current.attach = (ev.target as HTMLInputElement).checked; },
     }), " Attach screenshot", why ? h("span", { class: "tb-hint" }, ` ${why}`) : null);
+  };
+
+  /** The other elements of this comment, each removable, and the button that picks one more. */
+  const moreView = (): HTMLElement => {
+    const current = composer!;
+    return h("div", { class: "tb-more" },
+      ...current.also.map((ref, i) => h("span", { class: "tb-chip", title: ref.selector },
+        targetLabel(ref),
+        h("button", { type: "button", "aria-label": `Remove ${targetLabel(ref)}`, "data-key": `remove-also-${i}`, onclick: () => { current.also.splice(i, 1); draw(); } }, "✕"))),
+      adding
+        ? h("span", { class: "tb-hint" }, "Click another element on the page. Esc cancels.")
+        : current.also.length >= LIMITS.also
+          ? null
+          : h("button", { type: "button", class: "tb-link", "data-key": "add-element", onclick: () => { adding = true; store.set({ composing: false }); } }, "+ Add another element"));
   };
 
   const errorsBox = (): HTMLElement | null => {
@@ -431,6 +458,7 @@ export function createPanel(o: PanelOptions): Panel {
         h("span", { class: "tb-hint" }, `to ${s.agent.name ?? "the agent"}`),
         h("button", { type: "button", class: "tb-x", "aria-label": "Cancel", title: "Cancel", "data-key": "cancel", onclick: closeComposer }, "✕")),
       box,
+      moreView(),
       attachBox(),
       errorsBox(),
       h("div", { class: "tb-row" },
@@ -552,7 +580,7 @@ export function createPanel(o: PanelOptions): Panel {
     const detachedIds = s.threads.filter((t) => !finder.find(t)).map((t) => t.id);
     const look = JSON.stringify([
       s.threads, s.history, s.branch, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
-      tab, showHistory, historyOpenId, composer?.ref.selector ?? null, focusId, sendQueue.items(), drafts, confirming, notice,
+      tab, showHistory, historyOpenId, composer?.ref.selector ?? null, composer?.also.map((r) => r.selector) ?? null, adding, focusId, sendQueue.items(), drafts, confirming, notice,
       notificationState(), dismissed, blockedHidden, detachedIds,
     ]);
     if (look === lastLook) return;
@@ -689,6 +717,11 @@ export function createPanel(o: PanelOptions): Panel {
 
   const sync = () => {
     const s = store.get();
+    // Esc (or the eye button) left comment mode while picking one more element: the comment box takes over again.
+    if (adding && s.mode !== "comment") {
+      adding = false;
+      return void store.set({ composing: true });
+    }
     const visible = s.panelOpen && s.mode !== "hidden";
     const was = !panel.hasAttribute("hidden");
     if (visible && !was) {
