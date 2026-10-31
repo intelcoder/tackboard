@@ -41,6 +41,7 @@ test("post, list, claim-next, reply, resolve round trip", () =>
     const list = (await (await d.call("GET", paths.threads)).json()) as ListThreadsResponse;
     assert.equal(list.branch, "main");
     assert.equal(list.threads.length, 1);
+    assert.ok(list.project, "the list names the project folder");
     const open = (await (await d.call("GET", `${paths.threads}?state=resolved`)).json()) as ListThreadsResponse;
     assert.equal(open.threads.length, 0);
     const claimed = await (await d.call("POST", paths.claimNext, { agent: "claude" })).json();

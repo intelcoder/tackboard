@@ -49,6 +49,8 @@ export type ThreadDto = {
 };
 
 export type ListThreadsResponse = {
+  /** Name of the project folder this daemon runs in, so the panel shows which project it talks to. */
+  project?: string;
   branch: string;
   threads: ThreadDto[];
   history: ThreadDto[];

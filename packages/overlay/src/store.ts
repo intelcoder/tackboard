@@ -11,6 +11,7 @@ export type OverlayState = {
   threads: ThreadDto[];
   history: ThreadDto[];
   branch: string | null;
+  project: string | null;
   agent: ListThreadsResponse["agent"];
   restoreBlocked: string | null;
   /** First poll has finished. */
@@ -38,6 +39,7 @@ export function createStore(initial: Partial<OverlayState> = {}): Store {
     threads: [],
     history: [],
     branch: null,
+    project: null,
     agent: { name: null, online: false },
     restoreBlocked: null,
     loaded: false,

@@ -194,3 +194,12 @@ test("a queued reply shows at the end of its thread and as text only", () => {
   assert.equal(el.querySelector(".tb-convo")!.lastElementChild!.classList.contains("tb-queued"), true);
   assert.equal(el.querySelectorAll(".tb-msg").length, 1, "a queued item is not a real message");
 });
+
+test("an open thread says it was sent, then that the agent is working on it", () => {
+  const sent = threadItem(h, thread(1, { status: "pending" }), options());
+  assert.match(sent.querySelector('[data-key="sent-t1"]')!.textContent!, /Waiting for the agent/);
+  const working = threadItem(h, thread(2, { status: "received", agent: "claude-main" }), options());
+  assert.match(working.querySelector('[data-key="working-t2"]')!.textContent!, /claude-main got your message and is working/);
+  const done = threadItem(h, thread(3, { status: "waiting" }), options());
+  assert.equal(done.querySelector('[data-key="sent-t3"], [data-key="working-t3"]'), null);
+});

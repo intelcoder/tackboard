@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import type { ServerType } from "@hono/node-server";
@@ -177,7 +177,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
   app.get(paths.threads, (c) => {
     const state = c.req.query("state");
     if (state !== undefined && state !== "open" && state !== "resolved") throw new DomainError("invalid", "state must be open or resolved");
-    return c.json(list_threads.handle({ branch: c.req.query("branch") || undefined, state, url: c.req.query("url") || undefined }));
+    return c.json({ ...list_threads.handle({ branch: c.req.query("branch") || undefined, state, url: c.req.query("url") || undefined }), project: basename(opts.projectDir) });
   });
 
   app.post(paths.threads, (c) => {

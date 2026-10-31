@@ -373,7 +373,7 @@ export function createPanel(o: PanelOptions): Panel {
     return h("div", { class: "tb-head" },
       h("div", { class: "tb-title" },
         h("b", null, h("span", { class: "tb-grip", "aria-hidden": "true" }, "⋮⋮"), " Comments"),
-        s.branch ? h("span", { class: "tb-branch", title: s.branch }, s.branch) : null),
+        s.branch ? h("span", { class: "tb-branch", title: s.project ? `${s.project} on ${s.branch}` : s.branch }, s.project ? `${s.project} · ${s.branch}` : s.branch) : null),
       h("span", { class: "tb-head-right" },
         h("span", { class: `tb-agent${agent.online ? "" : " off"}`, title: agent.online ? "Agent is connected" : "Agent is not connected" },
           h("span", { class: "dot" }), agent.name ?? "no agent"),
@@ -579,7 +579,7 @@ export function createPanel(o: PanelOptions): Panel {
     if (focusId && !s.threads.some((t) => t.id === focusId)) focusId = null;
     const detachedIds = s.threads.filter((t) => !finder.find(t)).map((t) => t.id);
     const look = JSON.stringify([
-      s.threads, s.history, s.branch, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
+      s.threads, s.history, s.branch, s.project, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
       tab, showHistory, historyOpenId, composer?.ref.selector ?? null, composer?.also.map((r) => r.selector) ?? null, adding, focusId, sendQueue.items(), drafts, confirming, notice,
       notificationState(), dismissed, blockedHidden, detachedIds,
     ]);

@@ -202,6 +202,10 @@ export function threadItem(h: H, thread: ThreadDto, o: ThreadItemOptions): HTMLE
 
   if (thread.status === "received" && thread.claimStale) {
     root.append(h("div", { class: "tb-hint tb-note" }, "This claim is more than 30 minutes old. Release it so another agent can take it."));
+  } else if (thread.status === "received") {
+    root.append(h("div", { class: "tb-hint tb-note tb-working", "data-key": `working-${thread.id}` }, `${thread.agent ?? "The agent"} got your message and is working on it.`));
+  } else if (thread.status === "pending") {
+    root.append(h("div", { class: "tb-hint tb-note", "data-key": `sent-${thread.id}` }, "Sent. Waiting for the agent to pick it up."));
   }
   const submit = () => {
     const text = box.value.trim();

@@ -79,7 +79,7 @@ export function createApi(options: ApiOptions) {
 
   return {
     health: () => call<OkResponse>("GET", paths.health),
-    listThreads: (q: { branch?: string; state?: "open" | "resolved" } = {}) =>
+    listThreads: (q: { branch?: string; state?: "open" | "resolved"; url?: string } = {}) =>
       call<ListThreadsResponse>("GET", paths.threads, q),
     postThread: (b: PostThreadRequest, signal?: AbortSignal) => call<ThreadDto>("POST", paths.threads, undefined, b, signal),
     postAgentThread: (b: PostAgentThreadRequest) => call<ThreadDto>("POST", paths.agentThread, undefined, b),

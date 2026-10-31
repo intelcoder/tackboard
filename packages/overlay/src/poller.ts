@@ -30,13 +30,15 @@ export function createPoller(o: PollerOptions): { now(): void; destroy(): void }
     }
     busy = true;
     try {
-      const list = await api.listThreads();
+      // Only this page's threads: the same branch also holds threads from other pages and sites (e.g. Storybook).
+      const list = await api.listThreads({ url: globalThis.location?.href });
       if (!on) return;
       const before = store.get();
       store.set({
         threads: list.threads,
         history: list.history,
         branch: list.branch,
+        project: list.project ?? null,
         agent: list.agent,
         restoreBlocked: list.restoreBlocked,
         loaded: true,

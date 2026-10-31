@@ -353,3 +353,14 @@ test("history can be narrowed to a page and a branch", () => {
   assert.deepEqual(ids({ branch: home.branch }).sort(), [home.id, order.id].sort());
   assert.deepEqual(ids({ branch: "nope" }), []);
 });
+
+test("listing threads for a page hides other pages but keeps threads without a url", () => {
+  const s = setup();
+  const home = s.post.handle(postArgs("home"));
+  const story = s.post.handle({ ...postArgs("story"), url: "http://localhost:6007/iframe.html" });
+  const noUrl = s.post.handle({ ...postArgs("agent"), url: "" });
+  const ids = (url?: string) => s.list.handle({ url }).threads.map((t) => t.id).sort();
+  assert.deepEqual(ids("http://localhost:6007/iframe.html"), [story.id, noUrl.id].sort());
+  assert.deepEqual(ids("http://localhost:3000"), [home.id, noUrl.id].sort());
+  assert.equal(ids().length, 3);
+});

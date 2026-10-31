@@ -75,7 +75,8 @@ async function choosePort(same: { port: number } | undefined): Promise<number> {
     return await tryPort(brand.pairPort);
   } catch {
     if (same) return same.port;
-    console.log(`warning: port ${brand.pairPort} is taken (another project's daemon?), so the extension cannot find this daemon by itself; paste the config there instead`);
+    // stderr and loud: the extension pairs with whoever holds this port, so comments would go to that other project.
+    console.error(`\n!! port ${brand.pairPort} is held by another daemon (a different project, or an old one).\n!! The extension will pair with THAT one, and your comments would be saved there, not in this project.\n!! Find it: lsof -nP -iTCP:${brand.pairPort} -sTCP:LISTEN   then stop it and run "${brand.cli} start" again.\n!! Or paste this project's .${brand.cli}/config.json into the extension's "Add a site" page.\n`);
     return tryPort(0);
   }
 }

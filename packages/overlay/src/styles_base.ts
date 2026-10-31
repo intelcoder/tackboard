@@ -83,6 +83,8 @@ button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px soli
 .tb-chip[data-s="pending"]{color:var(--st-pending);background:var(--st-pending-bg)}
 .tb-chip[data-s="received"]{color:var(--st-received);background:var(--st-received-bg)}
 .tb-chip[data-s="waiting"]{color:var(--st-waiting);background:var(--st-waiting-bg)}
+.tb-chip[data-s="received"]::before{animation:tbblink 1.2s ease-in-out infinite}
+@keyframes tbblink{50%{opacity:.25}}
 .tb-chip[data-s="resolved"]{color:var(--st-resolved);background:var(--st-resolved-bg)}
 .tb-chip[data-s="discarded"]{color:var(--tb-muted);background:var(--tb-soft);text-decoration:line-through}
 
