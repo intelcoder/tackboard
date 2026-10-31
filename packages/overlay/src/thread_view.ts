@@ -191,6 +191,11 @@ export function threadItem(h: H, thread: ThreadDto, o: ThreadItemOptions): HTMLE
   const conversation = h("div", { class: "tb-convo" });
   shown.forEach((m, i) => {
     conversation.append(messageView(h, m, o.history));
+    // The state of the user's latest message: sent, then received by the agent.
+    if (!o.history && i === shown.length - 1 && m.author === "user" && (thread.status === "pending" || thread.status === "received")) {
+      conversation.append(h("div", { class: "tb-note tb-sent", "data-key": `sent-${thread.id}` },
+        thread.status === "pending" ? "✓ Sent · waiting for the agent" : `✓✓ Received by ${thread.agent ?? "the agent"} · working on it`));
+    }
     if (m.checkpointId && !m.discarded) {
       conversation.append(restorePoint(h, m, i + 1, !o.history, o.onRestore));
       if (o.confirm && o.confirm.messageId === m.id) conversation.append(o.confirm.view);
@@ -202,10 +207,6 @@ export function threadItem(h: H, thread: ThreadDto, o: ThreadItemOptions): HTMLE
 
   if (thread.status === "received" && thread.claimStale) {
     root.append(h("div", { class: "tb-hint tb-note" }, "This claim is more than 30 minutes old. Release it so another agent can take it."));
-  } else if (thread.status === "received") {
-    root.append(h("div", { class: "tb-hint tb-note tb-working", "data-key": `working-${thread.id}` }, `${thread.agent ?? "The agent"} got your message and is working on it.`));
-  } else if (thread.status === "pending") {
-    root.append(h("div", { class: "tb-hint tb-note", "data-key": `sent-${thread.id}` }, "Sent. Waiting for the agent to pick it up."));
   }
   const submit = () => {
     const text = box.value.trim();
