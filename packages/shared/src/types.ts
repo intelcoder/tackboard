@@ -15,6 +15,10 @@ export type ElementRef = {
   screenshot?: string;
   /** Console errors, warnings and failed requests of the page, when the user attached them. */
   pageErrors?: PageError[];
+  /** The words the user selected with Shift+drag; the element is the smallest one that holds them. */
+  selection?: string;
+  /** The user dragged a box: `rect` is that box, and the element is the smallest one that holds it. */
+  area?: true;
   /** Other elements the same comment is about (the user added them). Each has no `also` of its own. */
   also?: ElementRef[];
   confidence: Confidence;

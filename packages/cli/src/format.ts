@@ -22,6 +22,8 @@ export function describeThread(t: ThreadDto): string {
   out.push(`page: ${t.url}  viewport: ${t.viewport.w}x${t.viewport.h}`);
   out.push(`element: <${el.tag}>  selector: ${el.selector}`);
   out.push(`  visible text: ${el.text}`);
+  if (el.selection) out.push(`  selected text: ${JSON.stringify(el.selection)} (the user selected these words inside the element)`);
+  if (el.area) out.push("  area: the user dragged a box over this element; size and position below are the box, not the element");
   out.push(`  size: ${el.rect.w}x${el.rect.h} at (${el.rect.x}, ${el.rect.y})`);
   out.push(`  html: ${clip(el.html, 500)}`);
   if (el.component?.length) out.push(`  component: ${el.component.join(" > ")}`);

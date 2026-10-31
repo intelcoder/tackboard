@@ -73,6 +73,8 @@ function read_element(value: unknown): ElementRef {
     text: typeof e.text === "string" ? e.text : "",
     html: typeof e.html === "string" ? e.html : "",
     rect,
+    ...(typeof e.selection === "string" && e.selection ? { selection: e.selection.slice(0, LIMITS.selection) } : { selection: undefined }),
+    ...(e.area === true ? { area: true as const } : { area: undefined }),
     confidence: e.confidence === "source" || e.confidence === "component" ? e.confidence : "text",
   };
 }

@@ -305,3 +305,15 @@ test("a comment's other elements are kept (at most 5, read like the first), and 
     assert.equal(nested.also, undefined);
     assert.equal(nested.screenshot, undefined);
   }));
+
+test("a selection is kept cut to its limit and a dragged-box flag only when it is true", () =>
+  with_daemon(async (d) => {
+    const post = async (el: object) =>
+      (await (await d.call("POST", paths.threads, post_body("x", el as typeof element))).json()) as ThreadDto;
+    const e = (await post({ ...element, selection: "s".repeat(LIMITS.selection + 50), area: true })).element;
+    assert.equal(e.selection!.length, LIMITS.selection);
+    assert.equal(e.area, true);
+    const none = (await post({ ...element, selection: 5, area: "yes" })).element;
+    assert.equal(none.selection, undefined);
+    assert.equal(none.area, undefined);
+  }));

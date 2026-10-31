@@ -191,3 +191,59 @@ test("a pin goes away when its element leaves the page", () => {
   s.win.dispatchEvent(new s.Event("scroll"));
   assert.equal(s.root.querySelectorAll(".tb-pin").length, 0);
 });
+
+test("dragging a box picks the smallest element that holds it; the click after the drag picks nothing", () => {
+  const picks: { ref: ElementRef; el: Element }[] = [];
+  const s = setup(`<div id="wrap"><p id="a">One</p><p id="b">Two</p></div>`, (ref, el) => picks.push({ ref, el }));
+  const wrap = s.document.getElementById("wrap")!;
+  const a = s.document.getElementById("a")!;
+  const b = s.document.getElementById("b")!;
+  setRect(wrap, { left: 0, top: 0, width: 200, height: 100 });
+  setRect(a, { left: 0, top: 0, width: 200, height: 40 });
+  setRect(b, { left: 0, top: 50, width: 200, height: 40 });
+  // the topmost element at the box centre is the first paragraph, which does not hold the whole box
+  (s.document as any).elementsFromPoint = () => [a, wrap];
+  s.overlay.store.set({ mode: "comment" });
+  s.fire(a, "mousedown", { clientX: 10, clientY: 10, button: 0 });
+  s.fire(a, "mousemove", { clientX: 12, clientY: 12, buttons: 1 });
+  assert.equal(s.root.querySelector(".tb-area"), null, "a small move is still a click");
+  s.fire(b, "mousemove", { clientX: 150, clientY: 80, buttons: 1 });
+  assert.ok(s.root.querySelector(".tb-area"), "the box shows while dragging");
+  s.fire(b, "mouseup", { clientX: 150, clientY: 80 });
+  assert.equal(s.root.querySelector(".tb-area"), null);
+  assert.equal(picks.length, 1);
+  assert.equal(picks[0]!.el, wrap);
+  assert.equal(picks[0]!.ref.area, true);
+  assert.deepEqual(picks[0]!.ref.rect, { x: 10, y: 10, w: 140, h: 70 });
+  s.fire(b, "click");
+  assert.equal(picks.length, 1, "the click that ends a drag is not a pick");
+  s.overlay.store.set({ composing: false });
+  s.fire(b, "mousedown", { clientX: 5, clientY: 60, button: 0 });
+  s.fire(b, "mouseup", { clientX: 5, clientY: 60 });
+  s.fire(b, "click");
+  assert.equal(picks.length, 2, "a plain click still picks");
+  assert.equal(picks[1]!.ref.area, undefined);
+});
+
+test("Shift+drag over text picks its element with the selected words", () => {
+  const picks: { ref: ElementRef; el: Element }[] = [];
+  const s = setup(`<p id="a">Hello <b>big</b> world</p>`, (ref, el) => picks.push({ ref, el }));
+  const a = s.document.getElementById("a")!;
+  setRect(a, { left: 0, top: 0, width: 200, height: 20 });
+  let cleared = false;
+  const range = { commonAncestorContainer: a.firstChild, getBoundingClientRect: () => ({ x: 5, y: 2, left: 5, top: 2, width: 60, height: 14 }) };
+  (s.win as any).getSelection = () => ({
+    rangeCount: 1, toString: () => "  Hello \n big ", getRangeAt: () => range, removeAllRanges: () => { cleared = true; },
+  });
+  s.overlay.store.set({ mode: "comment" });
+  const down = s.fire(a, "mousedown", { clientX: 5, clientY: 5, button: 0, shiftKey: true });
+  assert.equal(down.defaultPrevented, false, "Shift leaves native selection alone");
+  s.fire(a, "mouseup", { clientX: 60, clientY: 5, shiftKey: true });
+  assert.equal(picks.length, 1);
+  assert.equal(picks[0]!.el, a);
+  assert.equal(picks[0]!.ref.selection, "Hello big");
+  assert.deepEqual(picks[0]!.ref.rect, { x: 5, y: 2, w: 60, h: 14 });
+  assert.ok(cleared);
+  s.fire(a, "click");
+  assert.equal(picks.length, 1);
+});

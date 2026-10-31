@@ -12,6 +12,8 @@ export const LIMITS = {
   text: 102400,
   html: 4096,
   elementText: 120,
+  /** Longest piece of selected text a comment keeps. */
+  selection: 500,
   selector: 1000,
   /** Bytes of the PNG after decoding. Its base64 text still has to fit in `body`. */
   screenshot: 1_000_000,

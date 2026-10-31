@@ -135,3 +135,13 @@ test("a thread about several elements prints each extra one", () => {
   assert.match(out, /also this element: <h2>  selector: #second  text: Second  source: src\/A\.tsx:4/);
   assert.doesNotMatch(describeThread(thread("text")), /also this element/);
 });
+
+test("a selection and a dragged box are described, a plain element is not", () => {
+  const t = thread("text");
+  t.element.selection = "free trial";
+  t.element.area = true;
+  const out = describeThread(t);
+  assert.match(out, /selected text: "free trial"/);
+  assert.match(out, /area: the user dragged a box/);
+  assert.doesNotMatch(describeThread(thread("text")), /selected text|area:/);
+});

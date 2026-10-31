@@ -50,6 +50,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px soli
 
 /* HoverOutline */
 .tb-outline{position:fixed;pointer-events:none;border:2px solid var(--tb-accent);background:color-mix(in srgb,var(--tb-accent) 10%,transparent);border-radius:2px;z-index:5}
+.tb-area{position:fixed;pointer-events:none;border:2px dashed var(--tb-accent);background:color-mix(in srgb,var(--tb-accent) 12%,transparent);z-index:5}
 .tb-outline-tag{position:absolute;left:-2px;top:-22px;background:var(--tb-accent);color:var(--tb-on-accent);font:500 11px var(--mono);padding:2px 6px;border-radius:3px 3px 0 0;white-space:nowrap}
 .tb-outline-tag.below{top:auto;bottom:-22px;border-radius:0 0 3px 3px}
 

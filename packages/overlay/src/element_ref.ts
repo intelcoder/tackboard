@@ -147,3 +147,24 @@ export function labelFor(el: Element): string {
   const first = (el.getAttribute("class") ?? "").split(/\s+/).find(Boolean);
   return first ? `${tag}.${first}` : tag;
 }
+
+/** The smallest element that holds the whole box, found from the topmost element at its centre; elements inside `skip` (the overlay) are ignored. */
+export function elementForBox(doc: Document, box: { x: number; y: number; w: number; h: number }, skip: Element): Element | null {
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const hit = (doc.elementsFromPoint?.(cx, cy) ?? [doc.elementFromPoint?.(cx, cy)]).find((e): e is Element => !!e && e !== skip && !skip.contains(e));
+  let el: Element | null = hit ?? null;
+  const html = doc.documentElement;
+  while (el && el !== doc.body && el !== html) {
+    const r = el.getBoundingClientRect();
+    if (r.left <= box.x + 1 && r.top <= box.y + 1 && r.right >= box.x + box.w - 1 && r.bottom >= box.y + box.h - 1) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+/** The element for a selection: the closest element above its common ancestor. */
+export function elementOfRange(range: Range): Element | null {
+  const n = range.commonAncestorContainer;
+  return n.nodeType === 1 ? (n as Element) : n.parentElement;
+}
