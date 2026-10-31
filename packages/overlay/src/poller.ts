@@ -39,6 +39,7 @@ export function createPoller(o: PollerOptions): { now(): void; destroy(): void }
         history: list.history,
         branch: list.branch,
         project: list.project ?? null,
+        otherPages: list.otherPages ?? [],
         agent: list.agent,
         restoreBlocked: list.restoreBlocked,
         loaded: true,

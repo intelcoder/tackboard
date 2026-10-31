@@ -21,6 +21,10 @@ export class ListThreadsHandler {
     const branch = q.branch !== undefined ? Branch.of(q.branch) : this.git.branch();
     const live = this.repo.listByBranch(branch).filter((t) => !t.discarded);
     const shown = live.filter((t) => (q.state === undefined || (q.state === "resolved") === (t.status === "resolved")) && (q.url === undefined || !t.url || samePage(t.url, q.url)));
+    const others = new Map<string, number>();
+    if (q.url !== undefined) {
+      for (const t of live) if (t.url && t.status !== "resolved" && !samePage(t.url, q.url)) others.set(t.url, (others.get(t.url) ?? 0) + 1);
+    }
     const existing = new Set(this.git.branches());
     const archived = this.repo.listAll().filter((t) => {
       if (t.branch === branch.value) return t.discarded;
@@ -32,6 +36,7 @@ export class ListThreadsHandler {
       history: archived.map((t) => t.toDto(now)),
       agent: this.repo.lastAgent(now),
       restoreBlocked: Thread.restoreBlocker(live, now),
+      ...(q.url !== undefined ? { otherPages: [...others].map(([url, count]) => ({ url, count })) } : {}),
     };
   }
 }

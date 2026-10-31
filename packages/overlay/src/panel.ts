@@ -8,7 +8,7 @@ import { notificationState, permissionAsked, permissionBanner, rememberNotNow } 
 import { elementScreenshot, whyNoShot } from "./screenshot.ts";
 import { createSendQueue } from "./send_queue.ts";
 import type { QueueItem } from "./send_queue.ts";
-import { badgeCount, clampToViewport, errorText, isSendKey, restoreDisabledReason, visibleThreads } from "./panel_logic.ts";
+import { badgeCount, clampToViewport, errorText, isSendKey, pageLabel, restoreDisabledReason, visibleThreads } from "./panel_logic.ts";
 import type { Tab } from "./panel_logic.ts";
 import type { Store } from "./store.ts";
 import { toastText } from "./toast.ts";
@@ -579,7 +579,7 @@ export function createPanel(o: PanelOptions): Panel {
     if (focusId && !s.threads.some((t) => t.id === focusId)) focusId = null;
     const detachedIds = s.threads.filter((t) => !finder.find(t)).map((t) => t.id);
     const look = JSON.stringify([
-      s.threads, s.history, s.branch, s.project, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
+      s.threads, s.history, s.branch, s.project, s.otherPages, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
       tab, showHistory, historyOpenId, composer?.ref.selector ?? null, composer?.also.map((r) => r.selector) ?? null, adding, focusId, sendQueue.items(), drafts, confirming, notice,
       notificationState(), dismissed, blockedHidden, detachedIds,
     ]);
@@ -622,6 +622,13 @@ export function createPanel(o: PanelOptions): Panel {
         }
         if (tab === "open" && drafts.length) list.insertBefore(draftsBlock(), list.firstChild);
         panel.append(list);
+        if (s.otherPages.length) {
+          panel.append(h("div", { class: "tb-others", "data-key": "other-pages" },
+            h("div", { class: "tb-section" }, "Unresolved on other pages"),
+            ...s.otherPages.filter((p) => /^https?:\/\//.test(p.url)).map((p) => h("button", {
+              type: "button", class: "tb-link tb-other", title: p.url, onclick: () => win.location.assign(p.url),
+            }, `${pageLabel(p.url, win.location.origin)} (${p.count})`))));
+        }
         panel.append(h("div", { class: "tb-foot" },
           h("button", { type: "button", class: "tb-link", "data-key": "history", onclick: () => { showHistory = true; draw(); } },
             `History (${s.history.length})`)));

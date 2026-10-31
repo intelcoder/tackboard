@@ -56,6 +56,8 @@ export type ListThreadsResponse = {
   history: ThreadDto[];
   agent: { name: string | null; online: boolean };
   restoreBlocked: string | null;
+  /** With a page filter: other pages of the branch that still have unresolved threads. */
+  otherPages?: { url: string; count: number }[];
 };
 
 export type RestoreResult = {

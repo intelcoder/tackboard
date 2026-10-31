@@ -12,6 +12,17 @@ export function visibleThreads(threads: ThreadDto[], tab: Tab): ThreadDto[] {
 }
 
 /** Threads waiting on the user or unread, each counted once. */
+/** A short name for a page in the "other pages" list: path, plus the host when it is not this one. */
+export function pageLabel(url: string, here = ""): string {
+  try {
+    const u = new URL(url);
+    const path = (u.pathname + u.search).replace(/\/$/, "") || "/";
+    return u.origin === here ? path : `${u.host}${path}`;
+  } catch {
+    return url;
+  }
+}
+
 export function badgeCount(threads: ThreadDto[]): number {
   return threads.filter((t) => !t.discarded && (t.status === "waiting" || t.unread)).length;
 }

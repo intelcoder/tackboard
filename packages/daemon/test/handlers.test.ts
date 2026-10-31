@@ -364,3 +364,13 @@ test("listing threads for a page hides other pages but keeps threads without a u
   assert.deepEqual(ids("http://localhost:3000"), [home.id, noUrl.id].sort());
   assert.equal(ids().length, 3);
 });
+
+test("a page filter also lists the other pages that still have unresolved threads", () => {
+  const s = setup();
+  s.post.handle(postArgs("home"));
+  const order = s.post.handle({ ...postArgs("order"), url: "http://localhost:3000/order#top" });
+  s.post.handle({ ...postArgs("order2"), url: "http://localhost:3000/order/" });
+  assert.deepEqual(s.list.handle({ url: "http://localhost:3000" }).otherPages, [{ url: "http://localhost:3000/order#top", count: 1 }, { url: "http://localhost:3000/order/", count: 1 }]);
+  assert.equal(s.list.handle({}).otherPages, undefined);
+  assert.ok(order.id);
+});

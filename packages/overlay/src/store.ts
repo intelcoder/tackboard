@@ -12,6 +12,8 @@ export type OverlayState = {
   history: ThreadDto[];
   branch: string | null;
   project: string | null;
+  /** Other pages of the branch that still have unresolved threads. */
+  otherPages: { url: string; count: number }[];
   agent: ListThreadsResponse["agent"];
   restoreBlocked: string | null;
   /** First poll has finished. */
@@ -40,6 +42,7 @@ export function createStore(initial: Partial<OverlayState> = {}): Store {
     history: [],
     branch: null,
     project: null,
+    otherPages: [],
     agent: { name: null, online: false },
     restoreBlocked: null,
     loaded: false,

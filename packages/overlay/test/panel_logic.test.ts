@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { statusLabel } from "@app/shared";
 import type { ThreadDto } from "@app/shared";
-import { badgeCount, badgeLabel, bannerFor, clampToViewport, diffForEvents, errorText, isSendKey, restoreDisabledReason, visibleThreads } from "../src/panel_logic.ts";
+import { badgeCount, badgeLabel, bannerFor, clampToViewport, diffForEvents, errorText, isSendKey, pageLabel, restoreDisabledReason, visibleThreads } from "../src/panel_logic.ts";
 import { parseHTML } from "linkedom";
 import { createH } from "../src/dom.ts";
 import { notificationState, permissionBanner } from "../src/notifications.ts";
@@ -152,4 +152,9 @@ test("isSendKey: Enter sends, Shift+Enter does not, Ctrl or Cmd plus Enter sends
   assert.equal(isSendKey(key({ isComposing: true })), false);
   assert.equal(isSendKey(key({ keyCode: 229 })), false);
   assert.equal(isSendKey(key({ ctrlKey: true, isComposing: true })), false);
+});
+
+test("pageLabel shows the path, and the host only for another site", () => {
+  assert.equal(pageLabel("http://localhost:4322/en/malaysia/", "http://localhost:4322"), "/en/malaysia");
+  assert.equal(pageLabel("http://localhost:6007/iframe.html?id=btn", "http://localhost:4322"), "localhost:6007/iframe.html?id=btn");
 });
