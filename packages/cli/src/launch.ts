@@ -6,8 +6,9 @@ import { brand, findConfig, paths } from "@app/shared";
 import type { ThreadDto } from "@app/shared";
 import { CliError } from "./client.ts";
 import { formatThread } from "./format.ts";
+import { firstExisting } from "./where.ts";
 
-const MAIN = resolve(import.meta.dirname, "main.ts");
+const MAIN = firstExisting("main.ts", "bin.js");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Adds the channel server to the project's .mcp.json and leaves any other server alone. Absolute paths, so nothing has to be on the PATH. */

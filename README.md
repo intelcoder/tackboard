@@ -31,6 +31,8 @@ npm link -w packages/cli
 
 Now `tackboard` works from any folder. To undo it, run `npm unlink -g @app/cli`. The rest of this file writes `tackboard`.
 
+**Or as a package.** `npm run release` builds the npm package into `release/` (the command, the daemon, the overlay, the skill and the extension in one folder). `npm pack ./release` makes `tackboard-<version>.tgz`; `npm i -g ./tackboard-*.tgz` installs it, and steps 2 and 3 are not needed. It is not published to npm yet. `tackboard extension` prints the folder of the Chrome extension to load. `tackboard init` also writes `.cursor/rules/tackboard.mdc` for Cursor.
+
 ### 4. Set up your own project
 
 Run these inside the project you are working on (the one the agent edits), not inside this repo. Run `init` with the address of your dev site:

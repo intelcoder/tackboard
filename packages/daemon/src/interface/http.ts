@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
@@ -45,7 +45,9 @@ export type Daemon = {
 type Body = Record<string, unknown>;
 type Variables = { body: Body };
 
-const default_bundle = join(import.meta.dirname, "..", "..", "..", "overlay", "dist", brand.bundle);
+// In a checkout the overlay is built next to its package; in the npm package it sits beside daemon.js.
+const checkout_bundle = join(import.meta.dirname, "..", "..", "..", "overlay", "dist", brand.bundle);
+const default_bundle = existsSync(checkout_bundle) ? checkout_bundle : join(import.meta.dirname, brand.bundle);
 
 function need_text(value: unknown, name: string): string {
   if (typeof value !== "string" || value === "") throw new DomainError("invalid", `${name} is required`);

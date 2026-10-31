@@ -1,5 +1,5 @@
 import { spawn, execFileSync } from "node:child_process";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import { userInfo } from "node:os";
@@ -18,6 +18,7 @@ import { CliError, connect, currentBranch } from "./client.ts";
 import type { Client } from "./client.ts";
 import { formatNotice, formatThread, formatThreads } from "./format.ts";
 import { claudeCommand, runAgent, writeMcpJson } from "./launch.ts";
+import { firstExisting } from "./where.ts";
 
 const OPTIONS = {
   as: { type: "string" },
@@ -47,6 +48,7 @@ const USAGE = [
   "  status",
   "  history [id] [--branch <name>] [--url <page>] [--json]",
   "  channel [--as name]",
+  "  extension",
 ].join("\n");
 
 const NONE = "no pending threads on this branch";
@@ -137,7 +139,7 @@ async function init(cwd: string, a: Args): Promise<number> {
 }
 
 function install_skill(cwd: string): void {
-  const source = resolve(import.meta.dirname, `../../../skills/${brand.cli}/SKILL.md`);
+  const source = firstExisting(`../../../skills/${brand.cli}/SKILL.md`, `skills/${brand.cli}/SKILL.md`);
   const shown = join(".claude", "skills", brand.cli, "SKILL.md");
   const target = join(cwd, shown);
   if (existsSync(target)) {
@@ -156,12 +158,23 @@ function install_skill(cwd: string): void {
     return;
   }
   console.log(`installed skill ${shown}`);
+  install_cursor_rule(cwd, source);
+}
+
+// Cursor reads rules from .cursor/rules, not skills. Same text, with Cursor's own frontmatter.
+function install_cursor_rule(cwd: string, skill: string): void {
+  const target = join(cwd, ".cursor", "rules", `${brand.cli}.mdc`);
+  if (existsSync(target)) return;
+  const body = readFileSync(skill, "utf8").replace(/^---\n[\s\S]*?\n---\n/, "");
+  mkdirSync(join(target, ".."), { recursive: true });
+  writeFileSync(target, `---\ndescription: Read ${brand.name} comments from the dev site, make the changes, and reply\nalwaysApply: true\n---\n${body}`);
+  console.log(`installed Cursor rule .cursor/rules/${brand.cli}.mdc`);
 }
 
 function start(cwd: string, agent = false): Promise<number> {
   const found = findConfig(cwd);
   if (!found) throw new CliError(`no ${brand.cli} project found here; run ${brand.cli} init`);
-  const entry = resolve(import.meta.dirname, "../../daemon/src/interface/main.ts");
+  const entry = firstExisting("../../daemon/src/interface/main.ts", "daemon.js");
   if (!existsSync(entry)) throw new CliError(`daemon entry not found: ${entry}`);
   return new Promise((res) => {
     const child = spawn("node", [entry, found.dir], { stdio: "inherit" });
@@ -297,7 +310,12 @@ export async function run(argv: string[], cwd: string): Promise<number> {
     const a = parse(argv);
     const cmd = a.positionals[0];
     if (!cmd) throw new CliError(USAGE);
-    if (cmd === "init") return await init(cwd, a);
+    if (cmd === "extension") {
+    console.log(firstExisting("../../extension/dist", "extension"));
+    console.log("Load that folder once: chrome://extensions, turn on Developer mode, Load unpacked.");
+    return 0;
+  }
+  if (cmd === "init") return await init(cwd, a);
     if (cmd === "start") return await start(cwd, a.values.agent);
     if (cmd === "channel") return await run_channel(cwd, a);
     if (cmd === "resolve") throw new CliError(`only the user closes a thread; ask with: ${brand.cli} reply <id> "<text>" --ask`);

@@ -11,6 +11,7 @@
     "build": "node scripts/build.ts",
     "dev:extension": "node scripts/dev_extension.ts",
     "playground": "node scripts/playground.ts",
+    "release": "node scripts/release.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

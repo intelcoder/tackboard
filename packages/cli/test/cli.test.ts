@@ -76,8 +76,17 @@ test("init writes config and excludes the data dir from git status", async () =>
   assert.deepEqual(found.config.origins, ["http://localhost:3000"]);
   assert.match(found.config.token, /^[0-9a-f]{48}$/);
   assert.ok(existsSync(join(dir, brand.dataDir)));
-  // Only the installed skill shows up, so the user can commit it.
-  assert.equal(execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" }), "?? .claude/\n");
+  // Only the installed skill and the Cursor rule show up, so the user can commit them.
+  assert.equal(execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" }), "?? .claude/\n?? .cursor/\n");
+  const rule = readFileSync(join(dir, ".cursor", "rules", `${brand.cli}.mdc`), "utf8");
+  assert.match(rule, /^---\ndescription: .+\nalwaysApply: true\n---\n/);
+  assert.ok(rule.includes(`${brand.cli} next`) && !rule.includes("name: " + brand.cli));
+});
+
+test("extension prints the folder to load", async () => {
+  const r = await cli(tmpdir(), ["extension"]);
+  assert.equal(r.code, 0);
+  assert.ok(existsSync(join(r.stdout.split("\n")[0]!, "manifest.json")));
 });
 
 test("init stores each origin without a trailing slash and keeps two valid ones", async () => {

@@ -63,3 +63,5 @@ The worktree then has its own port. Add the worktree's dev site in the Tackboard
 Two agents in the same folder do not collide: each thread goes to only one of them, and the one that asks first takes everything pending. Give each its own `--as` name.
 
 Without git, the branch is `no-git`, the commit is `0000000`, and restore is unavailable.
+
+`tackboard extension` prints the folder of the Chrome extension, for the user to load once.
