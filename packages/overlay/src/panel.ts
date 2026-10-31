@@ -622,10 +622,12 @@ export function createPanel(o: PanelOptions): Panel {
         }
         if (tab === "open" && drafts.length) list.insertBefore(draftsBlock(), list.firstChild);
         panel.append(list);
-        if (s.otherPages.length) {
+        // Only this site's pages: a link to another site (e.g. Storybook on another port) would leave the app.
+        const sameSite = s.otherPages.filter((p) => p.url.startsWith(`${win.location.origin}/`));
+        if (sameSite.length) {
           panel.append(h("div", { class: "tb-others", "data-key": "other-pages" },
             h("div", { class: "tb-section" }, "Unresolved on other pages"),
-            ...s.otherPages.filter((p) => /^https?:\/\//.test(p.url)).map((p) => h("button", {
+            ...sameSite.map((p) => h("button", {
               type: "button", class: "tb-link tb-other", title: p.url, onclick: () => win.location.assign(p.url),
             }, `${pageLabel(p.url, win.location.origin)} (${p.count})`))));
         }
