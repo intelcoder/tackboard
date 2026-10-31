@@ -1,5 +1,6 @@
 import { mountOverlay } from "@app/overlay";
 import { chrome } from "./chrome_calls.ts";
+import { askRecorder } from "./page_errors.ts";
 import { messageFetch } from "./message_fetch.ts";
 import { createOverlaySwitch } from "./overlay_switch.ts";
 
@@ -16,6 +17,7 @@ const overlay = createOverlaySwitch({
         if (answer.error) throw new Error(answer.error);
         return answer.dataUrl;
       },
+      pageErrors: () => askRecorder(document),
     }),
 });
 

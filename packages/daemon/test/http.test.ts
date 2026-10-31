@@ -272,3 +272,17 @@ test("a screenshot that is not a PNG or is too big is refused", () =>
     const list = (await (await d.call("GET", paths.threads)).json()) as ListThreadsResponse;
     assert.equal(list.threads.length, 0);
   }));
+
+test("attached page errors are kept: newest 20, cut short, odd lines dropped, none from the element", () =>
+  with_daemon(async (d) => {
+    const many = Array.from({ length: LIMITS.pageErrors + 3 }, (_, i) => ({ kind: "error", text: `e${i} ${"x".repeat(1000)}` }));
+    const odd = [{ kind: "log", text: "no" }, { kind: "warn", text: 5 }, null, "x"];
+    const post = async (extra: object, el: object = element) =>
+      (await (await d.call("POST", paths.threads, { ...post_body("x", el as typeof element), ...extra })).json()) as ThreadDto;
+    const kept = (await post({ pageErrors: [...odd, ...many] })).element.pageErrors!;
+    assert.equal(kept.length, LIMITS.pageErrors);
+    assert.ok(kept[0]!.text.startsWith("e3 ") && kept[0]!.text.length === LIMITS.pageErrorText);
+    assert.equal((await post({ pageErrors: odd })).element.pageErrors, undefined);
+    assert.equal((await post({})).element.pageErrors, undefined);
+    assert.equal((await post({}, { ...element, pageErrors: [{ kind: "error", text: "forged" }] })).element.pageErrors, undefined);
+  }));

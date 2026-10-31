@@ -333,11 +333,11 @@ test("Remove unregisters the script only when no other site uses the same patter
     await addSite(stack, options, fakeHttpsSite);
     await addSite(stack, options, first);
     const row = (site: string) => options.locator(`li:has(.address:text-is("${site}"))`);
-    expect(await registeredScripts(options)).toEqual([`${fakeHttpsSite}/*`]);
+    expect(await registeredScripts(options)).toEqual([`${fakeHttpsSite}/*`, `${fakeHttpsSite}/*#recorder`]);
 
     await row(first).getByRole("button", { name: "Remove" }).click();
     await expect(row(first)).toHaveCount(0);
-    expect(await registeredScripts(options)).toEqual([`${fakeHttpsSite}/*`]);
+    expect(await registeredScripts(options)).toEqual([`${fakeHttpsSite}/*`, `${fakeHttpsSite}/*#recorder`]);
 
     await row(fakeHttpsSite).getByRole("button", { name: "Remove" }).click();
     await expect(row(fakeHttpsSite)).toHaveCount(0);
@@ -493,7 +493,7 @@ test("the toolbar button is registered and has no popup", async () => {
   });
 });
 
-test("adding a site registers one script for all frames, also when the site is added twice", async () => {
+test("adding a site registers its overlay script and its recorder for all frames, also when the site is added twice", async () => {
   await withStack(async (stack) => {
     const options = await optionsPage(stack);
     for (let time = 0; time < 2; time++) {
@@ -502,7 +502,7 @@ test("adding a site registers one script for all frames, also when the site is a
       await options.getByRole("button", { name: "Add a site" }).click();
       await expect(options.getByLabel("Site")).toHaveValue("");
       await expect(options.locator("#problem")).toHaveText("");
-      expect(await savedScripts(options)).toMatchObject([{ id: `${fakeHttpsSite}/*`, allFrames: true }]);
+      expect(await savedScripts(options)).toMatchObject([{ id: `${fakeHttpsSite}/*`, allFrames: true }, { id: `${fakeHttpsSite}/*#recorder`, allFrames: true }]);
     }
   });
 });
@@ -618,7 +618,7 @@ test("removing a site whose script was already unregistered still removes the si
     // The test build grants the site for good, and Chrome refuses to take such a permission back, so that one error is expected here.
     options.on("pageerror", (error) => error.message !== "You cannot remove required permissions." && errors.push(error));
     await addSite(stack, options, fakeHttpsSite);
-    await options.evaluate(async (pattern) => (globalThis as any).chrome.scripting.unregisterContentScripts({ ids: [pattern] }), `${fakeHttpsSite}/*`);
+    await options.evaluate(async (pattern) => (globalThis as any).chrome.scripting.unregisterContentScripts({ ids: [pattern, `${pattern}#recorder`] }), `${fakeHttpsSite}/*`);
     expect(await savedScripts(options)).toEqual([]);
 
     await options.locator("li", { hasText: fakeHttpsSite }).getByRole("button", { name: "Remove" }).click();
@@ -713,4 +713,39 @@ test("a ticked Attach screenshot box sends a picture of just that element, with 
     expect(stack.run(["next"])).not.toContain("screenshot:");
     // Chrome's approval box cannot be clicked by a test, so this build already holds <all_urls>.
   }, ["<all_urls>"]);
+});
+
+test("a ticked Attach page errors box sends the console error, the rejection and the failed request (path only); unticked sends none", async () => {
+  await withStack(async (stack) => {
+    const options = await optionsPage(stack);
+    await addSite(stack, options, fakeHttpsSite);
+    const page = await stack.context.newPage();
+    await page.goto(fakeHttpsSite);
+    await expect(page.locator(".tb-modes")).toBeVisible();
+    await page.evaluate(async () => {
+      console.error("boom", { code: 7 });
+      void Promise.reject(new Error("rejected"));
+      await fetch("/missing-api?token=secret").catch(() => {});
+    });
+
+    const comment = async (tick: boolean) => {
+      await setMode(page, "comment");
+      await page.hover(".hero-title");
+      await page.click(".hero-title");
+      await page.locator('[data-key="composer"]').fill("why broken");
+      if (tick) {
+        await expect(page.getByText("Attach page errors (3)")).toBeVisible();
+        await page.locator('[data-key="attach-errors"]').check();
+      }
+      await page.locator('[data-key="send"]').click();
+      await page.locator(".tb-thread.active").waitFor();
+      return stack.run(["next"]);
+    };
+    const sent = await comment(true);
+    expect(sent).toContain('error: boom {"code":7}');
+    expect(sent).toContain("error: Unhandled rejection: Error: rejected");
+    expect(sent).toMatch(/network: GET \/missing-api( failed.*| \d{3})\n/);
+    expect(sent).not.toContain("secret");
+    expect(await comment(false)).not.toContain("page errors");
+  });
 });

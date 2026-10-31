@@ -1,5 +1,5 @@
 import { LIMITS } from "@app/shared";
-import type { ElementRef, ThreadDto } from "@app/shared";
+import type { ElementRef, PageError, ThreadDto } from "@app/shared";
 import type { Clock, GitInfo, ScreenshotStore, ThreadRepository } from "../../domain/repositories.ts";
 import { Thread } from "../../domain/thread.ts";
 
@@ -9,6 +9,7 @@ export type PostCommentCommand = {
   viewport: { w: number; h: number };
   text: string;
   screenshot?: Buffer;
+  pageErrors?: PageError[];
 };
 
 export class PostCommentHandler {
@@ -35,7 +36,7 @@ export class PostCommentHandler {
       commit: this.git.commit(),
       url: cmd.url,
       viewport: cmd.viewport,
-      element: { ...cmd.element, html: cmd.element.html.slice(0, LIMITS.html), text: cmd.element.text.slice(0, LIMITS.elementText), ...(screenshot ? { screenshot } : {}) },
+      element: { ...cmd.element, html: cmd.element.html.slice(0, LIMITS.html), text: cmd.element.text.slice(0, LIMITS.elementText), ...(screenshot ? { screenshot } : {}), ...(cmd.pageErrors ? { pageErrors: cmd.pageErrors } : {}) },
       text: cmd.text,
       now,
       seq: this.repo.nextSeq(),

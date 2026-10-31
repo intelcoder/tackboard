@@ -12,7 +12,7 @@ const ALL_URLS = "<all_urls>";
 export async function buildExtension(outDir: string, extraHostPermissions: string[] = []): Promise<string> {
   mkdirSync(outDir, { recursive: true });
   await build({
-    entryPoints: ["background", "content", "options"].map((name) => join(here, "src", `${name}.ts`)),
+    entryPoints: ["background", "content", "options", "recorder"].map((name) => join(here, "src", `${name}.ts`)),
     outdir: outDir,
     bundle: true,
     format: "iife",
@@ -33,7 +33,11 @@ export async function buildExtension(outDir: string, extraHostPermissions: strin
     optional_host_permissions: ["http://*/*", "https://*/*", ALL_URLS],
     // Local pages are on from the start (no site to add); the daemon address is 127.0.0.1.
     host_permissions: [...new Set(["http://localhost/*", "http://127.0.0.1/*", ...extraHostPermissions])],
-    content_scripts: [{ matches: LOCAL_PATTERNS, js: ["content.js"], run_at: "document_idle", all_frames: true }],
+    content_scripts: [
+      { matches: LOCAL_PATTERNS, js: ["content.js"], run_at: "document_idle", all_frames: true },
+      // In the page's own world and from the start, so it sees errors the page raises while loading.
+      { matches: LOCAL_PATTERNS, js: ["recorder.js"], run_at: "document_start", all_frames: true, world: "MAIN" },
+    ],
     background: { service_worker: "background.js" },
     action: { default_title: brand.name },
     options_ui: { page: "options.html", open_in_tab: true },

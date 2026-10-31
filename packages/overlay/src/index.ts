@@ -1,5 +1,5 @@
 import { brand } from "@app/shared";
-import type { ElementRef } from "@app/shared";
+import type { ElementRef, PageError } from "@app/shared";
 import { createApi } from "./api.ts";
 import type { Api, ApiOptions } from "./api.ts";
 import { createH } from "./dom.ts";
@@ -29,6 +29,8 @@ export type MountOptions = {
   onPin?: (threadId: string) => void;
   /** A data URL of the visible tab. Given, the comment box offers to attach a screenshot of the element. */
   screenshot?: () => Promise<string>;
+  /** The console errors and failed requests the page has had so far; null when nothing records them. Given, the comment box offers to attach them. */
+  pageErrors?: () => PageError[] | null;
 };
 
 export type Overlay = {
@@ -83,7 +85,7 @@ export function mountOverlay(options: MountOptions): Overlay {
     },
   });
   const panel = createPanel({
-    document: doc, window: win, layer: panelLayer, h, store, api, viewport, host, captureTab: options.screenshot,
+    document: doc, window: win, layer: panelLayer, h, store, api, viewport, host, captureTab: options.screenshot, pageErrors: options.pageErrors,
     refresh: poller.now, showToast: toast.show,
   });
   const pins = createPins({

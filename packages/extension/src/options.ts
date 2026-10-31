@@ -1,6 +1,6 @@
 import { brand } from "@app/shared";
 import { chrome, loadSites, saveSites } from "./chrome_calls.ts";
-import { LOCAL_PATTERNS, isLocalKey, patternStillUsed, readConfigText, siteFrom, siteKey } from "./sites.ts";
+import { LOCAL_PATTERNS, isLocalKey, recorderId, patternStillUsed, readConfigText, siteFrom, siteKey } from "./sites.ts";
 
 const find = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const list = find("sites");
@@ -56,8 +56,13 @@ async function removeSite(origin: string): Promise<void> {
   const found = siteFrom(origin);
   if (!("pattern" in found) || patternStillUsed(sites, found.pattern)) return;
   // Chrome rejects an id that is not registered, which is fine here.
-  await chrome.scripting.unregisterContentScripts({ ids: [found.pattern] }).catch(() => {});
+  await dropScripts(found.pattern);
   await chrome.permissions.remove({ origins: [found.pattern] });
+}
+
+// One call per id: Chrome rejects the whole call when any id is not registered (a site added before the recorder existed has no recorder).
+async function dropScripts(pattern: string): Promise<void> {
+  for (const id of [pattern, recorderId(pattern)]) await chrome.scripting.unregisterContentScripts({ ids: [id] }).catch(() => {});
 }
 
 form.addEventListener("submit", async (event) => {
@@ -74,9 +79,10 @@ form.addEventListener("submit", async (event) => {
     if (!LOCAL_PATTERNS.includes(site.pattern)) {
       if (!(await chrome.permissions.request({ origins: [site.pattern] }))) throw new Error("refused");
       // allFrames: the overlay also mounts inside iframes of the site, such as Storybook's preview. Re-registering moves older sites onto it too.
-      await chrome.scripting.unregisterContentScripts({ ids: [site.pattern] }).catch(() => {});
+      await dropScripts(site.pattern);
       await chrome.scripting.registerContentScripts([
         { id: site.pattern, matches: [site.pattern], js: ["content.js"], runAt: "document_idle", allFrames: true, persistAcrossSessions: true },
+        { id: recorderId(site.pattern), matches: [site.pattern], js: ["recorder.js"], runAt: "document_start", allFrames: true, world: "MAIN", persistAcrossSessions: true },
       ]);
     }
     await saveSites({ ...(await loadSites()), [site.origin]: { ...config, on: true } });

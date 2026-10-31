@@ -3,6 +3,7 @@ import type {
   ErrorCode,
   HistoryEvent,
   Notice,
+  PageError,
   ThreadDto,
 } from "./types.ts";
 
@@ -14,6 +15,9 @@ export const LIMITS = {
   selector: 1000,
   /** Bytes of the PNG after decoding. Its base64 text still has to fit in `body`. */
   screenshot: 1_000_000,
+  /** How many page errors a comment keeps (the newest), and the longest line of each. */
+  pageErrors: 20,
+  pageErrorText: 300,
 } as const;
 
 export const ERROR_STATUS: Record<ErrorCode, number> = {
@@ -55,6 +59,8 @@ export type PostThreadRequest = {
   text: string;
   /** A PNG of the element, as base64 text. */
   screenshot?: string;
+  /** Page errors the user chose to attach. */
+  pageErrors?: PageError[];
 };
 export type PostAgentThreadRequest = {
   agent: string;

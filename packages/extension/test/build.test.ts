@@ -21,7 +21,11 @@ test("the manifest is version 3 with the fixed key, only the listed permissions,
     assert.equal(manifest.action.default_popup, undefined);
     assert.deepEqual(manifest.optional_host_permissions, ["http://*/*", "https://*/*", "<all_urls>"]);
     assert.deepEqual(manifest.host_permissions, ["http://localhost/*", "http://127.0.0.1/*"]);
-    assert.deepEqual(manifest.content_scripts, [{ matches: ["http://localhost/*", "http://127.0.0.1/*", "file:///*"], js: ["content.js"], run_at: "document_idle", all_frames: true }]);
+    const matches = ["http://localhost/*", "http://127.0.0.1/*", "file:///*"];
+    assert.deepEqual(manifest.content_scripts, [
+      { matches, js: ["content.js"], run_at: "document_idle", all_frames: true },
+      { matches, js: ["recorder.js"], run_at: "document_start", all_frames: true, world: "MAIN" },
+    ]);
     assert.equal(manifest.background.service_worker, "background.js");
     assert.deepEqual(manifest.options_ui, { page: "options.html", open_in_tab: true });
   } finally {

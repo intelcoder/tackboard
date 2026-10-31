@@ -1,6 +1,8 @@
 export type ThreadStatus = "pending" | "received" | "waiting" | "resolved";
 export type Confidence = "source" | "component" | "text";
 
+export type PageError = { kind: "error" | "warn" | "network"; text: string };
+
 export type ElementRef = {
   selector: string;
   tag: string;
@@ -11,6 +13,8 @@ export type ElementRef = {
   source?: string;
   /** Path of the screenshot file, from the project folder. Only the daemon sets it. */
   screenshot?: string;
+  /** Console errors, warnings and failed requests of the page, when the user attached them. */
+  pageErrors?: PageError[];
   confidence: Confidence;
 };
 

@@ -118,3 +118,12 @@ test("a thread with a screenshot prints its path", () => {
   assert.match(describeThread(t), /screenshot: \.tackboard\/shots\/t7\.png/);
   assert.doesNotMatch(describeThread(thread("text")), /screenshot/);
 });
+
+test("a thread with attached page errors prints each line", () => {
+  const t = thread("text");
+  t.element.pageErrors = [{ kind: "error", text: "TypeError: x is undefined" }, { kind: "network", text: "GET /api/a 500" }];
+  const out = describeThread(t);
+  assert.match(out, /page errors/);
+  assert.match(out, /\n    error: TypeError: x is undefined\n    network: GET \/api\/a 500/);
+  assert.doesNotMatch(describeThread(thread("text")), /page errors/);
+});

@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import type { ServerType } from "@hono/node-server";
 import { brand, ERROR_STATUS, LIMITS, paths } from "@app/shared";
-import type { ElementRef } from "@app/shared";
+import type { ElementRef, PageError } from "@app/shared";
 import { DomainError } from "../domain/errors.ts";
 import type { Clock } from "../domain/repositories.ts";
 import { SystemClock } from "../infrastructure/clock.ts";
@@ -62,8 +62,8 @@ function need_selector(value: unknown, name: string): string {
 
 function read_element(value: unknown): ElementRef {
   if (typeof value !== "object" || value === null) throw new DomainError("invalid", "element is required");
-  // `screenshot` is a path the daemon chose; a client cannot supply one.
-  const { screenshot: _ignored, ...e } = value as Partial<ElementRef>;
+  // `screenshot` is a path the daemon chose and `pageErrors` come in their own field; a client cannot slip either in here.
+  const { screenshot: _ignored, pageErrors: _ignoredErrors, ...e } = value as Partial<ElementRef>;
   const rect = e.rect;
   if (typeof rect !== "object" || rect === null) throw new DomainError("invalid", "element.rect is required");
   return {
@@ -86,6 +86,17 @@ function read_screenshot(value: unknown): Buffer | undefined {
   if (png.length > LIMITS.screenshot) throw new DomainError("too_large", `screenshot is larger than ${LIMITS.screenshot} bytes`);
   if (!png.subarray(0, PNG_START.length).equals(PNG_START)) throw new DomainError("invalid", "screenshot must be a PNG");
   return png;
+}
+
+const ERROR_KINDS = ["error", "warn", "network"];
+
+/** Keeps the newest lines that look right and cuts each one short; anything else is dropped, not refused, so an odd line never loses the comment. */
+function read_page_errors(value: unknown): PageError[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const lines = value
+    .filter((l): l is PageError => typeof l === "object" && l !== null && ERROR_KINDS.includes(l.kind) && typeof l.text === "string")
+    .map((l) => ({ kind: l.kind, text: l.text.slice(0, LIMITS.pageErrorText) }));
+  return lines.length ? lines.slice(-LIMITS.pageErrors) : undefined;
 }
 
 function read_viewport(value: unknown): { w: number; h: number } {
@@ -164,6 +175,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
       viewport: read_viewport(b.viewport),
       text: need_text(b.text, "text"),
       screenshot: read_screenshot(b.screenshot),
+      pageErrors: read_page_errors(b.pageErrors),
     });
     return c.json(thread, 201);
   });

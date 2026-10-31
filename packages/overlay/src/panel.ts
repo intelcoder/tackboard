@@ -1,6 +1,6 @@
 // The comments panel: a floating window with the thread list, the comment box and History.
 import { brand } from "@app/shared";
-import type { ElementRef, ThreadDto } from "@app/shared";
+import type { ElementRef, PageError, ThreadDto } from "@app/shared";
 import type { Api } from "./api.ts";
 import type { H } from "./dom.ts";
 import { createFinder } from "./element_ref.ts";
@@ -28,6 +28,8 @@ export type PanelOptions = {
   host: HTMLElement;
   /** A data URL of the visible tab. Without it the comment box has no screenshot checkbox. */
   captureTab?: () => Promise<string>;
+  /** The page's errors so far, or null when nothing records them (then there is no checkbox for them). */
+  pageErrors?: () => PageError[] | null;
   /** Ask the poller for fresh data now. */
   refresh(): void;
   showToast(text: string): void;
@@ -44,7 +46,7 @@ export type Panel = {
 };
 
 type ToSend =
-  | { kind: "comment"; ref: ElementRef; url: string; viewport: { w: number; h: number }; text: string; screenshot?: string }
+  | { kind: "comment"; ref: ElementRef; url: string; viewport: { w: number; h: number }; text: string; screenshot?: string; pageErrors?: PageError[] }
   | { kind: "reply"; threadId: string; text: string };
 
 type CommentToSend = Extract<ToSend, { kind: "comment" }>;
@@ -71,7 +73,7 @@ export function createPanel(o: PanelOptions): Panel {
   let tab: Tab = "open";
   let showHistory = false;
   let historyOpenId: string | null = null;
-  let composer: { ref: ElementRef; attach: boolean } | null = null;
+  let composer: { ref: ElementRef; attach: boolean; attachErrors: boolean } | null = null;
   let composerDraft = "";
   let confirming: { threadId: string; messageId: string } | null = null;
   let notice: string | null = null;
@@ -224,7 +226,7 @@ export function createPanel(o: PanelOptions): Panel {
       tab = "open";
       return;
     }
-    const t = await api.postThread({ element: job.ref, url: job.url, viewport: job.viewport, text: job.text, screenshot: job.screenshot }, signal);
+    const t = await api.postThread({ element: job.ref, url: job.url, viewport: job.viewport, text: job.text, screenshot: job.screenshot, pageErrors: job.pageErrors }, signal);
     saveThread(t);
     tab = "open";
     store.set({ mode: "view", activeThreadId: t.id, panelOpen: true });
@@ -263,7 +265,7 @@ export function createPanel(o: PanelOptions): Panel {
   };
 
   const compose = (ref: ElementRef) => {
-    composer = { ref, attach: false };
+    composer = { ref, attach: false, attachErrors: false };
     focusId = null;
     composerDraft = "";
     showHistory = false;
@@ -292,6 +294,10 @@ export function createPanel(o: PanelOptions): Panel {
         o.showToast(`Screenshot failed: ${(e as Error).message}`);
         return null;
       }
+    }
+    if (started.attachErrors) {
+      const errors = o.pageErrors?.();
+      if (errors?.length) job.pageErrors = errors;
     }
     return composer === started ? job : null;
   };
@@ -394,6 +400,17 @@ export function createPanel(o: PanelOptions): Panel {
     }), " Attach screenshot", why ? h("span", { class: "tb-hint" }, ` ${why}`) : null);
   };
 
+  const errorsBox = (): HTMLElement | null => {
+    const errors = o.pageErrors?.();
+    if (!errors || !composer) return null;
+    const none = errors.length === 0;
+    const current = composer;
+    return h("label", { class: "tb-attach", title: none ? "Nothing logged or failed since the page loaded" : errors.map((e) => `${e.kind}: ${e.text}`).join("\n") }, h("input", {
+      type: "checkbox", "data-key": "attach-errors", checked: current.attachErrors && !none, disabled: none,
+      onchange: (ev: Event) => { current.attachErrors = (ev.target as HTMLInputElement).checked; },
+    }), ` Attach page errors (${errors.length})`, none ? h("span", { class: "tb-hint" }, " none since the page loaded") : null);
+  };
+
   const composerView = (): HTMLElement => {
     const s = store.get();
     const box = h("textarea", {
@@ -415,6 +432,7 @@ export function createPanel(o: PanelOptions): Panel {
         h("button", { type: "button", class: "tb-x", "aria-label": "Cancel", title: "Cancel", "data-key": "cancel", onclick: closeComposer }, "✕")),
       box,
       attachBox(),
+      errorsBox(),
       h("div", { class: "tb-row" },
         h("button", { type: "button", class: "tb-btn", "data-key": "send", onclick: send }, "Send now"),
         h("button", { type: "button", class: "tb-btn primary", "data-key": "draft", onclick: addDraft }, "Add draft")));
