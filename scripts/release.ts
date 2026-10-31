@@ -1,5 +1,5 @@
 // Builds the npm package into release/: one bin.js (the CLI), daemon.js, the overlay, the skill and the unpacked extension.
-// Try it: npm run release && npm pack ./release && npm i -g ./tackboard-*.tgz
+// Try it: npm run release, then npm pack ./release, then npm i -g the .tgz it makes.
 import { build } from "esbuild";
 import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -22,9 +22,8 @@ await buildExtension(join(out, "extension"));
 cpSync(join(root, "skills"), join(out, "skills"), { recursive: true });
 cpSync(join(root, "README.md"), join(out, "README.md"));
 
-const cli = JSON.parse((await import("node:fs")).readFileSync(join(root, "packages/cli/package.json"), "utf8"));
 writeFileSync(
   join(out, "package.json"),
-  JSON.stringify({ name: brand.cli, version: "0.1.0", description: "Click an element on your dev site, comment, and let your coding agent make the change.", type: "module", bin: { [brand.cli]: "bin.js" }, engines: { node: ">=22.13" }, files: ["bin.js", "daemon.js", `${brand.bundle}`, "extension", "skills", "README.md"], license: "UNLICENSED", repository: "github:intelcoder/tackboard", keywords: cli.keywords ?? [] }, null, 2) + "\n",
+  JSON.stringify({ name: brand.cli, version: "0.1.0", description: "Click an element on your dev site, comment, and let your coding agent make the change.", type: "module", bin: { [brand.cli]: "bin.js" }, engines: { node: ">=22.13" }, files: ["bin.js", "daemon.js", `${brand.bundle}`, "extension", "skills", "README.md"], license: "UNLICENSED", repository: `github:intelcoder/${brand.cli}` }, null, 2) + "\n",
 );
 console.log(`wrote ${out}`);
