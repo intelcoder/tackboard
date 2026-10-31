@@ -173,21 +173,24 @@ const overlapShare = (el: Element, box: { x: number; y: number; w: number; h: nu
   const r = el.getBoundingClientRect();
   const w = Math.min(r.right, box.x + box.w) - Math.max(r.left, box.x);
   const h = Math.min(r.bottom, box.y + box.h) - Math.max(r.top, box.y);
-  return r.width * r.height > 0 && w > 0 && h > 0 ? (w * h) / (r.width * r.height) : 0;
+  return w > 0 && h > 0 ? (w * h) / (r.width * r.height) : 0;
 };
 
 /**
  * The direct children of `container` that the box covers (half or more of each), when at least two of them
- * look alike (same tag and classes): the cards, rows or list items the user meant. Otherwise none, because
+ * look alike (same tag and first class): the cards, rows or list items the user meant. Otherwise none, because
  * a box over mixed parts is already described by the container.
  */
 export function siblingsInBox(container: Element, box: { x: number; y: number; w: number; h: number }): Element[] {
   const groups = new Map<string, Element[]>();
+  let best: Element[] = [];
   for (const child of Array.from(container.children)) {
     if (overlapShare(child, box) < 0.5) continue;
-    const key = `${child.tagName}.${child.getAttribute("class") ?? ""}`;
-    groups.set(key, [...(groups.get(key) ?? []), child]);
+    const key = `${child.tagName}.${(child.getAttribute("class") ?? "").split(/\s+/)[0]}`;
+    const group = groups.get(key) ?? [];
+    group.push(child);
+    groups.set(key, group);
+    if (group.length > best.length) best = group;
   }
-  const best = [...groups.values()].sort((a, b) => b.length - a.length)[0];
-  return best && best.length >= 2 ? best : [];
+  return best.length >= 2 ? best : [];
 }

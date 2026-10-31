@@ -269,7 +269,11 @@ export function createPanel(o: PanelOptions): Panel {
   const compose = (ref: ElementRef) => {
     if (adding && composer) {
       adding = false;
-      if (![composer.ref, ...composer.also].some((r) => r.selector === ref.selector)) composer.also.push(ref);
+      // a dragged box brings the elements it covered; each joins on its own, within the limit
+      const { also: covered = [], ...first } = ref;
+      for (const r of [first, ...covered]) {
+        if (composer.also.length < LIMITS.also && ![composer.ref, ...composer.also].some((x) => x.selector === r.selector)) composer.also.push(r);
+      }
       store.set({ composing: true });
       return;
     }

@@ -264,4 +264,31 @@ test("a box over mixed parts adds no extra elements, and a box over some of many
   assert.deepEqual(siblingsInBox(u, { x: 5, y: 5, w: 210, h: 40 }).map((e) => e.id), ["c1", "c2"]);
   assert.deepEqual(siblingsInBox(u, { x: 5, y: 5, w: 90, h: 40 }), [], "one card is not a list");
   assert.deepEqual(siblingsInBox(m, { x: 0, y: 100, w: 100, h: 70 }), [], "a heading and a paragraph differ");
+  // rows that differ only by a state class are still one kind
+  u.innerHTML = `<li class="row odd" id="r1">A</li><li class="row even" id="r2">B</li><li class="row odd selected" id="r3">C</li>`;
+  rect("r1", { left: 0, top: 0, width: 100, height: 50 });
+  rect("r2", { left: 0, top: 60, width: 100, height: 50 });
+  rect("r3", { left: 0, top: 120, width: 100, height: 50 });
+  assert.deepEqual(siblingsInBox(u, { x: 0, y: 0, w: 100, h: 170 }).map((e) => e.id), ["r1", "r2", "r3"]);
+});
+
+test("a box dragged while adding another element joins as separate chips, never past the limit", () => {
+  const s = setup(`<div id="w1"><p class="c" id="a">A</p><p class="c" id="b">B</p></div><div id="w2"><p class="c" id="x">X</p><p class="c" id="y">Y</p><p class="c" id="z">Z</p></div>`);
+  const rect = (id: string, r: Rect) => setRect(s.document.getElementById(id)!, r);
+  rect("w1", { left: 0, top: 0, width: 200, height: 100 }); rect("a", { left: 0, top: 0, width: 200, height: 40 }); rect("b", { left: 0, top: 50, width: 200, height: 40 });
+  rect("w2", { left: 0, top: 200, width: 200, height: 160 }); rect("x", { left: 0, top: 200, width: 200, height: 40 }); rect("y", { left: 0, top: 250, width: 200, height: 40 }); rect("z", { left: 0, top: 300, width: 200, height: 40 });
+  const drag = (over: Element[], from: [number, number], to: [number, number]) => {
+    (s.document as any).elementsFromPoint = () => over;
+    s.fire(over[0]!, "mousedown", { clientX: from[0], clientY: from[1], button: 0 });
+    s.fire(over[0]!, "mousemove", { clientX: to[0], clientY: to[1], buttons: 1 });
+    s.fire(over[0]!, "mouseup", { clientX: to[0], clientY: to[1] });
+  };
+  const id = (x: string) => s.document.getElementById(x)!;
+  s.overlay.store.set({ mode: "comment" });
+  drag([id("a"), id("w1")], [10, 10], [150, 80]);
+  assert.equal(s.root.querySelectorAll(".tb-chip").length, 2);
+  (s.root.querySelector('[data-key="add-element"]') as HTMLElement).click();
+  drag([id("x"), id("w2")], [10, 205], [150, 350]);
+  // w2 and its three paragraphs would make 4 more; only 3 fit under the limit of 5
+  assert.equal(s.root.querySelectorAll(".tb-chip").length, 5);
 });
