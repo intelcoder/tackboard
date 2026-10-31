@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { parseHTML } from "linkedom";
 import { brand } from "@app/shared";
 import type { ElementRef, ThreadDto } from "@app/shared";
-import { buildElementRef } from "../src/element_ref.ts";
+import { buildElementRef, siblingsInBox } from "../src/element_ref.ts";
 import { mountOverlay } from "../src/index.ts";
 
 type Rect = { left: number; top: number; width: number; height: number };
@@ -215,6 +215,9 @@ test("dragging a box picks the smallest element that holds it; the click after t
   assert.equal(picks[0]!.el, wrap);
   assert.equal(picks[0]!.ref.area, true);
   assert.deepEqual(picks[0]!.ref.rect, { x: 10, y: 10, w: 140, h: 70 });
+  // both paragraphs look alike and the box covers most of each, so they come along, as removable chips
+  assert.deepEqual(picks[0]!.ref.also?.map((e) => e.selector), ["#a", "#b"]);
+  assert.equal(s.root.querySelectorAll(".tb-chip").length, 2);
   s.fire(b, "click");
   assert.equal(picks.length, 1, "the click that ends a drag is not a pick");
   s.overlay.store.set({ composing: false });
@@ -246,4 +249,19 @@ test("Shift+drag over text picks its element with the selected words", () => {
   assert.ok(cleared);
   s.fire(a, "click");
   assert.equal(picks.length, 1);
+});
+
+test("a box over mixed parts adds no extra elements, and a box over some of many cards names just those", () => {
+  const s = setup(`<ul id="u"><li class="c" id="c1">A</li><li class="c" id="c2">B</li><li class="c" id="c3">C</li></ul><div id="m"><h2 id="h">T</h2><p id="p">x</p></div>`);
+  const rect = (id: string, r: Rect) => setRect(s.document.getElementById(id)!, r);
+  rect("c1", { left: 0, top: 0, width: 100, height: 50 });
+  rect("c2", { left: 110, top: 0, width: 100, height: 50 });
+  rect("c3", { left: 220, top: 0, width: 100, height: 50 });
+  rect("h", { left: 0, top: 100, width: 100, height: 30 });
+  rect("p", { left: 0, top: 140, width: 100, height: 30 });
+  const u = s.document.getElementById("u")!;
+  const m = s.document.getElementById("m")!;
+  assert.deepEqual(siblingsInBox(u, { x: 5, y: 5, w: 210, h: 40 }).map((e) => e.id), ["c1", "c2"]);
+  assert.deepEqual(siblingsInBox(u, { x: 5, y: 5, w: 90, h: 40 }), [], "one card is not a list");
+  assert.deepEqual(siblingsInBox(m, { x: 0, y: 100, w: 100, h: 70 }), [], "a heading and a paragraph differ");
 });

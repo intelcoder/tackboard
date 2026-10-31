@@ -274,7 +274,9 @@ export function createPanel(o: PanelOptions): Panel {
       return;
     }
     adding = false;
-    composer = { ref, also: [], attach: false, attachErrors: false };
+    // a dragged box can arrive with the like-looking elements it covered; they become removable chips
+    const { also = [], ...first } = ref;
+    composer = { ref: first, also, attach: false, attachErrors: false };
     focusId = null;
     composerDraft = "";
     showHistory = false;

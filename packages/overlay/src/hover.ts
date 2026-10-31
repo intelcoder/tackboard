@@ -1,5 +1,5 @@
 import { drawSpacingStrips } from "./spacing.ts";
-import { parentsOf, buildElementRef, labelFor, elementForBox, elementOfRange } from "./element_ref.ts";
+import { parentsOf, buildElementRef, labelFor, elementForBox, elementOfRange, siblingsInBox } from "./element_ref.ts";
 import type { H } from "./dom.ts";
 import type { Store } from "./store.ts";
 import type { ElementRef } from "@app/shared";
@@ -199,7 +199,11 @@ export function createHover(o: HoverOptions): { destroy(): void } {
       areaEl?.remove();
       areaEl = null;
       const el = elementForBox(doc, b, host);
-      if (el) pick(el, { rect: b, area: true });
+      if (el) {
+        // the like-looking children the box covers join as "also" elements, so the agent knows which of many cards it meant
+        const also = siblingsInBox(el, b).slice(0, LIMITS.also).map((c) => buildElementRef(c));
+        pick(el, { rect: b, area: true, ...(also.length ? { also } : {}) });
+      }
       return;
     }
     if (!start.shift) return;
