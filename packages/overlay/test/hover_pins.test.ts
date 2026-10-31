@@ -218,9 +218,10 @@ test("dragging a box picks the smallest element that holds it; the click after t
   // both paragraphs look alike and the box covers most of each, so they come along, as removable chips
   assert.deepEqual(picks[0]!.ref.also?.map((e) => e.selector), ["#a", "#b"]);
   assert.equal(s.root.querySelectorAll(".tb-chip").length, 2);
+  // the comment box closed again (hover is listening); the click that ends the drag must not pick what is under the cursor
+  s.overlay.store.set({ composing: false });
   s.fire(b, "click");
   assert.equal(picks.length, 1, "the click that ends a drag is not a pick");
-  s.overlay.store.set({ composing: false });
   s.fire(b, "mousedown", { clientX: 5, clientY: 60, button: 0 });
   s.fire(b, "mouseup", { clientX: 5, clientY: 60 });
   s.fire(b, "click");
@@ -291,4 +292,34 @@ test("a box dragged while adding another element joins as separate chips, never 
   drag([id("x"), id("w2")], [10, 205], [150, 350]);
   // w2 and its three paragraphs would make 4 more; only 3 fit under the limit of 5
   assert.equal(s.root.querySelectorAll(".tb-chip").length, 5);
+});
+
+test("a box over more than 5 like cards keeps 5 chips", () => {
+  const s = setup(`<ul id="u">${Array.from({ length: 7 }, (_, i) => `<li class="c" id="c${i}">${i}</li>`).join("")}</ul>`);
+  const u = s.document.getElementById("u")!;
+  setRect(u, { left: 0, top: 0, width: 700, height: 50 });
+  for (let i = 0; i < 7; i++) setRect(s.document.getElementById(`c${i}`)!, { left: i * 100, top: 0, width: 90, height: 50 });
+  (s.document as any).elementsFromPoint = () => [s.document.getElementById("c3")!, u];
+  s.overlay.store.set({ mode: "comment" });
+  s.fire(u, "mousedown", { clientX: 5, clientY: 5, button: 0 });
+  s.fire(u, "mousemove", { clientX: 690, clientY: 45, buttons: 1 });
+  s.fire(u, "mouseup", { clientX: 690, clientY: 45 });
+  assert.equal(s.root.querySelectorAll(".tb-chip").length, 5);
+});
+
+test("a click without Shift ignores text that was already selected on the page", () => {
+  const picks: { ref: ElementRef; el: Element }[] = [];
+  const s = setup(`<p id="a">Hello</p>`, (ref, el) => picks.push({ ref, el }));
+  const a = s.document.getElementById("a")!;
+  setRect(a, { left: 0, top: 0, width: 100, height: 20 });
+  (s.win as any).getSelection = () => ({
+    rangeCount: 1, toString: () => "old selection", getRangeAt: () => ({ commonAncestorContainer: a.firstChild, getBoundingClientRect: () => ({ x: 0, y: 0, left: 0, top: 0, width: 5, height: 5 }) }), removeAllRanges: () => {},
+  });
+  s.overlay.store.set({ mode: "comment" });
+  s.fire(a, "mousemove");
+  s.fire(a, "mousedown", { clientX: 5, clientY: 5, button: 0 });
+  s.fire(a, "mouseup", { clientX: 5, clientY: 5 });
+  s.fire(a, "click");
+  assert.equal(picks.length, 1);
+  assert.equal(picks[0]!.ref.selection, undefined);
 });
