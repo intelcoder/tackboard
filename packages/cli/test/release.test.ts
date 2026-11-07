@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brand } from "@app/shared";
@@ -29,4 +29,32 @@ test("the built package inits, starts a daemon, serves the overlay and finds the
     daemon.kill();
     await new Promise((r) => daemon.once("exit", r));
   }
+});
+
+// The one-command path: a folder that was never set up, `start` alone, then the overlay is served and the Vite plugin is in the package.
+test("the built package sets a new folder up on start, and ships the Vite plugin as tackboard/vite", async () => {
+  const root = join(import.meta.dirname, "../../..");
+  const bin = join(root, "release/bin.js");
+  assert.ok(existsSync(bin), "run the release test above first");
+  const dir = mkdtempSync(join(tmpdir(), "release-first-run-"));
+  const port = 43000 + Math.floor(Math.random() * 2000);
+  const daemon = spawn("node", [bin, "start", "--port", String(port)], { cwd: dir, stdio: "ignore" });
+  try {
+    let text = "";
+    for (let i = 0; i < 40 && !text; i++) {
+      await new Promise((r) => setTimeout(r, 150));
+      text = await fetch(`http://127.0.0.1:${port}/${brand.bundle}`).then((r) => r.text(), () => "");
+    }
+    assert.ok(text.includes("__TACKBOARD__"), "overlay bundle not served after a first-run start");
+    assert.ok(existsSync(join(dir, ".tackboard/config.json")), "start did not set the folder up");
+    assert.ok(existsSync(join(dir, ".claude/skills/tackboard/SKILL.md")), "start did not install the skill");
+  } finally {
+    daemon.kill();
+    await new Promise((r) => daemon.once("exit", r));
+  }
+  const pkg = JSON.parse(readFileSync(join(root, "release/package.json"), "utf8"));
+  assert.equal(pkg.exports["./vite"], "./vite.js");
+  const plugin = await import(join(root, "release/vite.js"));
+  assert.equal(typeof plugin.default, "function");
+  assert.deepEqual(plugin.default().map((p: { name: string }) => p.name), ["source-attr", "overlay-inject"]);
 });

@@ -1,5 +1,5 @@
 import { relative, sep } from "node:path";
-import { brand } from "@app/shared";
+import { brand, findConfig } from "@app/shared";
 
 /**
  * One scan over the code. Strings, template text and comments are matched first so a tag-like
@@ -79,3 +79,27 @@ export function sourceAttrPlugin(): {
     },
   };
 }
+
+/** Adds the overlay's script tag to every page of the dev server, from the port in this project's config. No tag when there is no config. */
+export function injectPlugin(cwd: string = process.cwd()): {
+  name: string;
+  apply: "serve";
+  transformIndexHtml(): { tag: string; attrs: { src: string }; injectTo: "head" }[] | undefined;
+} {
+  return {
+    name: "overlay-inject",
+    apply: "serve",
+    transformIndexHtml() {
+      const found = findConfig(cwd);
+      if (!found) return undefined;
+      return [{ tag: "script", attrs: { src: `http://127.0.0.1:${found.config.port}/${brand.bundle}` }, injectTo: "head" }];
+    },
+  };
+}
+
+/** Everything the dev server needs, as the default export: `plugins: [overlay()]` in vite.config. */
+export function devPlugins() {
+  return [sourceAttrPlugin(), injectPlugin()];
+}
+
+export default devPlugins;

@@ -17,13 +17,15 @@ mkdirSync(out);
 const node = { bundle: true, platform: "node", format: "esm", target: "node22", logLevel: "warning", banner: { js: `import { createRequire as __r } from "node:module"; const require = __r(import.meta.url);` } } as const;
 await build({ ...node, entryPoints: { bin: join(root, "packages/cli/src/main.ts") }, outdir: out });
 await build({ ...node, entryPoints: { daemon: join(root, "packages/daemon/src/interface/main.ts") }, outdir: out });
+await build({ ...node, entryPoints: { vite: join(root, "packages/vite-plugin/src/index.ts") }, outdir: out });
 await buildOverlay(out);
 await buildExtension(join(out, "extension"));
 cpSync(join(root, "skills"), join(out, "skills"), { recursive: true });
 cpSync(join(root, "README.md"), join(out, "README.md"));
+cpSync(join(root, "LICENSE"), join(out, "LICENSE"));
 
 writeFileSync(
   join(out, "package.json"),
-  JSON.stringify({ name: brand.cli, version: "0.1.0", description: "Click an element on your dev site, comment, and let your coding agent make the change.", type: "module", bin: { [brand.cli]: "bin.js" }, engines: { node: ">=22.13" }, files: ["bin.js", "daemon.js", `${brand.bundle}`, "extension", "skills", "README.md"], license: "UNLICENSED", repository: `github:intelcoder/${brand.cli}` }, null, 2) + "\n",
+  JSON.stringify({ name: brand.cli, version: "0.3.0", description: "Comment on your dev site; your coding agent changes the code and replies. A local daemon with per-branch history you can rewind. Any framework, any agent with a shell. MIT.", type: "module", bin: { [brand.cli]: "bin.js" }, engines: { node: ">=22.13" }, exports: { "./vite": "./vite.js", "./package.json": "./package.json" }, files: ["bin.js", "daemon.js", "vite.js", `${brand.bundle}`, "extension", "skills", "README.md", "LICENSE"], license: "MIT", repository: `github:intelcoder/${brand.cli}` }, null, 2) + "\n",
 );
 console.log(`wrote ${out}`);

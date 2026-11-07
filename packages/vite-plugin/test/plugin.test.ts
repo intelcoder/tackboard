@@ -103,3 +103,15 @@ test("the plugin output for a tsx file contains the attribute", () => {
   assert.ok(result.code.includes(`<div ${A}="src/PlanCard.tsx:2">`), result.code);
   assert.ok(plugin.transform(`const a = <i />;`, `${process.cwd()}/x.jsx`)!.code.includes(`${A}="x.jsx:1"`));
 });
+
+test("injectPlugin adds the overlay script tag with the project's port, and nothing without a config", async () => {
+  const { mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { writeConfig } = await import("@app/shared");
+  const { injectPlugin } = await import("../src/index.ts");
+  const dir = mkdtempSync(join(tmpdir(), "inject-"));
+  assert.equal(injectPlugin(dir).transformIndexHtml(), undefined);
+  writeConfig(dir, { port: 47123, token: "t", origins: ["http://localhost:5173"], userName: "u" });
+  assert.deepEqual(injectPlugin(dir).transformIndexHtml(), [{ tag: "script", attrs: { src: `http://127.0.0.1:47123/${brand.bundle}` }, injectTo: "head" }]);
+});

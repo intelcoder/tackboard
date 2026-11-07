@@ -2,6 +2,35 @@
 
 Click an element on your own dev site and leave a comment. A coding agent reads the comments through the `tackboard` command, makes the change, and replies. Comments are kept per git branch, the history is kept for good, and you can rewind the whole project to an earlier message.
 
+## What makes it different
+
+- **A daemon, not a session.** Comments live in a local daemon with its own SQLite file (`.tackboard/tackboard.db`). They survive an agent restart, a closed terminal and a reload of the page.
+- **History you can rewind.** Every message is kept, and you can restore the whole project to an earlier message.
+- **Per git branch.** Each branch has its own comments, so switching branches does not mix feedback.
+- **Safe with more than one agent.** Each thread is claimed by exactly one agent, even when several ask at the same moment.
+- **Any framework, any agent that can run a shell command.** A script tag or the Chrome extension on the page, and the `tackboard` command plus a skill on the agent side. Tested with Claude Code; Cursor is not tested yet.
+- **Local and permissive.** The daemon listens on 127.0.0.1 only, and the code is MIT.
+
+## Quick start
+
+In your project folder:
+
+```
+tackboard start
+```
+
+The first run sets the folder up (config, the agent skill, the Cursor rule, `.mcp.json`) and starts the daemon, so there is no separate `init`. With the Chrome extension loaded, local pages work with nothing else to add. Add `--origin <url>` (repeatable), `--port <n>` or `--user <name>` on that first run to change the defaults.
+
+**Vite.** To skip the script tag, add the plugin. It adds the overlay's script tag to the dev server's pages (from the port in `.tackboard/config.json`) and the file and line of each element for React:
+
+```js
+// vite.config.js
+import overlay from "tackboard/vite";
+export default { plugins: [overlay()] };
+```
+
+It needs the package in the project (`npm i -D tackboard`; until it is published, `npm i -D <path to this repo's release folder>`). The package is not on npm yet, so until then follow Setup below to put the command on your PATH.
+
 ## Setup
 
 Follow these steps in order. Do them once.
@@ -81,7 +110,7 @@ It prints three lines on a fresh project:
 
 ```
 branch: main
-agent: claude-main (online)
+agent: ai-agent (online)
 no threads
 ```
 
@@ -209,7 +238,9 @@ In the reply box, Enter sends and Shift+Enter adds a line. In the comment box, E
 
 **A box or some words.** In comment mode, drag on the page to draw a dashed box; the comment is about the smallest element that holds the whole box, and the agent is told the size and position of your box (`area:`). Hold Shift and drag over text to select words instead; the agent gets them as `selected text:`. If the box covers two or more like-looking children of that element (cards, rows, list items), each of them joins the comment as a chip (✕ removes it, up to 5), so the agent gets an `also this element:` line for each; a box over mixed parts adds none. A click without a drag still picks one element as before.
 
-**Attach screenshot** (Chrome extension only): tick the box under the comment text and the comment carries a picture of just that element, as you saw it. The agent gets the file path in `tackboard next` (`screenshot: .tackboard/shots/<thread id>.png`) and can open it. The box is off for every comment unless you tick it, and it is greyed out when the element is scrolled out of view or the page is inside a frame. Chrome will not take a picture of a tab for an extension that lacks the all-sites permission, so turn it on once: open the extension's options page (`chrome://extensions`, the card, Details, Extension options), tick **Allow screenshots**, and approve Chrome's box. Until then ticking the box and sending shows "Turn on Screenshots in the extension options first" and the comment is not sent. The script tag route has no screenshot box. A picture over about 1 MB is made smaller before it is sent; the files stay in `.tackboard/shots/`.
+**Preview and filter in the panel.** Each comment row shows a small live picture of its element (hover for a bigger one). It is copied from the page when you look, never captured, sent or stored, and a row whose element is missing or very large has none. `All | Mine | AI` above the list shows every comment, only yours, or only the ones an agent started.
+
+**Attach screenshot** (Chrome extension only): tick the box under the comment text and the comment carries a picture of just that element, as you saw it. The agent gets the file path in `tackboard next` (`screenshot: .tackboard/shots/<thread id>.png`) and can open it. The same box sits under every reply: tick it and that reply carries a fresh picture of the element as it looks now (saved as `.tackboard/shots/<thread id>-m<n>.png`, one file per message, so the first picture is kept). It is off again after each send, so an old picture is never sent twice. The box is off for every comment unless you tick it, and it is greyed out when the element is scrolled out of view or the page is inside a frame. Chrome will not take a picture of a tab for an extension that lacks the all-sites permission, so turn it on once: open the extension's options page (`chrome://extensions`, the card, Details, Extension options), tick **Allow screenshots**, and approve Chrome's box. Until then ticking the box and sending shows "Turn on Screenshots in the extension options first" and the comment is not sent. The script tag route has no screenshot box. A picture over about 1 MB is made smaller before it is sent; the files stay in `.tackboard/shots/`.
 
 **Attach page errors** (Chrome extension only): the box under it, `Attach page errors (N)`, counts the console errors, warnings, uncaught errors and failed requests (HTTP 400 and up, or no answer) the page has had since it loaded. Tick it and the comment carries the last 20 of them, and `tackboard next` prints them under the element (`page errors:`). Requests are recorded as method, path and status only: no query string, no body, no headers. Console text can still hold private data, so the box is off unless you tick it. A page that was already open when the extension loaded or reloaded needs a reload first, or the box does not show.
 
@@ -229,7 +260,7 @@ Only the user closes a thread. If you are not sure, run `tackboard reply <id> "<
 
 ## The agent loop
 
-The agent runs these in the project folder. The agent name is `claude-main`; change it with `--as <name>` or the `TACKBOARD_AGENT` environment variable.
+The agent runs these in the project folder. The agent name is `ai-agent`; change it with `--as <name>` or the `TACKBOARD_AGENT` environment variable.
 
 The daemon stamps each page comment with the branch of the folder it runs in, and git does not allow the same branch in two worktrees. So an agent only sees comments made while that folder was on its branch. To run an agent in a second git worktree, run `tackboard init --origin <that worktree's dev site address>` and `tackboard start` inside it. It then has its own daemon and port, and the script tag `init` prints goes on that worktree's dev site. Copying the config into a worktree does not work: `next` and `wait` there find nothing.
 
@@ -391,3 +422,7 @@ npm run test:e2e
 ```
 
 `npm test` runs the unit and integration tests with the Node test runner. `npm run test:e2e` builds first, then runs the browser tests in Chromium with no retries. The extension tests load the extension into Chromium. Run one file with `npx playwright test -c e2e/playwright.config.ts e2e/tests/<name>.spec.ts`.
+
+## License
+
+MIT, see `LICENSE`.

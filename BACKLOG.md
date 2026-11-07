@@ -48,7 +48,7 @@ Priority: **P1** can lose or confuse a user's data or work. **P2** is a visible 
 - **P3: the batch is claimed together, in the agent's CLI, not in the daemon.** Left out on purpose: an atomic "claim all" endpoint in the daemon (decided against in T50; the cost is the per-claim line above), and making the claims of a crashed agent's batch claimable before the 30 minutes are over (`claim_all_pending` in `packages/cli/src/commands.ts`).
 - **P3: small CLI rough edges:** `wait --timeout -1` prints a raw argument error; `--mention you` is silently ignored; `--port 1e3` and `0x10` are accepted as ports; a corrupt `.tackboard/config.json` gives a raw parse error; the restore notice shows raw ids ("message t3/m1") where the panel says "message 1"; when `SKILL.md` is a directory, `init` says "left as is"; the usage line for `channel` is not pinned by any test.
 - **P3: the skill and the README repeat the loop, the "only the user closes a thread" rule and the worktree explanation.** A test checks the command names only, so the copies can drift apart.
-- **P2: the npm package is built and tested but not published** (`npm run release`, `packages/cli/test/release.test.ts`; the name `tackboard` was free on 2026-10-30). Before publishing: pick a license (it says UNLICENSED), a version, and decide the Chrome Web Store route for the extension.
+- **P2: the npm package is built and tested but not published** (`npm run release`, `packages/cli/test/release.test.ts`; the name `tackboard` was free on 2026-10-30). The license is MIT (`LICENSE`). Before publishing: recheck the name, pick a version, and decide the Chrome Web Store route for the extension.
 
 ## Claude Code channel
 

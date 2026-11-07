@@ -26,7 +26,7 @@ export async function buildExtension(outDir: string, extraHostPermissions: strin
   const manifest = {
     manifest_version: 3,
     name: brand.name,
-    version: "0.1.0",
+    version: "0.3.0",
     key: brand.extensionKey,
     permissions: ["storage", "scripting", "activeTab", "clipboardRead"],
     // <all_urls> is only for screenshots: Chrome will not capture a tab without it. The options page asks for it when the user turns Screenshots on.

@@ -38,7 +38,7 @@ const OPTIONS = {
 const USAGE = [
   `usage: ${brand.cli} <command>`,
   "  init [--origin <url>] [--port <n>] [--user <name>]",
-  "  start [--agent]",
+  "  start [--agent] [--origin <url>] [--port <n>] [--user <name>]   (sets the folder up first if it has not been)",
   "  claude [claude options]",
   "  next [--as name]",
   "  reply <id> <text> [--ask] [--as name]",
@@ -317,7 +317,14 @@ export async function run(argv: string[], cwd: string): Promise<number> {
     return 0;
   }
   if (cmd === "init") return await init(cwd, a);
-    if (cmd === "start") return await start(cwd, a.values.agent);
+    if (cmd === "start") {
+      // First run in a folder: set it up, then start. No separate init step.
+      if (!findConfig(cwd)) {
+        const code = await init(cwd, a);
+        if (code) return code;
+      }
+      return await start(cwd, a.values.agent);
+    }
     if (cmd === "channel") return await run_channel(cwd, a);
     if (cmd === "resolve") throw new CliError(`only the user closes a thread; ask with: ${brand.cli} reply <id> "<text>" --ask`);
     if (!["next", "wait", "reply", "comment", "ack", "status", "history"].includes(cmd)) throw new CliError(USAGE);
