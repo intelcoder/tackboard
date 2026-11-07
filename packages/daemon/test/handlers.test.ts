@@ -64,7 +64,7 @@ function setup(store: CheckpointStore = noCheckpoints) {
     post: new PostCommentHandler(repo, c, g, noShots),
     postAgent: new PostAgentCommentHandler(repo, c, g),
     claim: new ClaimNextThreadHandler(repo, c, g, store),
-    reply: new ReplyToThreadHandler(repo, c, store),
+    reply: new ReplyToThreadHandler(repo, c, store, noShots),
     resolve: new ResolveThreadHandler(repo, c, store),
     reopen: new ReopenThreadHandler(repo, c),
     release: new ReleaseThreadHandler(repo, c),

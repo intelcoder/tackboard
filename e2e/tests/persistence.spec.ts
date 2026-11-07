@@ -12,7 +12,7 @@ test("persistence", async ({ harness: h }) => {
     const body = (await (await fetch(`${h.daemonUrl}/threads`, { headers })).json()) as { threads: unknown[]; history: unknown[] };
     return { threads: body.threads, history: body.history };
   };
-  const notices = async () => (await (await fetch(`${h.daemonUrl}/notices?agent=claude-main`, { headers })).json()) as { notices: unknown[] };
+  const notices = async () => (await (await fetch(`${h.daemonUrl}/notices?agent=ai-agent`, { headers })).json()) as { notices: unknown[] };
 
   // build up state: a resolved thread with a discarded reply, a later thread that the restore discards, and a pending notice
   const first = await postComment(page, "#cta", "first comment");

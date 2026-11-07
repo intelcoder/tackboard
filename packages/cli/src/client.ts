@@ -29,7 +29,7 @@ export function connect(cwd: string, agentFlag?: string): Client {
   const found = findConfig(cwd);
   if (!found) throw new CliError(`no ${brand.cli} project found here; run ${brand.cli} init`);
   const { dir, config } = found;
-  const agent = agentFlag ?? process.env[`${brand.envPrefix}AGENT`] ?? "claude-main";
+  const agent = agentFlag ?? process.env[`${brand.envPrefix}AGENT`] ?? "ai-agent";
   const base = `http://127.0.0.1:${config.port}`;
 
   async function call<T>(method: string, path: string, query?: Record<string, string>, body?: unknown): Promise<T> {

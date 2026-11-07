@@ -76,7 +76,13 @@ export type PostAgentThreadRequest = {
 };
 export type ClaimNextRequest = { agent: string; branch?: string };
 export type ClaimNextResponse = { thread: ThreadDto | null };
-export type PostMessageRequest = { author: string; text: string; ask?: boolean };
+export type PostMessageRequest = {
+  author: string;
+  text: string;
+  ask?: boolean;
+  /** A PNG of the element as it looks now, as base64 text. Only a user reply can carry one. */
+  screenshot?: string;
+};
 export type ResolveRequest = { by: "user" | "agent"; agent?: string };
 export type RestoreRequest = { threadId: string; messageId: string };
 export type NoticesResponse = { notices: Notice[] };

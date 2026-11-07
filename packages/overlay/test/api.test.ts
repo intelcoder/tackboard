@@ -45,7 +45,7 @@ test("the token header is sent on every call", async () => {
     await api.listThreads({ state: "open" });
     await api.markRead(t.id);
     await api.history();
-    await api.notices("claude-main");
+    await api.notices("ai-agent");
     assert.equal(seen.length, 6);
     assert.ok(seen.every((v) => v === "tok-123"), JSON.stringify(seen));
   } finally {

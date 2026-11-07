@@ -189,7 +189,7 @@ test("reply --ask leaves the thread waiting", async () => {
     const got = (await list(stub)).threads[0]!;
     assert.equal(got.status, "waiting");
     assert.equal(got.messages.at(-1)!.text, "blue or green?");
-    assert.equal(got.messages.at(-1)!.author, "claude-main");
+    assert.equal(got.messages.at(-1)!.author, "ai-agent");
   });
 });
 

@@ -36,6 +36,6 @@ export interface GitInfo {
 }
 
 export interface ScreenshotStore {
-  /** Keeps the PNG for a thread and returns its path from the project folder. */
-  save(threadId: string, png: Buffer): string;
+  /** Keeps the PNG under `name` (a thread id, or thread id and message id) and returns its path from the project folder. */
+  save(name: string, png: Buffer): string;
 }

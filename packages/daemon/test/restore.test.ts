@@ -86,7 +86,7 @@ function setup(options: Options = {}) {
     dir, repo, real_repo, clock, store, real_store,
     post: new PostCommentHandler(repo, c, info, noShots),
     claim: new ClaimNextThreadHandler(repo, c, info, store),
-    reply: new ReplyToThreadHandler(repo, c, store),
+    reply: new ReplyToThreadHandler(repo, c, store, noShots),
     resolve: new ResolveThreadHandler(repo, c, store),
     release: new ReleaseThreadHandler(repo, c),
     get: new GetThreadHandler(repo, c),

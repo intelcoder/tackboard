@@ -42,7 +42,7 @@ test("notifications", async ({ harness: h }) => {
   await page.waitForTimeout(3200);
   const granted = await seen(page);
   expect(granted.notes).toHaveLength(1);
-  expect(granted.notes[0]!.title).toContain("claude-main");
+  expect(granted.notes[0]!.title).toContain("ai-agent");
   expect(granted.notes[0]!.body).toBe("on it");
   await expect(page.locator(".tb-banner")).toHaveCount(0);
 

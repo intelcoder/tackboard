@@ -32,6 +32,8 @@ export type MessageDto = {
   discarded: boolean;
   checkpointId?: string;
   ask?: boolean;
+  /** Path of a picture the user attached to this message, from the project folder. Only the daemon sets it. */
+  screenshot?: string;
 };
 
 export type ThreadDto = {

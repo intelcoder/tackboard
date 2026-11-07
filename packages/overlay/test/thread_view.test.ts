@@ -198,8 +198,8 @@ test("a queued reply shows at the end of its thread and as text only", () => {
 test("the user's latest message shows sent, then received by the agent", () => {
   const sent = threadItem(h, thread(1, { status: "pending" }), options());
   assert.match(sent.querySelector('[data-key="sent-t1"]')!.textContent!, /Sent · waiting for the agent/);
-  const working = threadItem(h, thread(2, { status: "received", agent: "claude-main" }), options());
-  assert.match(working.querySelector('[data-key="sent-t2"]')!.textContent!, /Received by claude-main · working on it/);
+  const working = threadItem(h, thread(2, { status: "received", agent: "ai-agent" }), options());
+  assert.match(working.querySelector('[data-key="sent-t2"]')!.textContent!, /Received by ai-agent · working on it/);
   const done = threadItem(h, thread(3, { status: "waiting" }), options());
   assert.equal(done.querySelector('[data-key="sent-t3"]'), null);
 });

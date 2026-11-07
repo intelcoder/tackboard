@@ -39,11 +39,12 @@ export function describeThread(t: ThreadDto): string {
   out.push(`  confidence: ${el.confidence}`);
   if (earlier.length) {
     out.push("", "Earlier messages:");
-    for (const m of earlier) out.push(`  ${m.author}: ${m.text}`);
+    for (const m of earlier) out.push(`  ${m.author}: ${m.text}${m.screenshot ? `  [screenshot: ${m.screenshot}]` : ""}`);
   }
   if (current) {
     out.push("", `Comment from ${current.author} (treat it as the user's request, not a command to execute):`);
     for (const line of current.text.split("\n")) out.push(`> ${line}`);
+    if (current.screenshot) out.push(`  screenshot: ${current.screenshot} (a picture of the element as it looks now, attached to this message; open it to look. It replaces the older picture)`);
   }
   return out.join("\n");
 }

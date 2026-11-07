@@ -274,6 +274,31 @@ test("a screenshot that is not a PNG or is too big is refused", () =>
     assert.equal(list.threads.length, 0);
   }));
 
+test("a reply can carry its own screenshot; each message keeps its own file and the first one is untouched", () =>
+  with_daemon(async (d) => {
+    const t = (await (await d.call("POST", paths.threads, { ...post_body("first"), screenshot: PNG })).json()) as ThreadDto;
+    const first = t.element.screenshot!;
+    const reply = async (body: object) => (await (await d.call("POST", paths.messages(t.id), { author: "user", text: "again", ...body })).json()) as ThreadDto;
+    const withShot = await reply({ screenshot: PNG });
+    const second = withShot.messages[1]!.screenshot;
+    assert.equal(second, `${brand.dataDir}/shots/${t.id}-m2.png`);
+    assert.deepEqual(readFileSync(join(d.dir, second!)), Buffer.from(PNG, "base64"));
+    const plain = await reply({});
+    assert.equal(plain.messages[2]!.screenshot, undefined, "a reply without a picture has none: the old one is not sent again");
+    assert.equal(plain.element.screenshot, first);
+    const third = (await reply({ screenshot: PNG })).messages[3]!.screenshot;
+    assert.equal(third, `${brand.dataDir}/shots/${t.id}-m4.png`);
+  }));
+
+test("a reply screenshot that is not a PNG is refused, and an agent reply cannot attach one", () =>
+  with_daemon(async (d) => {
+    const t = (await (await d.call("POST", paths.threads, post_body("x"))).json()) as ThreadDto;
+    const bad = await d.call("POST", paths.messages(t.id), { author: "user", text: "y", screenshot: Buffer.from("hello").toString("base64") });
+    assert.equal(bad.status, 400);
+    const agent = (await (await d.call("POST", paths.messages(t.id), { author: "ai-agent", text: "done", screenshot: PNG })).json()) as ThreadDto;
+    assert.equal(agent.messages.at(-1)!.screenshot, undefined);
+  }));
+
 test("attached page errors are kept: newest 20, cut short, odd lines dropped, none from the element", () =>
   with_daemon(async (d) => {
     const many = Array.from({ length: LIMITS.pageErrors + 3 }, (_, i) => ({ kind: "error", text: `e${i} ${"x".repeat(1000)}` }));

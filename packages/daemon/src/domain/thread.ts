@@ -136,9 +136,9 @@ export class Thread {
     this.record("claimed", now, { thread: this.toDto(now) });
   }
 
-  reply(author: string, text: string, now: number, seq: number, opts: { ask?: boolean } = {}): void {
+  reply(author: string, text: string, now: number, seq: number, opts: { ask?: boolean; screenshot?: string } = {}): void {
     if (author === "user") {
-      this.push("user", text, now, seq);
+      this.push("user", text, now, seq, undefined, opts.screenshot);
       this._status = "pending";
       this._agent = undefined;
       this._claimedAt = undefined;
@@ -246,9 +246,10 @@ export class Thread {
     this._claimedAt = undefined;
   }
 
-  private push(author: string, text: string, at: number, seq: number, ask?: boolean): void {
+  private push(author: string, text: string, at: number, seq: number, ask?: boolean, screenshot?: string): void {
     const m: Message = { id: `m${this._messages.length + 1}`, author, text, at, discarded: false, seq };
     if (ask) m.ask = true;
+    if (screenshot) m.screenshot = screenshot;
     this._messages.push(m);
   }
 

@@ -9,8 +9,8 @@ export class FileScreenshotStore implements ScreenshotStore {
     this.projectDir = projectDir;
   }
 
-  save(threadId: string, png: Buffer): string {
-    const relative = `${brand.dataDir}/shots/${threadId}.png`;
+  save(name: string, png: Buffer): string {
+    const relative = `${brand.dataDir}/shots/${name}.png`;
     mkdirSync(join(this.projectDir, brand.dataDir, "shots"), { recursive: true });
     writeFileSync(join(this.projectDir, relative), png);
     return relative;

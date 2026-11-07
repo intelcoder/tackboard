@@ -130,10 +130,11 @@ export function createDaemon(opts: DaemonOptions): Daemon {
   const git = new GitInfoReader(opts.projectDir);
   const checkpoints = new GitCheckpointStore(opts.projectDir);
 
-  const post_comment = new PostCommentHandler(repo, clock, git, new FileScreenshotStore(opts.projectDir));
+  const shots = new FileScreenshotStore(opts.projectDir);
+  const post_comment = new PostCommentHandler(repo, clock, git, shots);
   const post_agent_comment = new PostAgentCommentHandler(repo, clock, git);
   const claim_next = new ClaimNextThreadHandler(repo, clock, git, checkpoints);
-  const reply = new ReplyToThreadHandler(repo, clock, checkpoints);
+  const reply = new ReplyToThreadHandler(repo, clock, checkpoints, shots);
   const resolve = new ResolveThreadHandler(repo, clock, checkpoints);
   const reopen = new ReopenThreadHandler(repo, clock);
   const release = new ReleaseThreadHandler(repo, clock);
@@ -223,6 +224,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
       author: need_text(b.author, "author"),
       text: need_text(b.text, "text"),
       ask: b.ask === true,
+      screenshot: read_screenshot(b.screenshot),
     });
     return c.json(thread);
   });

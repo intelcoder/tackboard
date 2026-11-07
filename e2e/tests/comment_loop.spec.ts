@@ -27,7 +27,7 @@ test("comment loop", async ({ harness: h }) => {
   expect(next.stdout).toContain("#cta");
   expect(idOf(next.stdout)).toBe(id);
   await expect(chip(page, id)).toHaveText("received", { timeout: 3000 });
-  await expect(page.locator(".tb-toast")).toHaveText("claude-main received your comment");
+  await expect(page.locator(".tb-toast")).toHaveText("ai-agent received your comment");
 
   const ask = await h.agent(["reply", id, "which blue?", "--ask"]);
   expect(ask.code).toBe(0);
@@ -72,7 +72,7 @@ test("agent-started thread", async ({ harness: h }) => {
   const row = page.locator(".tb-thread").first();
   await expect(row.locator(".tb-chip")).toHaveText("waiting on you");
   await row.locator(".tb-thread-top").click();
-  await expect(row).toContainText("claude-main");
+  await expect(row).toContainText("ai-agent");
   await expect(row).toContainText("@sam Is this copy final?");
 });
 

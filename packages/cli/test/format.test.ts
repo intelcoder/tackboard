@@ -119,6 +119,17 @@ test("a thread with a screenshot prints its path", () => {
   assert.doesNotMatch(describeThread(thread("text")), /screenshot/);
 });
 
+test("a reply's own screenshot prints under that message, and earlier ones are tagged", () => {
+  const t = thread("text");
+  t.messages = [
+    { id: "m1", author: "user", text: "first", at: 1, discarded: false, screenshot: ".tackboard/shots/t1-m1.png" },
+    { id: "m2", author: "user", text: "now it is darker", at: 2, discarded: false, screenshot: ".tackboard/shots/t1-m2.png" },
+  ];
+  const out = describeThread(t);
+  assert.match(out, /first {2}\[screenshot: \.tackboard\/shots\/t1-m1\.png\]/);
+  assert.match(out, /> now it is darker\n {2}screenshot: \.tackboard\/shots\/t1-m2\.png \(a picture of the element as it looks now/);
+});
+
 test("a thread with attached page errors prints each line", () => {
   const t = thread("text");
   t.element.pageErrors = [{ kind: "error", text: "TypeError: x is undefined" }, { kind: "network", text: "GET /api/a 500" }];
