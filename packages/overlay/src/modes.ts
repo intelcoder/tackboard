@@ -8,6 +8,9 @@ const ICONS: Record<string, string[]> = {
   panel: ["M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"],
 };
 
+// ponytail: shown in tooltips only; the handler accepts Alt+Shift on every platform
+const MOD = /Mac/i.test(globalThis.navigator?.platform ?? "") ? "Option+Shift" : "Alt+Shift";
+
 /**
  * ModeSwitch plus PanelToggle in one dark pill. It is the only element that stays
  * in every mode. The mode controller is the store itself: clicking a tool sets `mode`,
@@ -20,12 +23,12 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
     paths.forEach((d, i) => svg.append(h("path", { d, "stroke-dasharray": name === "comment" && i === 0 ? "2 3" : null })));
     return svg;
   };
-  const tool = (mode: Mode, label: string, onclick: () => void) =>
-    h("button", { type: "button", "data-mode": mode, "aria-label": label, title: label, "aria-pressed": "false", onclick }, icon(mode));
+  const tool = (mode: Mode, label: string, onclick: () => void, key: string) =>
+    h("button", { type: "button", "data-mode": mode, "aria-label": label, title: `${label} (${MOD}+${key})`, "aria-pressed": "false", onclick }, icon(mode));
 
   // One eye button shows or hides the overlay; Add comment is the other tool.
-  const eye = tool("view", "Hide comments", () => store.set({ mode: store.get().mode === "hidden" ? "view" : "hidden" }));
-  const buttons = [eye, tool("comment", "Add comment", () => store.set({ mode: "comment" }))];
+  const eye = tool("view", "Hide comments", () => store.set({ mode: store.get().mode === "hidden" ? "view" : "hidden" }), "H");
+  const buttons = [eye, tool("comment", "Add comment", () => store.set({ mode: "comment" }), "C")];
   const badge = h("span", { class: "badge", hidden: true });
   // the panel keeps this one up to date: how many drafts are not sent yet
   const draftBadge = h("span", { class: "draft-count", hidden: true });
@@ -33,7 +36,7 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
     type: "button",
     "data-panel": "",
     "aria-label": "Comments",
-    title: "Comments",
+    title: `Comments (${MOD}+P)`,
     "aria-pressed": "false",
     onclick: () => store.set({ panelOpen: !store.get().panelOpen }),
   }, icon("panel"), badge, draftBadge);
@@ -47,9 +50,10 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
     // the eye is "on" whenever the overlay shows, and slashed when it is hidden
     const shown = s.mode !== "hidden";
     eye.setAttribute("aria-pressed", String(shown));
-    if (eye.getAttribute("title") !== (shown ? "Hide comments" : "Show comments")) {
+    const eyeTitle = `${shown ? "Hide" : "Show"} comments (${MOD}+H)`;
+    if (eye.getAttribute("title") !== eyeTitle) {
       eye.setAttribute("aria-label", shown ? "Hide comments" : "Show comments");
-      eye.setAttribute("title", shown ? "Hide comments" : "Show comments");
+      eye.setAttribute("title", eyeTitle);
       eye.replaceChildren(icon(shown ? "view" : "hidden"));
     }
     toggle.setAttribute("aria-pressed", String(s.panelOpen));
