@@ -27,8 +27,8 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
     h("button", { type: "button", "data-mode": mode, "aria-label": label, title: `${label} (${MOD}+${key})`, "aria-pressed": "false", onclick }, icon(mode));
 
   // One eye button shows or hides the overlay; Add comment is the other tool.
-  const eye = tool("view", "Hide comments", () => store.set({ mode: store.get().mode === "hidden" ? "view" : "hidden" }), "H");
-  const buttons = [eye, tool("comment", "Add comment", () => store.set({ mode: "comment" }), "C")];
+  const eye = tool("view", "Hide comments", () => store.set({ mode: store.get().mode === "hidden" ? "view" : "hidden" }), "X");
+  const buttons = [eye, tool("comment", "Add comment", () => store.set({ mode: "comment" }), "K")];
   const badge = h("span", { class: "badge", hidden: true });
   // the panel keeps this one up to date: how many drafts are not sent yet
   const draftBadge = h("span", { class: "draft-count", hidden: true });
@@ -36,7 +36,7 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
     type: "button",
     "data-panel": "",
     "aria-label": "Comments",
-    title: `Comments (${MOD}+P)`,
+    title: `Comments (${MOD}+L)`,
     "aria-pressed": "false",
     onclick: () => store.set({ panelOpen: !store.get().panelOpen }),
   }, icon("panel"), badge, draftBadge);
@@ -50,7 +50,7 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
     // the eye is "on" whenever the overlay shows, and slashed when it is hidden
     const shown = s.mode !== "hidden";
     eye.setAttribute("aria-pressed", String(shown));
-    const eyeTitle = `${shown ? "Hide" : "Show"} comments (${MOD}+H)`;
+    const eyeTitle = `${shown ? "Hide" : "Show"} comments (${MOD}+X)`;
     if (eye.getAttribute("title") !== eyeTitle) {
       eye.setAttribute("aria-label", shown ? "Hide comments" : "Show comments");
       eye.setAttribute("title", eyeTitle);
@@ -77,7 +77,7 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
   };
   pill.ownerDocument.addEventListener("keydown", onEsc, true);
 
-  // Alt+Shift+C add comment (again = back to view), Alt+Shift+H hide/show, Alt+Shift+P comments panel.
+  // Alt+Shift+K add comment (again = back to view), Alt+Shift+X hide/show, Alt+Shift+L comments panel (C, H and P are Chrome inspect, home and print with Cmd).
   // e.code, not e.key: Option+letter types a different character on a Mac.
   const onShortcut = (e: KeyboardEvent) => {
     if (!pill.isConnected) return void pill.ownerDocument.removeEventListener("keydown", onShortcut, true);
@@ -86,9 +86,9 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
     const t = e.composedPath()[0] as HTMLElement | undefined;
     if (t && (/^(input|textarea|select)$/i.test(t.tagName ?? "") || t.isContentEditable)) return;
     const s = store.get();
-    if (e.code === "KeyC") store.set({ mode: s.mode === "comment" ? "view" : "comment" });
-    else if (e.code === "KeyH") store.set({ mode: s.mode === "hidden" ? "view" : "hidden" });
-    else if (e.code === "KeyP" && s.mode !== "hidden") store.set({ panelOpen: !s.panelOpen });
+    if (e.code === "KeyK") store.set({ mode: s.mode === "comment" ? "view" : "comment" });
+    else if (e.code === "KeyX") store.set({ mode: s.mode === "hidden" ? "view" : "hidden" });
+    else if (e.code === "KeyL" && s.mode !== "hidden") store.set({ panelOpen: !s.panelOpen });
     else return;
     e.preventDefault();
   };
