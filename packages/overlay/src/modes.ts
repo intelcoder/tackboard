@@ -72,5 +72,22 @@ export function createModeSwitch(h: H, store: Store): HTMLElement {
     store.set({ mode: "view" });
   };
   pill.ownerDocument.addEventListener("keydown", onEsc, true);
+
+  // Alt+Shift+C add comment (again = back to view), Alt+Shift+H hide/show, Alt+Shift+P comments panel.
+  // e.code, not e.key: Option+letter types a different character on a Mac.
+  const onShortcut = (e: KeyboardEvent) => {
+    if (!pill.isConnected) return void pill.ownerDocument.removeEventListener("keydown", onShortcut, true);
+    if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+    // leave typing fields alone (Option+Shift+letter types symbols on a Mac); the path reaches into the shadow DOM
+    const t = e.composedPath()[0] as HTMLElement | undefined;
+    if (t && (/^(input|textarea|select)$/i.test(t.tagName ?? "") || t.isContentEditable)) return;
+    const s = store.get();
+    if (e.code === "KeyC") store.set({ mode: s.mode === "comment" ? "view" : "comment" });
+    else if (e.code === "KeyH") store.set({ mode: s.mode === "hidden" ? "view" : "hidden" });
+    else if (e.code === "KeyP" && s.mode !== "hidden") store.set({ panelOpen: !s.panelOpen });
+    else return;
+    e.preventDefault();
+  };
+  pill.ownerDocument.addEventListener("keydown", onShortcut, true);
   return pill;
 }
