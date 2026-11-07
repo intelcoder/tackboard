@@ -5,10 +5,12 @@ import { ApiError } from "./api.ts";
 import type { NotificationState } from "./notifications.ts";
 
 export type Tab = "open" | "resolved";
+/** Who started the thread: you, or an agent (for example a UX review). */
+export type Source = "all" | "user" | "agent";
 
 /** Open means not resolved. Discarded threads are never listed. */
-export function visibleThreads(threads: ThreadDto[], tab: Tab): ThreadDto[] {
-  return threads.filter((t) => !t.discarded && (tab === "resolved") === (t.status === "resolved"));
+export function visibleThreads(threads: ThreadDto[], tab: Tab, source: Source = "all"): ThreadDto[] {
+  return threads.filter((t) => !t.discarded && (tab === "resolved") === (t.status === "resolved") && (source === "all" || t.openedBy === source));
 }
 
 /** Threads waiting on the user or unread, each counted once. */

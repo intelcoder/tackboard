@@ -5,9 +5,11 @@ import type { Api } from "./api.ts";
 import type { H } from "./dom.ts";
 import { createFinder } from "./element_ref.ts";
 import { notificationState, permissionAsked, permissionBanner, rememberNotNow } from "./notifications.ts";
+import { previewThumb } from "./preview.ts";
 import { elementScreenshot, whyNoShot } from "./screenshot.ts";
 import { createSendQueue } from "./send_queue.ts";
 import type { QueueItem } from "./send_queue.ts";
+import type { Source } from "./panel_logic.ts";
 import { badgeCount, clampToViewport, errorText, isSendKey, pageLabel, restoreDisabledReason, visibleThreads } from "./panel_logic.ts";
 import type { Tab } from "./panel_logic.ts";
 import type { Store } from "./store.ts";
@@ -47,7 +49,7 @@ export type Panel = {
 
 type ToSend =
   | { kind: "comment"; ref: ElementRef; url: string; viewport: { w: number; h: number }; text: string; screenshot?: string; pageErrors?: PageError[]; also?: ElementRef[] }
-  | { kind: "reply"; threadId: string; text: string };
+  | { kind: "reply"; threadId: string; text: string; screenshot?: string };
 
 type CommentToSend = Extract<ToSend, { kind: "comment" }>;
 
@@ -71,6 +73,7 @@ export function createPanel(o: PanelOptions): Panel {
 
   // What only the panel cares about. Anything the pins or pill need lives in the store.
   let tab: Tab = "open";
+  let source: Source = "all";
   let showHistory = false;
   let historyOpenId: string | null = null;
   let composer: { ref: ElementRef; also: ElementRef[]; attach: boolean; attachErrors: boolean } | null = null;
@@ -195,8 +198,8 @@ export function createPanel(o: PanelOptions): Panel {
   // Set when a pin is clicked: the list shows only that thread.
   let focusId: string | null = null;
   const showOnly = (id: string) => {
+    focusId = id; // before openThread, which draws: else the full list flashes first
     openThread(id);
-    focusId = id;
   };
   const toggleThread = (t: ThreadDto) => {
     if (store.get().activeThreadId === t.id) {
@@ -224,7 +227,7 @@ export function createPanel(o: PanelOptions): Panel {
 
   const deliver = async (job: ToSend, signal: AbortSignal) => {
     if (job.kind === "reply") {
-      saveThread(await api.postMessage(job.threadId, { author: "user", text: job.text }, signal));
+      saveThread(await api.postMessage(job.threadId, { author: "user", text: job.text, ...(job.screenshot ? { screenshot: job.screenshot } : {}) }, signal));
       tab = "open";
       return;
     }
@@ -236,9 +239,26 @@ export function createPanel(o: PanelOptions): Panel {
   };
   const sendQueue = createSendQueue<ToSend>({ send: deliver, onChange: () => draw() });
 
-  const reply = (t: ThreadDto, text: string) => {
+  // Threads whose next reply carries a fresh picture. It is off again after each send, so an old picture is never sent twice.
+  const replyAttach = new Set<string>();
+  const reply = async (t: ThreadDto, text: string) => {
     replyDrafts.delete(t.id);
-    sendQueue.add({ kind: "reply", threadId: t.id, text });
+    const job: ToSend = { kind: "reply", threadId: t.id, text };
+    const el = finder.find(t);
+    if (replyAttach.has(t.id) && o.captureTab) {
+      try {
+        if (!el) throw new Error("The element is not on the page");
+        job.screenshot = await elementScreenshot({ el, win, host: o.host, captureTab: o.captureTab });
+      } catch (e) {
+        o.showToast(`Screenshot failed: ${(e as Error).message}`);
+        replyDrafts.set(t.id, text);
+        draw();
+        return;
+      }
+    }
+    replyAttach.delete(t.id);
+    sendQueue.add(job);
+    draw();
   };
 
   const queuedView = (item: QueueItem<ToSend>, label: string | null): QueuedView => ({
@@ -404,8 +424,14 @@ export function createPanel(o: PanelOptions): Panel {
           confirming = null;
           store.set({ activeThreadId: null });
         },
-      }, label, " ", h("i", null, visibleThreads(all, name).length));
-    return h("div", { class: "tb-tabs" }, tabButton("open", "Open"), tabButton("resolved", "Resolved"));
+      }, label, " ", h("i", null, visibleThreads(all, name, source).length));
+    const sourceButton = (name: Source, label: string) =>
+      h("button", {
+        type: "button", class: source === name ? "on" : null, "aria-pressed": String(source === name), "data-key": `source-${name}`,
+        onclick: () => { source = name; store.set({ activeThreadId: null }); },
+      }, label);
+    return h("div", { class: "tb-tabs" }, tabButton("open", "Open"), tabButton("resolved", "Resolved"),
+      h("span", { class: "tb-source" }, sourceButton("all", "All"), sourceButton("user", "Mine"), sourceButton("agent", "AI")));
   };
 
   const attachBox = (): HTMLElement | null => {
@@ -477,10 +503,12 @@ export function createPanel(o: PanelOptions): Panel {
     const open = history ? historyOpenId === t.id : s.activeThreadId === t.id;
     const shown = t.messages.filter((m) => !m.discarded);
     const confirmNow = confirming && confirming.threadId === t.id ? confirming : null;
+    const live = history ? null : finder.find(t);
     return threadItem(h, t, {
       open,
+      thumb: live ? previewThumb(h, win, live) : null,
       label: targetLabel(t.element),
-      missing: !history && !finder.find(t),
+      missing: !history && !live,
       history,
       draft: replyDrafts.get(t.id) ?? "",
       onToggle: () => {
@@ -490,7 +518,11 @@ export function createPanel(o: PanelOptions): Panel {
         } else toggleThread(t);
       },
       onDraft: (text) => replyDrafts.set(t.id, text),
-      onReply: (text) => reply(t, text),
+      onReply: (text) => { void reply(t, text); },
+      attach: history || !o.captureTab ? null : (() => {
+        const why = live ? whyNoShot(live, win) : "The element is not on the page";
+        return { checked: replyAttach.has(t.id), why, onChange: (on: boolean) => { if (on) replyAttach.add(t.id); else replyAttach.delete(t.id); draw(); } };
+      })(),
       queued: sendQueue.items().flatMap((item) => (item.job.kind === "reply" && item.job.threadId === t.id ? [queuedView(item, null)] : [])),
       onResolve: () => run(() => api.resolve(t.id, { by: "user" })),
       onReopen: () => run(() => api.reopen(t.id), () => { tab = "open"; }),
@@ -534,11 +566,13 @@ export function createPanel(o: PanelOptions): Panel {
       return list;
     }
     const only = focusId ? s.threads.find((t) => t.id === focusId) : undefined;
-    const shown = only ? [only] : visibleThreads(s.threads, tab);
+    const shown = only ? [only] : visibleThreads(s.threads, tab, source);
     if (!shown.length) {
       const none = visibleThreads(s.threads, "open").length + visibleThreads(s.threads, "resolved").length === 0;
       list.append(none
         ? emptyState(h, "No comments on this branch yet", "Switch to comment mode, then click any element on the page.")
+        : source !== "all"
+          ? emptyState(h, source === "agent" ? "No AI comments here" : "No comments of yours here", "Switch the filter to All to see the rest.")
         : tab === "open"
           ? emptyState(h, "Nothing open", "Every thread on this branch is resolved.")
           : emptyState(h, "Nothing resolved yet", "Resolved threads show up here."));
@@ -586,7 +620,7 @@ export function createPanel(o: PanelOptions): Panel {
     const detachedIds = s.threads.filter((t) => !finder.find(t)).map((t) => t.id);
     const look = JSON.stringify([
       s.threads, s.history, s.branch, s.project, s.otherPages, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
-      tab, showHistory, historyOpenId, composer?.ref.selector ?? null, composer?.also.map((r) => r.selector) ?? null, adding, focusId, sendQueue.items(), drafts, confirming, notice,
+      tab, source, [...replyAttach], showHistory, historyOpenId, composer?.ref.selector ?? null, composer?.also.map((r) => r.selector) ?? null, adding, focusId, sendQueue.items(), drafts, confirming, notice,
       notificationState(), dismissed, blockedHidden, detachedIds,
     ]);
     if (look === lastLook) return;

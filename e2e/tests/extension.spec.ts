@@ -715,6 +715,48 @@ test("a ticked Attach screenshot box sends a picture of just that element, with 
   }, ["<all_urls>"]);
 });
 
+test("a reply can attach a fresh screenshot of the changed element; the box is off again after the send and the next reply sends none", async () => {
+  await withStack(async (stack) => {
+    const options = await optionsPage(stack);
+    await addSite(stack, options, fakeHttpsSite);
+    const page = await stack.context.newPage();
+    await page.goto(fakeHttpsSite);
+    await expect(page.locator(".tb-modes")).toBeVisible();
+    await setMode(page, "comment");
+    await page.hover(".hero-title");
+    await page.click(".hero-title");
+    await page.locator('[data-key="composer"]').fill("too tight");
+    await page.locator('[data-key="send"]').click();
+    const id = (await page.locator(".tb-thread.active").getAttribute("data-id"))!;
+    stack.run(["next"]);
+    stack.run(["reply", id, "Made the padding bigger. Is it OK to close this?", "--ask"]);
+
+    // the agent changed the page: the element is taller now
+    await page.addStyleTag({ content: ".hero-title{padding-bottom:60px}" });
+    const box = (await page.locator(".hero-title").boundingBox())!;
+    const attach = page.locator(`[data-key="attach-${id}"]`);
+    await expect(attach).not.toBeChecked();
+    await attach.check();
+    await page.locator(`[data-key="reply-${id}"]`).fill("still too tight");
+    await page.locator(`[data-key="send-${id}"]`).click();
+    await expect(page.locator(".tb-msg")).toHaveCount(3);
+    await expect(attach).not.toBeChecked();
+
+    const next = stack.run(["next"]);
+    const path = /screenshot: (\S+-m3\.png)/.exec(next)?.[1];
+    expect(path).toBe(`.tackboard/shots/${id}-m3.png`);
+    const png = readFileSync(join(stack.project, path!));
+    expect(Math.abs(png.readUInt32BE(20) - box.height)).toBeLessThanOrEqual(2);
+
+    // a second reply without ticking sends no picture
+    stack.run(["reply", id, "Better? Is it OK to close this?", "--ask"]);
+    await page.locator(`[data-key="reply-${id}"]`).fill("yes");
+    await page.locator(`[data-key="send-${id}"]`).click();
+    await expect(page.locator(".tb-msg")).toHaveCount(5);
+    expect(stack.run(["next"])).not.toMatch(/screenshot: \S+-m5\.png/);
+  }, ["<all_urls>"]);
+});
+
 test("a ticked Attach page errors box sends the console error, the rejection and the failed request (path only); unticked sends none", async () => {
   await withStack(async (stack) => {
     const options = await optionsPage(stack);
