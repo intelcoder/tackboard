@@ -1,5 +1,0 @@
-> build
-> node scripts/build.ts
-build cli
-build overlay
-wrote /Users/fiddlest/projects/tackboard-wt-a/packages/overlay/dist/tackboard.js
