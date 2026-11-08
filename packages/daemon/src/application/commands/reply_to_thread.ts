@@ -17,7 +17,7 @@ export class ReplyToThreadHandler {
     this.shots = shots;
   }
 
-  handle(cmd: { id: string; author: string; text: string; ask?: boolean; screenshot?: Buffer }): ThreadDto {
+  handle(cmd: { id: string; author: string; text: string; ask?: boolean; screenshot?: Buffer; detail?: string }): ThreadDto {
     const now = this.clock.now();
     const thread = loadThread(this.repo, cmd.id);
     if (cmd.author !== "user") this.repo.touchAgent(AgentName.of(cmd.author).value, now);
@@ -25,7 +25,7 @@ export class ReplyToThreadHandler {
     const checkpoint = checkpointIfChanged(this.checkpoints, thread, `after reply on thread #${thread.n}`);
     // One picture per message, named by the message it belongs to, so a later picture never replaces an earlier one.
     const screenshot = cmd.screenshot && cmd.author === "user" ? this.shots.save(`${thread.id}-m${thread.messages.length + 1}`, cmd.screenshot) : undefined;
-    thread.reply(cmd.author, cmd.text, now, this.repo.nextSeq(), { ...(cmd.ask ? { ask: true } : {}), ...(screenshot ? { screenshot } : {}) });
+    thread.reply(cmd.author, cmd.text, now, this.repo.nextSeq(), { ...(cmd.ask ? { ask: true } : {}), ...(screenshot ? { screenshot } : {}), ...(cmd.detail && cmd.author === "user" ? { detail: cmd.detail } : {}) });
     if (checkpoint) thread.attachCheckpoint(thread.messages[thread.messages.length - 1]!.id, checkpoint);
     this.repo.save(thread);
     return thread.toDto(now);

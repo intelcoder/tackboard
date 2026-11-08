@@ -13,6 +13,8 @@ export type ElementRef = {
   source?: string;
   /** Path of the screenshot file, from the project folder. Only the daemon sets it. */
   screenshot?: string;
+  /** How the element looks as rendered: styles, parent layout, what differs from similar siblings, and a tree of its children. Built and redacted in the page. */
+  detail?: string;
   /** Console errors, warnings and failed requests of the page, when the user attached them. */
   pageErrors?: PageError[];
   /** The words the user selected with Shift+drag; the element is the smallest one that holds them. */
@@ -34,6 +36,8 @@ export type MessageDto = {
   ask?: boolean;
   /** Path of a picture the user attached to this message, from the project folder. Only the daemon sets it. */
   screenshot?: string;
+  /** The element as it looked when the user sent this message (see ElementRef.detail). Only a user reply that asked for it has one. */
+  detail?: string;
 };
 
 export type ThreadDto = {

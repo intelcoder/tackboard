@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS messages (
   checkpoint_id TEXT,
   ask INTEGER NOT NULL,
   screenshot TEXT,
+  detail TEXT,
   PRIMARY KEY (thread_id, pos)
 );
 CREATE TABLE IF NOT EXISTS events (
@@ -84,6 +85,7 @@ export class SqliteThreadRepository implements ThreadRepository {
   private addMessageScreenshotColumn(): void {
     const columns = this.db.prepare("PRAGMA table_info(messages)").all() as Array<{ name: string }>;
     if (!columns.some((c) => c.name === "screenshot")) this.db.exec("ALTER TABLE messages ADD COLUMN screenshot TEXT");
+    if (!columns.some((c) => c.name === "detail")) this.db.exec("ALTER TABLE messages ADD COLUMN detail TEXT");
   }
 
   /** Older database files have no agents.first_seen. Add it and treat the last time seen as the first. */
@@ -245,12 +247,12 @@ export class SqliteThreadRepository implements ThreadRepository {
         s.openedBy, s.status, s.agent ?? null, s.unread ? 1 : 0, s.claimedAt ?? null,
       );
     const msg = this.db.prepare(
-      `INSERT INTO messages (thread_id, pos, id, seq, author, text, at, discarded, checkpoint_id, ask, screenshot)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO messages (thread_id, pos, id, seq, author, text, at, discarded, checkpoint_id, ask, screenshot, detail)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (thread_id, pos) DO UPDATE SET discarded = excluded.discarded, checkpoint_id = excluded.checkpoint_id`,
     );
     s.messages.forEach((m, pos) => {
-      msg.run(s.id, pos, m.id, m.seq, m.author, m.text, m.at, m.discarded ? 1 : 0, m.checkpointId ?? null, m.ask ? 1 : 0, m.screenshot ?? null);
+      msg.run(s.id, pos, m.id, m.seq, m.author, m.text, m.at, m.discarded ? 1 : 0, m.checkpointId ?? null, m.ask ? 1 : 0, m.screenshot ?? null, m.detail ?? null);
     });
     const ev = this.db.prepare("INSERT INTO events (thread_id, type, at, data) VALUES (?, ?, ?, ?)");
     for (const e of t.pullEvents()) ev.run(s.id, e.type, e.at, JSON.stringify(e.data));
@@ -277,6 +279,7 @@ export class SqliteThreadRepository implements ThreadRepository {
         if (m.checkpoint_id !== null) out.checkpointId = m.checkpoint_id as string;
         if (m.ask === 1) out.ask = true;
         if (m.screenshot !== null && m.screenshot !== undefined) out.screenshot = m.screenshot as string;
+        if (m.detail !== null && m.detail !== undefined) out.detail = m.detail as string;
         return out;
       }),
     };

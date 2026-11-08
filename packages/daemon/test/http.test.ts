@@ -299,6 +299,35 @@ test("a reply screenshot that is not a PNG is refused, and an agent reply cannot
     assert.equal(agent.messages.at(-1)!.screenshot, undefined);
   }));
 
+test("the daemon redacts personal data and tokens again, and caps the as-rendered detail", () =>
+  with_daemon(async (d) => {
+    const el = { ...element, text: "mail sam@example.com", html: '<a href="x">call +1 (555) 014-2000</a>', selection: "key sk-live_abcdefghijklmnop1234" };
+    const t = (await (await d.call("POST", paths.threads, {
+      ...post_body("x", { ...el, detail: `rendered: a\n${"y".repeat(LIMITS.detail + 50)} sam@example.com` } as typeof element),
+      pageErrors: [{ kind: "error", text: "failed for sam@example.com" }],
+    })).json()) as ThreadDto;
+    assert.equal(t.element.text, "mail [email]");
+    assert.equal(t.element.html, '<a href="x">call [phone]</a>');
+    assert.equal(t.element.selection, "key [secret]");
+    assert.equal(t.element.pageErrors![0]!.text, "failed for [email]");
+    assert.ok(t.element.detail!.length <= LIMITS.detail && t.element.detail!.startsWith("rendered: a"));
+    const text = JSON.stringify(t);
+    assert.ok(!text.includes("sam@example.com"), "no email left anywhere in the stored thread");
+  }));
+
+test("a user reply can carry the element's latest state; an agent reply cannot, and a plain reply has none", () =>
+  with_daemon(async (d) => {
+    const t = (await (await d.call("POST", paths.threads, post_body("first"))).json()) as ThreadDto;
+    const reply = async (body: object) => (await (await d.call("POST", paths.messages(t.id), { author: "user", text: "again", ...body })).json()) as ThreadDto;
+    const withState = await reply({ detail: "rendered: font-size 16 · mail sam@example.com" });
+    assert.equal(withState.messages[1]!.detail, "rendered: font-size 16 · mail [email]");
+    assert.equal((await reply({})).messages[2]!.detail, undefined);
+    const agent = (await (await d.call("POST", paths.messages(t.id), { author: "ai-agent", text: "done", detail: "rendered: x" })).json()) as ThreadDto;
+    assert.equal(agent.messages.at(-1)!.detail, undefined);
+    const list = (await (await d.call("GET", paths.threads)).json()) as ListThreadsResponse;
+    assert.equal(list.threads[0]!.messages[1]!.detail, "rendered: font-size 16 · mail [email]", "kept after a reload from the database");
+  }));
+
 test("attached page errors are kept: newest 20, cut short, odd lines dropped, none from the element", () =>
   with_daemon(async (d) => {
     const many = Array.from({ length: LIMITS.pageErrors + 3 }, (_, i) => ({ kind: "error", text: `e${i} ${"x".repeat(1000)}` }));

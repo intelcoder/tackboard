@@ -3,7 +3,7 @@ import { basename, join } from "node:path";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import type { ServerType } from "@hono/node-server";
-import { brand, ERROR_STATUS, LIMITS, paths } from "@app/shared";
+import { brand, ERROR_STATUS, LIMITS, paths, redactText } from "@app/shared";
 import type { ElementRef, PageError } from "@app/shared";
 import { DomainError } from "../domain/errors.ts";
 import type { Clock } from "../domain/repositories.ts";
@@ -60,6 +60,11 @@ function need_selector(value: unknown, name: string): string {
   return selector;
 }
 
+/** The as-rendered description of an element: text only, redacted again, cut at LIMITS.detail. Anything else is dropped. */
+function read_detail(value: unknown): string | undefined {
+  return typeof value === "string" && value ? redactText(value).slice(0, LIMITS.detail) : undefined;
+}
+
 function read_element(value: unknown): ElementRef {
   if (typeof value !== "object" || value === null) throw new DomainError("invalid", "element is required");
   // `screenshot` is a path the daemon chose and `pageErrors` come in their own field; a client cannot slip either in here.
@@ -70,10 +75,11 @@ function read_element(value: unknown): ElementRef {
     ...e,
     selector: need_selector(e.selector, "element.selector"),
     tag: typeof e.tag === "string" ? e.tag : "",
-    text: typeof e.text === "string" ? e.text : "",
-    html: typeof e.html === "string" ? e.html : "",
+    text: typeof e.text === "string" ? redactText(e.text) : "",
+    html: typeof e.html === "string" ? redactText(e.html) : "",
     rect,
-    ...(typeof e.selection === "string" && e.selection ? { selection: e.selection.slice(0, LIMITS.selection) } : { selection: undefined }),
+    detail: read_detail(e.detail),
+    ...(typeof e.selection === "string" && e.selection ? { selection: redactText(e.selection).slice(0, LIMITS.selection) } : { selection: undefined }),
     ...(e.area === true ? { area: true as const } : { area: undefined }),
     confidence: e.confidence === "source" || e.confidence === "component" ? e.confidence : "text",
   };
@@ -110,7 +116,7 @@ function read_page_errors(value: unknown): PageError[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const lines = value
     .filter((l): l is PageError => typeof l === "object" && l !== null && ERROR_KINDS.includes(l.kind) && typeof l.text === "string")
-    .map((l) => ({ kind: l.kind, text: l.text.slice(0, LIMITS.pageErrorText) }));
+    .map((l) => ({ kind: l.kind, text: redactText(l.text).slice(0, LIMITS.pageErrorText) }));
   return lines.length ? lines.slice(-LIMITS.pageErrors) : undefined;
 }
 
@@ -225,6 +231,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
       text: need_text(b.text, "text"),
       ask: b.ask === true,
       screenshot: read_screenshot(b.screenshot),
+      detail: read_detail(b.detail),
     });
     return c.json(thread);
   });

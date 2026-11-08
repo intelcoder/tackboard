@@ -11,6 +11,8 @@ export const LIMITS = {
   body: 2 * 1024 * 1024,
   text: 102400,
   html: 4096,
+  /** Characters of the as-rendered description of an element. */
+  detail: 3000,
   elementText: 120,
   /** Longest piece of selected text a comment keeps. */
   selection: 500,
@@ -82,6 +84,8 @@ export type PostMessageRequest = {
   ask?: boolean;
   /** A PNG of the element as it looks now, as base64 text. Only a user reply can carry one. */
   screenshot?: string;
+  /** The element as it looks now (ElementRef.detail). Only a user reply can carry one. */
+  detail?: string;
 };
 export type ResolveRequest = { by: "user" | "agent"; agent?: string };
 export type RestoreRequest = { threadId: string; messageId: string };
