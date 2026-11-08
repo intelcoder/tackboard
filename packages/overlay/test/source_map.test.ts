@@ -125,3 +125,66 @@ test("a real React 18 element: names come from the fiber React really sets", asy
     }
   }
 });
+
+const stackOf = (...frames: string[]) => ({ stack: ["Error: react-stack-top-frame", ...frames.map((f) => `    at ${f}`)].join("\n") });
+
+test("React 19: the first stack frame outside node_modules gives file and line, no plugin needed", () => {
+  const doc = dom(`<span id="s">x</span>`);
+  const el = doc.getElementById("s")!;
+  const fiber: any = fiberChain("span", PlanCard);
+  fiber._debugStack = stackOf(
+    "exports.jsxDEV (http://localhost:5170/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=1:193:83)",
+    "AppLayout (http://localhost:5170/src/components/AppLayout.tsx?t=9:122:46)",
+  );
+  (el as any)["__reactFiber$k"] = fiber;
+  const info = readSourceInfo(el);
+  assert.equal(info.source, "src/components/AppLayout.tsx:122");
+  assert.equal(info.confidence, "source");
+});
+
+test("React 19: a fiber made inside a library falls through to the nearest parent made in user code", () => {
+  const doc = dom(`<span id="s">x</span>`);
+  const el = doc.getElementById("s")!;
+  const inner: any = { type: "span", _debugStack: stackOf("createElement (http://h/node_modules/.vite/deps/antd.js:5:1)") };
+  inner.return = { type: "div", _debugStack: stackOf("A (http://h/src/A.tsx:7:3)"), return: null };
+  (el as any)["__reactFiber$k"] = inner;
+  assert.equal(readSourceInfo(el).source, "src/A.tsx:7");
+});
+
+test("React 18 _debugSource is used", () => {
+  const doc = dom(`<b id="b">x</b>`);
+  const el = doc.getElementById("b")!;
+  const fiber: any = fiberChain("b", PlanCard);
+  fiber._debugSource = { fileName: "/Users/me/app/src/Plan.tsx", lineNumber: 31 };
+  (el as any)["__reactFiber$k"] = fiber;
+  assert.equal(readSourceInfo(el).source, "src/Plan.tsx:31");
+});
+
+test("provider and router wrappers are dropped and the chain keeps the nearest names", () => {
+  const doc = dom(`<p id="p">x</p>`);
+  const el = doc.getElementById("p")!;
+  function ThemeProvider() {}
+  function BrowserRouter() {}
+  (el as any)["__reactFiber$k"] = fiberChain("p", PlanCard, PricingPage, BrowserRouter, ThemeProvider);
+  assert.deepEqual(readSourceInfo(el).component, ["PricingPage", "PlanCard"]);
+});
+
+test("Svelte: __svelte_meta gives file and line", () => {
+  const el = dom(`<div><i id="i">x</i></div>`).getElementById("i")!;
+  (el as any).__svelte_meta = { loc: { file: "src/lib/Card.svelte", line: 14, column: 2 } };
+  assert.equal(readSourceInfo(el).source, "src/lib/Card.svelte:14");
+});
+
+test("Vue: the owning instance gives file and component chain", () => {
+  const el = dom(`<i id="i">x</i>`).getElementById("i")!;
+  const root = { type: { name: "App", __file: "/p/src/App.vue" }, parent: null };
+  (el as any).__vueParentComponent = { type: { __name: "Card", __file: "/p/src/Card.vue" }, parent: root };
+  const info = readSourceInfo(el);
+  assert.equal(info.source, "src/Card.vue");
+  assert.deepEqual(info.component, ["App", "Card"]);
+});
+
+test("Astro: its own dev attributes give file and line", () => {
+  const doc = dom(`<div data-astro-source-file="/p/src/components/Hero.astro" data-astro-source-loc="12:5"><b id="b">x</b></div>`);
+  assert.equal(readSourceInfo(doc.getElementById("b")!).source, "src/components/Hero.astro:12");
+});
