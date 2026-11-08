@@ -7,6 +7,9 @@ import { LOCAL_PATTERNS } from "./src/sites.ts";
 
 const here = import.meta.dirname;
 const ALL_URLS = "<all_urls>";
+/** The one place the version lives: the manifest and the npm package (scripts/release.ts) both read it. */
+export const VERSION = "0.3.0";
+const ICONS = { 16: "icons/16.png", 48: "icons/48.png", 128: "icons/128.png" };
 
 /** Builds the unpacked extension into `outDir`. `extraHostPermissions` is only for tests that cannot click Chrome's approval box. */
 export async function buildExtension(outDir: string, extraHostPermissions: string[] = []): Promise<string> {
@@ -23,10 +26,15 @@ export async function buildExtension(outDir: string, extraHostPermissions: strin
     plugins: [emptySharedConfig],
   });
   copyFileSync(join(here, "src", "options.html"), join(outDir, "options.html"));
+  mkdirSync(join(outDir, "icons"), { recursive: true });
+  for (const size of Object.keys(ICONS)) copyFileSync(join(here, "icons", `${size}.png`), join(outDir, "icons", `${size}.png`));
   const manifest = {
     manifest_version: 3,
     name: brand.name,
-    version: "0.3.0",
+    description: "Click an element on your dev site, comment, and let your coding agent make the change.",
+    version: VERSION,
+    minimum_chrome_version: "111", // the world: "MAIN" content script needs it
+    icons: ICONS,
     key: brand.extensionKey,
     permissions: ["storage", "scripting", "activeTab", "clipboardRead"],
     // <all_urls> is only for screenshots: Chrome will not capture a tab without it. The options page asks for it when the user turns Screenshots on.
@@ -39,7 +47,7 @@ export async function buildExtension(outDir: string, extraHostPermissions: strin
       { matches: LOCAL_PATTERNS, js: ["recorder.js"], run_at: "document_start", all_frames: true, world: "MAIN" },
     ],
     background: { service_worker: "background.js" },
-    action: { default_title: brand.name },
+    action: { default_title: brand.name, default_icon: ICONS },
     options_ui: { page: "options.html", open_in_tab: true },
   };
   writeFileSync(join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");

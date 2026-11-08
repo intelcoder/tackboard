@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brand } from "@app/shared";
-import { buildExtension } from "../build.ts";
+import { buildExtension, VERSION } from "../build.ts";
 
 const manifestIn = (dir: string) => JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
 
@@ -28,6 +28,27 @@ test("the manifest is version 3 with the fixed key, only the listed permissions,
     ]);
     assert.equal(manifest.background.service_worker, "background.js");
     assert.deepEqual(manifest.options_ui, { page: "options.html", open_in_tab: true });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("the manifest has what the Chrome Web Store asks for: description, version, minimum Chrome, and icons that exist as 16, 48 and 128 pixel PNGs", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ext-build-"));
+  try {
+    await buildExtension(dir);
+    const manifest = manifestIn(dir);
+    assert.ok(manifest.description.length > 0 && manifest.description.length <= 132);
+    assert.equal(manifest.version, VERSION);
+    assert.equal(manifest.minimum_chrome_version, "111");
+    assert.deepEqual(manifest.action.default_icon, manifest.icons);
+    assert.deepEqual(Object.keys(manifest.icons), ["16", "48", "128"]);
+    for (const [size, file] of Object.entries<string>(manifest.icons)) {
+      const png = readFileSync(join(dir, file));
+      assert.equal(png.subarray(1, 4).toString(), "PNG");
+      assert.equal(png.readUInt32BE(16), Number(size)); // width in the IHDR chunk
+      assert.equal(png.readUInt32BE(20), Number(size)); // height
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

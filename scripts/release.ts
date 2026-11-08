@@ -4,7 +4,7 @@ import { build } from "esbuild";
 import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { brand } from "../packages/shared/src/brand.ts";
-import { buildExtension } from "../packages/extension/build.ts";
+import { buildExtension, VERSION } from "../packages/extension/build.ts";
 import { buildOverlay } from "../packages/overlay/build.ts";
 
 const root = join(import.meta.dirname, "..");
@@ -26,6 +26,6 @@ cpSync(join(root, "LICENSE"), join(out, "LICENSE"));
 
 writeFileSync(
   join(out, "package.json"),
-  JSON.stringify({ name: brand.cli, version: "0.3.0", description: "Comment on your dev site; your coding agent changes the code and replies. A local daemon with per-branch history you can rewind. Any framework, any agent with a shell. MIT.", type: "module", bin: { [brand.cli]: "bin.js" }, engines: { node: ">=22.13" }, exports: { "./vite": "./vite.js", "./package.json": "./package.json" }, files: ["bin.js", "daemon.js", "vite.js", `${brand.bundle}`, "extension", "skills", "README.md", "LICENSE"], license: "MIT", repository: `github:intelcoder/${brand.cli}` }, null, 2) + "\n",
+  JSON.stringify({ name: brand.cli, version: VERSION, description: "Comment on your dev site; your coding agent changes the code and replies. A local daemon with per-branch history you can rewind. Any framework, any agent with a shell. MIT.", type: "module", bin: { [brand.cli]: "bin.js" }, engines: { node: ">=22.13" }, exports: { "./vite": "./vite.js", "./package.json": "./package.json" }, files: ["bin.js", "daemon.js", "vite.js", `${brand.bundle}`, "extension", "skills", "README.md", "LICENSE"], license: "MIT", repository: `github:intelcoder/${brand.cli}` }, null, 2) + "\n",
 );
 console.log(`wrote ${out}`);
