@@ -1,6 +1,5 @@
 import type { Locator, Page, Route } from "@playwright/test";
 import { test, expect } from "../fixtures/harness.ts";
-import type { Harness } from "../fixtures/harness.ts";
 import { outline, postComment, setMode, thread } from "../fixtures/states.ts";
 
 const composer = (page: Page) => page.locator('[data-key="composer"]');

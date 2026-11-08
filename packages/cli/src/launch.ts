@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { brand, findConfig, paths } from "@app/shared";
 import type { ThreadDto } from "@app/shared";
 import { CliError } from "./client.ts";

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect } from "../fixtures/harness.ts";
-import { chip, openPanel, postComment, shot, thread } from "../fixtures/states.ts";
+import { chip, postComment, shot, thread } from "../fixtures/states.ts";
 
 test("restore", async ({ harness: h }) => {
   const page = h.page;

@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "oxc", "import", "node"],
+  "categories": { "correctness": "error", "suspicious": "off" },
+  "ignorePatterns": ["dist", "release", "specs", "test-results", "playwright-report"],
+  "overrides": [
+    {
+      "files": ["packages/extension/src/**", "packages/overlay/src/**"],
+      "jsPlugins": ["eslint-plugin-no-unsanitized"],
+      "rules": {
+        "no-unsanitized/method": "error",
+        "no-unsanitized/property": "error"
+      }
+    }
+  ]
+}

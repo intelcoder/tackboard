@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/harness.ts";
-import { badge, closePanel, openPanel, panelToggle, postComment, setMode, shot } from "../fixtures/states.ts";
+import { badge, closePanel, openPanel, panelToggle, setMode, shot } from "../fixtures/states.ts";
 
 const inside = (box: { x: number; y: number; width: number; height: number }, w: number, h: number) =>
   box.x >= 0 && box.y >= 0 && box.x + box.width <= w && box.y + box.height <= h;

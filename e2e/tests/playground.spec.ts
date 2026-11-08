@@ -4,7 +4,6 @@ import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readFile
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
 import { brand } from "../../packages/shared/src/brand.ts";
 import { outline, postComment, setMode, shot } from "../fixtures/states.ts";
 

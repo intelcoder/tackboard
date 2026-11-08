@@ -12,7 +12,10 @@
     "dev:extension": "node scripts/dev_extension.ts",
     "playground": "node scripts/playground.ts",
     "release": "node scripts/release.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
   },
   "dependencies": {
     "@hono/node-server": "2.1.4",
@@ -21,8 +24,12 @@
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",
+    "@types/chrome": "^0.3.7",
     "@types/node": "26.6.5",
+    "eslint-plugin-no-unsanitized": "^4.1.5",
     "linkedom": "0.18.13",
+    "oxfmt": "^0.77.0",
+    "oxlint": "^1.92.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "typescript": "7.0.2"

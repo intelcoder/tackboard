@@ -10,7 +10,7 @@ test("comment loop", async ({ harness: h }) => {
   const outline = page.locator(".tb-outline");
   await expect(outline).toBeVisible();
   const color = await outline.evaluate((el) => getComputedStyle(el).borderTopColor);
-  const [r, g, b] = color.match(/\d+/g)!.map(Number) as [number, number, number];
+  const [r, , b] = color.match(/\d+/g)!.map(Number) as [number, number, number];
   expect(b).toBeGreaterThan(r);
   expect(b).toBeGreaterThan(150);
   await page.click("#cta");
