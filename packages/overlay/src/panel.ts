@@ -5,6 +5,7 @@ import type { Api } from "./api.ts";
 import type { H } from "./dom.ts";
 import { createFinder } from "./element_ref.ts";
 import { notificationState, permissionAsked, permissionBanner, rememberNotNow } from "./notifications.ts";
+import { describeElement } from "./detail.ts";
 import { previewThumb } from "./preview.ts";
 import { elementScreenshot, whyNoShot } from "./screenshot.ts";
 import { createSendQueue } from "./send_queue.ts";
@@ -49,7 +50,7 @@ export type Panel = {
 
 type ToSend =
   | { kind: "comment"; ref: ElementRef; url: string; viewport: { w: number; h: number }; text: string; screenshot?: string; pageErrors?: PageError[]; also?: ElementRef[] }
-  | { kind: "reply"; threadId: string; text: string; screenshot?: string };
+  | { kind: "reply"; threadId: string; text: string; screenshot?: string; detail?: string };
 
 type CommentToSend = Extract<ToSend, { kind: "comment" }>;
 
@@ -227,7 +228,7 @@ export function createPanel(o: PanelOptions): Panel {
 
   const deliver = async (job: ToSend, signal: AbortSignal) => {
     if (job.kind === "reply") {
-      saveThread(await api.postMessage(job.threadId, { author: "user", text: job.text, ...(job.screenshot ? { screenshot: job.screenshot } : {}) }, signal));
+      saveThread(await api.postMessage(job.threadId, { author: "user", text: job.text, ...(job.screenshot ? { screenshot: job.screenshot } : {}), ...(job.detail ? { detail: job.detail } : {}) }, signal));
       tab = "open";
       return;
     }
@@ -239,21 +240,25 @@ export function createPanel(o: PanelOptions): Panel {
   };
   const sendQueue = createSendQueue<ToSend>({ send: deliver, onChange: () => draw() });
 
-  // Threads whose next reply carries a fresh picture. It is off again after each send, so an old picture is never sent twice.
+  // Threads whose next reply carries the element's latest state. It is off again after each send, so old details are never sent twice.
   const replyAttach = new Set<string>();
   const reply = async (t: ThreadDto, text: string) => {
     replyDrafts.delete(t.id);
     const job: ToSend = { kind: "reply", threadId: t.id, text };
     const el = finder.find(t);
-    if (replyAttach.has(t.id) && o.captureTab) {
-      try {
-        if (!el) throw new Error("The element is not on the page");
-        job.screenshot = await elementScreenshot({ el, win, host: o.host, captureTab: o.captureTab });
-      } catch (e) {
-        o.showToast(`Screenshot failed: ${(e as Error).message}`);
-        replyDrafts.set(t.id, text);
-        draw();
-        return;
+    if (replyAttach.has(t.id) && el) {
+      const detail = describeElement(el, win);
+      if (detail) job.detail = detail;
+      // A picture too, when the extension may take one and the element is in view; otherwise the details alone go.
+      if (o.captureTab && !whyNoShot(el, win)) {
+        try {
+          job.screenshot = await elementScreenshot({ el, win, host: o.host, captureTab: o.captureTab });
+        } catch (e) {
+          o.showToast(`Screenshot failed: ${(e as Error).message}`);
+          replyDrafts.set(t.id, text);
+          draw();
+          return;
+        }
       }
     }
     replyAttach.delete(t.id);
@@ -519,9 +524,10 @@ export function createPanel(o: PanelOptions): Panel {
       },
       onDraft: (text) => replyDrafts.set(t.id, text),
       onReply: (text) => { void reply(t, text); },
-      attach: history || !o.captureTab ? null : (() => {
-        const why = live ? whyNoShot(live, win) : "The element is not on the page";
-        return { checked: replyAttach.has(t.id), why, onChange: (on: boolean) => { if (on) replyAttach.add(t.id); else replyAttach.delete(t.id); draw(); } };
+      attach: history ? null : (() => {
+        const why = live ? null : "The element is not on the page";
+        const hint = live && o.captureTab && whyNoShot(live, win) ? "no picture: scroll it into view" : null;
+        return { checked: replyAttach.has(t.id), why, hint, onChange: (on: boolean) => { if (on) replyAttach.add(t.id); else replyAttach.delete(t.id); draw(); } };
       })(),
       queued: sendQueue.items().flatMap((item) => (item.job.kind === "reply" && item.job.threadId === t.id ? [queuedView(item, null)] : [])),
       onResolve: () => run(() => api.resolve(t.id, { by: "user" })),

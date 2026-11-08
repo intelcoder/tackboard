@@ -743,6 +743,7 @@ test("a reply can attach a fresh screenshot of the changed element; the box is o
     await expect(attach).not.toBeChecked();
 
     const next = stack.run(["next"]);
+    expect(next).toMatch(/latest state of the element \(the user attached it\):/);
     const path = /screenshot: (\S+-m3\.png)/.exec(next)?.[1];
     expect(path).toBe(`.tackboard/shots/${id}-m3.png`);
     const png = readFileSync(join(stack.project, path!));
@@ -753,7 +754,9 @@ test("a reply can attach a fresh screenshot of the changed element; the box is o
     await page.locator(`[data-key="reply-${id}"]`).fill("yes");
     await page.locator(`[data-key="send-${id}"]`).click();
     await expect(page.locator(".tb-msg")).toHaveCount(5);
-    expect(stack.run(["next"])).not.toMatch(/screenshot: \S+-m5\.png/);
+    const last = stack.run(["next"]);
+    expect(last).not.toMatch(/screenshot: \S+-m5\.png/);
+    expect(last).not.toMatch(/latest state/);
   }, ["<all_urls>"]);
 });
 

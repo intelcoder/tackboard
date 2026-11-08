@@ -1,5 +1,6 @@
 import type { ElementRef, ThreadDto } from "@app/shared";
-import { LIMITS } from "@app/shared";
+import { LIMITS, redactText } from "@app/shared";
+import { describeElement, safeHtml } from "./detail.ts";
 import { readSourceInfo } from "./source_map.ts";
 import type { Store } from "./store.ts";
 
@@ -42,14 +43,27 @@ function selectorFor(el: Element): string {
   return `${anchor} > ${segments.join(" > ")}`;
 }
 
+/** `{ detail }` when the page can say how the element renders, else nothing. */
+function detailOf(el: Element): { detail?: string } {
+  const win = el.ownerDocument.defaultView;
+  // The details are extra: a page that blocks style reads, or a test DOM without them, still gets the element picked.
+  try {
+    const detail = win && typeof win.getComputedStyle === "function" ? describeElement(el, win) : "";
+    return detail ? { detail } : {};
+  } catch {
+    return {};
+  }
+}
+
 export function buildElementRef(el: Element): ElementRef {
   const r = el.getBoundingClientRect();
   return {
     selector: selectorFor(el),
     tag: el.tagName.toLowerCase(),
-    text: cleanText(el.textContent).slice(0, LIMITS.elementText),
-    html: el.outerHTML.slice(0, LIMITS.html),
+    text: redactText(cleanText(el.textContent)).slice(0, LIMITS.elementText),
+    html: safeHtml(el).slice(0, LIMITS.html),
     rect: { x: r.x ?? r.left, y: r.y ?? r.top, w: r.width, h: r.height },
+    ...detailOf(el),
     ...readSourceInfo(el),
   };
 }

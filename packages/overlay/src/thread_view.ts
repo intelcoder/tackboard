@@ -160,7 +160,7 @@ export type ThreadItemOptions = {
   onRelease(): void;
   onRestore(messageId: string): void;
   /** The "Attach screenshot" box under the reply. Null when screenshots are not available (no extension). `why` greys it out. */
-  attach?: { checked: boolean; why: string | null; onChange(on: boolean): void } | null;
+  attach?: { checked: boolean; why: string | null; hint?: string | null; onChange(on: boolean): void } | null;
   /** A small live picture of the element, shown under the title. */
   thumb?: HTMLElement | null;
   /** A RestoreConfirm to show under the restore point of this message. */
@@ -232,11 +232,11 @@ export function threadItem(h: H, thread: ThreadDto, o: ThreadItemOptions): HTMLE
   const send = h("button", { type: "button", class: "tb-btn primary", "data-key": `send-${thread.id}`, onclick: submit }, "Send");
   root.append(h("div", { class: "tb-reply" }, box, send));
   if (o.attach) {
-    const { checked, why, onChange } = o.attach;
-    root.append(h("label", { class: "tb-attach", title: why ?? "" }, h("input", {
+    const { checked, why, hint, onChange } = o.attach;
+    root.append(h("label", { class: "tb-attach", title: why ?? "Styles, layout and structure as they are now, and a picture when the extension can take one" }, h("input", {
       type: "checkbox", "data-key": `attach-${thread.id}`, checked: checked && !why, disabled: !!why,
       onchange: (ev: Event) => onChange((ev.target as HTMLInputElement).checked),
-    }), " Attach screenshot (the element as it looks now)", why ? h("span", { class: "tb-hint" }, ` ${why}`) : null));
+    }), " Attach latest state", why || hint ? h("span", { class: "tb-hint" }, ` ${why ?? hint}`) : null));
   }
 
   const actions = h("div", { class: "tb-row tb-actions" });

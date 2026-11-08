@@ -25,6 +25,12 @@ Other commands:
 - `tackboard history [id] [--branch <name>] [--url <page>] [--json]` lists what happened, including what you were given when you took a thread. To write a change log or a summary of past fixes, see the `tackboard-history` skill (`skills/tackboard-history/`; `init` does not install it, copy it into `.claude/skills/` to use it).
 - `tackboard comment --selector <css> <text> [--mention me]` starts a thread of your own on an element. Your comment always shows as "waiting on you". `--mention me` only puts `@<user name>` in front of the text.
 
+## What you are given about the element
+
+Under the element you get `rendered:` (how it renders: values that are not defaults), `layout:` (the parent and the path), `vs N similar siblings:` (what this element has that its like siblings do not, which is often the whole bug) and a `tree:` of its children with classes, attributes and text. Look at the sibling line first for "this one is different" comments. Personal data and secrets are already replaced with `[email]`, `[phone]`, `[card]` or `[secret]`; do not try to recover them.
+
+When you pick a thread up again after answering it, the element block is short (`same element as in your first message`); `tackboard history <id>` shows the full first one. Only a reply the user marked **Attach latest state** carries a new `latest state of the element` block under that message: use it, because the page has changed since the first block.
+
 ## Pictures on replies
 
 The first comment may carry `screenshot:` under the element. A later reply from the user can carry its own, printed as `screenshot: .tackboard/shots/<id>-m<n>.png` under that message (earlier messages show `[screenshot: <path>]`). The newest picture is how the element looks now; open it before you judge whether your change worked.

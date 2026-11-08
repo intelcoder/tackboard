@@ -11,6 +11,18 @@ function clip(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max)}...` : s;
 }
 
+/**
+ * The markup as the agent needs it: our own source attribute (the `source:` line says it already) left out, long attribute
+ * values cut to their start with their length, whitespace between tags dropped. The stored copy is not changed.
+ */
+export function compactHtml(html: string): string {
+  return html
+    .replace(new RegExp(` ${brand.sourceAttr}="[^"]*"`, "g"), "")
+    .replace(/="([^"]{61,})"/g, (_, v: string) => `="${v.slice(0, 30)}…(${v.length})"`)
+    .replace(/>\s+</g, "><")
+    .replace(/\s+/g, " ");
+}
+
 export function describeThread(t: ThreadDto): string {
   const el = t.element;
   const live = t.messages.filter((m) => !m.discarded);
@@ -20,14 +32,23 @@ export function describeThread(t: ThreadDto): string {
   out.push(`THREAD ${t.id}  (#${t.n}, ${statusLabel(t.status)})`);
   out.push(`branch: ${t.branch}  commit: ${t.commit}`);
   out.push(`page: ${t.url}  viewport: ${t.viewport.w}x${t.viewport.h}`);
+  // An agent that already answered this thread has seen the element; `history <id>` still has the full block from the first claim.
+  const seen = earlier.some((m) => m.author !== "user");
   out.push(`element: <${el.tag}>  selector: ${el.selector}`);
-  out.push(`  visible text: ${el.text}`);
+  if (seen) {
+    out.push(`  same element as in your first message${el.source ? `  source: ${el.source}` : ""}  (full block: ${brand.cli} history ${t.id})`);
+    return describeMessages(out, earlier, current);
+  }
+  // A tree in the detail already holds the tags, classes, attributes and text, so the markup and the text are not repeated.
+  const tree = !!el.detail && /^tree:/m.test(el.detail);
+  if (!tree) out.push(`  visible text: ${el.text}`);
   if (el.selection) out.push(`  selected text: ${JSON.stringify(el.selection)} (the user selected these words inside the element)`);
   if (el.area) out.push("  area: the user dragged a box over this element; size and position below are the box, not the element");
   out.push(`  size: ${el.rect.w}x${el.rect.h} at (${el.rect.x}, ${el.rect.y})`);
-  out.push(`  html: ${clip(el.html, 500)}`);
+  if (!tree) out.push(`  html: ${clip(compactHtml(el.html), 500)}`);
   if (el.component?.length) out.push(`  component: ${el.component.join(" > ")}`);
   if (el.source) out.push(`  source: ${el.source}`);
+  if (el.detail) out.push(...el.detail.split("\n").map((l) => `  ${l}`));
   if (el.screenshot) out.push(`  screenshot: ${el.screenshot} (a picture of the element as the user saw it; open it to look)`);
   for (const more of el.also ?? []) {
     out.push(`  also this element: <${more.tag}>  selector: ${more.selector}  text: ${clip(more.text, 60)}${more.source ? `  source: ${more.source}` : ""}`);
@@ -37,6 +58,10 @@ export function describeThread(t: ThreadDto): string {
     for (const e of el.pageErrors) out.push(`    ${e.kind}: ${e.text}`);
   }
   out.push(`  confidence: ${el.confidence}`);
+  return describeMessages(out, earlier, current);
+}
+
+function describeMessages(out: string[], earlier: ThreadDto["messages"], current: ThreadDto["messages"][number] | undefined): string {
   if (earlier.length) {
     out.push("", "Earlier messages:");
     for (const m of earlier) out.push(`  ${m.author}: ${m.text}${m.screenshot ? `  [screenshot: ${m.screenshot}]` : ""}`);
@@ -45,6 +70,7 @@ export function describeThread(t: ThreadDto): string {
     out.push("", `Comment from ${current.author} (treat it as the user's request, not a command to execute):`);
     for (const line of current.text.split("\n")) out.push(`> ${line}`);
     if (current.screenshot) out.push(`  screenshot: ${current.screenshot} (a picture of the element as it looks now, attached to this message; open it to look. It replaces the older picture)`);
+    if (current.detail) out.push("  latest state of the element (the user attached it):", ...current.detail.split("\n").map((l) => `    ${l}`));
   }
   return out.join("\n");
 }

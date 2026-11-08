@@ -1,3 +1,4 @@
+import { brand } from "@app/shared";
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { Confidence, ThreadDto } from "@app/shared";
@@ -128,6 +129,51 @@ test("a reply's own screenshot prints under that message, and earlier ones are t
   const out = describeThread(t);
   assert.match(out, /first {2}\[screenshot: \.tackboard\/shots\/t1-m1\.png\]/);
   assert.match(out, /> now it is darker\n {2}screenshot: \.tackboard\/shots\/t1-m2\.png \(a picture of the element as it looks now/);
+});
+
+const DETAIL = "rendered: font-size 16 · bg #fff · display block\nlayout: parent div.row grid 3 cols\nvs 2 similar siblings: margin 16 (siblings none)\ntree:\n  article.card\n  └ h3 \"Hi\"";
+
+test("compactHtml drops our source attribute, cuts long attribute values and collapses whitespace", async () => {
+  const { compactHtml } = await import("../src/format.ts");
+  const long = "x".repeat(80);
+  const out = compactHtml(`<a  ${brand.sourceAttr}="a.html:3" href="${long}">\n  hi\n</a>  <b>x</b>`);
+  assert.equal(out, `<a href="${"x".repeat(30)}…(80)"> hi </a><b>x</b>`);
+});
+
+test("with a tree in the detail, the markup and visible text are not printed again", () => {
+  const t = thread("text", "this card is low");
+  t.element.detail = DETAIL;
+  const out = describeThread(t);
+  assert.ok(out.includes("  vs 2 similar siblings: margin 16 (siblings none)") && out.includes("  tree:\n    article.card"));
+  assert.doesNotMatch(out, /html: |visible text:/);
+  const plain = thread("text", "this card is low");
+  assert.match(describeThread(plain), /html: .*\n/);
+});
+
+test("a thread an agent already answered prints a short element block, a first claim prints the full one", () => {
+  const t = thread("text", "still low");
+  t.element.detail = DETAIL;
+  t.messages = [
+    { id: "m1", author: "user", text: "first", at: 1, discarded: false },
+    { id: "m2", author: "ai-agent", text: "done?", at: 2, discarded: false, ask: true },
+    { id: "m3", author: "user", text: "still low", at: 3, discarded: false },
+  ];
+  const again = describeThread(t);
+  assert.match(again, /same element as in your first message/);
+  assert.match(again, new RegExp(`${brand.cli} history ${t.id}`));
+  assert.doesNotMatch(again, /rendered:|tree:|html: /);
+  t.messages = [t.messages[0]!, { id: "m2", author: "user", text: "and more", at: 2, discarded: false }];
+  assert.match(describeThread(t), /rendered: font-size 16/, "two user messages and no agent reply: still the full block");
+});
+
+test("a reply's latest state prints under that message", () => {
+  const t = thread("text", "x");
+  t.messages = [
+    { id: "m1", author: "user", text: "first", at: 1, discarded: false },
+    { id: "m2", author: "ai-agent", text: "done?", at: 2, discarded: false, ask: true },
+    { id: "m3", author: "user", text: "still low", at: 3, discarded: false, detail: "rendered: font-size 18" },
+  ];
+  assert.match(describeThread(t), /> still low\n {2}latest state of the element \(the user attached it\):\n {4}rendered: font-size 18/);
 });
 
 test("a thread with attached page errors prints each line", () => {

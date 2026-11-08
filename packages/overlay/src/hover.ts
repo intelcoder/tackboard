@@ -3,7 +3,7 @@ import { parentsOf, buildElementRef, labelFor, elementForBox, elementOfRange, si
 import type { H } from "./dom.ts";
 import type { Store } from "./store.ts";
 import type { ElementRef } from "@app/shared";
-import { LIMITS } from "@app/shared";
+import { LIMITS, redactText } from "@app/shared";
 
 /** How far the mouse must move with the button down before a press becomes a dragged box. */
 const DRAG_PX = 6;
@@ -201,7 +201,7 @@ export function createHover(o: HoverOptions): { destroy(): void } {
       const el = elementForBox(doc, b, host);
       if (el) {
         // the like-looking children the box covers join as "also" elements, so the agent knows which of many cards it meant
-        const also = siblingsInBox(el, b).slice(0, LIMITS.also).map((c) => buildElementRef(c));
+        const also = siblingsInBox(el, b).slice(0, LIMITS.also).map((c) => ({ ...buildElementRef(c), detail: undefined }));
         pick(el, { rect: b, area: true, ...(also.length ? { also } : {}) });
       }
       return;
@@ -216,7 +216,7 @@ export function createHover(o: HoverOptions): { destroy(): void } {
     skipClick = true;
     const r = range.getBoundingClientRect();
     sel.removeAllRanges();
-    pick(el, { rect: { x: r.x ?? r.left, y: r.y ?? r.top, w: r.width, h: r.height }, selection: text.slice(0, LIMITS.selection) });
+    pick(el, { rect: { x: r.x ?? r.left, y: r.y ?? r.top, w: r.width, h: r.height }, selection: redactText(text).slice(0, LIMITS.selection) });
   };
 
   const onKey = (e: Event) => {

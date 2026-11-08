@@ -19,6 +19,14 @@ Priority: **P1** can lose or confuse a user's data or work. **P2** is a visible 
 - **P3: a refused agent resolve and an already-resolved thread** now answer 409 `waiting_on_user`, not 400. The code name no longer describes the reason; the message does.
 - **P3: agent-started comments** (`tackboard comment`) are stored with an empty page address and an empty tag. The overlay treats an empty address as "any page" and an empty tag as "any element". Recording the real page would be cleaner.
 
+## Element details
+
+- **P2: the thread list sends each thread's `detail`** (up to 3 000 characters) with every poll, on top of the `html` the list already sends. The overlay does not need it. Leave `element.detail` and `messages[].detail` out of the list response, as the `html` idea in the list item above.
+- **P3: no on-demand deep detail yet.** The plan had `tackboard inspect <id> [--styles|--tree|--a11y]` for the full computed styles and the raw markup, stored once at comment time. Only the compact form exists. Add it if agents ask for more than the compact lines give.
+- **P3: redaction is patterns.** Names, street addresses and free text are not caught; the daemon redacts the text fields again but cannot remove typed values from markup (the overlay does that). `redactText` reads at most 20 000 characters per call (long unbroken strings made some patterns quadratic).
+- **P3: accessibility info** (role, accessible name, states) is not in the detail yet; only a few attributes show in the tree.
+- **P3: pre-existing e2e flakiness, seen while building this:** `playground.spec.ts` tests start playgrounds on the one pairing port, so they collide when run in parallel (all 8 pass with `--workers=1`); `design_fixes` "restore marker is a single line" fails at times under load; `branch_scoping` and `nested_hover` fail with or without these changes.
+
 ## Overlay
 
 - **P2: a retried send can be stored twice.** After "The daemon did not answer" the message may already have arrived, and Retry then posts it again. The README says so. A fix needs an id the daemon can recognise (an idempotency key); it was left out to keep the change small.
