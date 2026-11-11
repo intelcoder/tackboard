@@ -102,7 +102,7 @@ if (wantedSite) {
   siteField.value = wantedSite;
   configField.focus();
   if (isLocalKey(siteKey(wantedSite))) {
-    problem.textContent = `No ${brand.name} daemon was found on port ${brand.pairPort}. Run "${brand.cli} start" in your project and click the button again, or paste the config below.`;
+    problem.textContent = `No ${brand.name} daemon for this page was found on ports ${brand.pairPort} to ${brand.pairPort + brand.pairSpan - 1} (the daemon's allowed origins must include this page). Run "${brand.cli} start" in your project and click the button again, or paste the config below.`;
   }
   // Fill the config from the clipboard when it holds one, so only the approval click is left.
   void navigator.clipboard.readText().then((text) => {

@@ -74,16 +74,20 @@ function tryPort(port: number): Promise<number> {
   });
 }
 
-/** The fixed port the extension looks on when it is free (or already this project's own), else the project's old port, else any free one. */
-async function choosePort(same: { port: number } | undefined): Promise<number> {
-  try {
-    return await tryPort(brand.pairPort);
-  } catch {
-    if (same) return same.port;
-    // stderr and loud: the extension pairs with whoever holds this port, so comments would go to that other project.
-    console.error(`\n!! port ${brand.pairPort} is held by another daemon (a different project, or an old one).\n!! The extension will pair with THAT one, and your comments would be saved there, not in this project.\n!! Find it: lsof -nP -iTCP:${brand.pairPort} -sTCP:LISTEN   then stop it and run "${brand.cli} start" again.\n!! Or paste this project's .${brand.cli}/config.json into the extension's "Add a site" page.\n`);
-    return tryPort(0);
+/** The project's own port when it is already in the extension's range (so running init again never moves a running daemon), else the first free port of the range (one per project running at once), else the old port, else any free one. */
+export async function choosePort(same: { port: number } | undefined, first: number = brand.pairPort, span: number = brand.pairSpan): Promise<number> {
+  if (same && same.port >= first && same.port < first + span) return same.port;
+  for (let port = first; port < first + span; port++) {
+    try {
+      return await tryPort(port);
+    } catch {
+      // taken by another project's daemon: try the next one
+    }
   }
+  if (same) return same.port;
+  // stderr and loud: the extension looks only in the range, so it will not find this daemon.
+  console.error(`\n!! ports ${first} to ${first + span - 1} are all taken by other daemons, so the extension cannot find this one.\n!! Stop one: lsof -nP -iTCP:${first}-${first + span - 1} -sTCP:LISTEN\n!! Or paste this project's .${brand.cli}/config.json into the extension's "Add a site" page.\n`);
+  return tryPort(0);
 }
 
 function clean_origin(given: string): string {

@@ -841,3 +841,68 @@ test("a screenshot of a comment about two elements covers the area of both", asy
     expect(png.readUInt32BE(20)).toBeGreaterThan(a.height + 1);
   }, ["<all_urls>"]);
 });
+
+/** A second project with its own daemon on a port of the extension's range, allowing one page origin. */
+async function startProject(folder: string, port: number, origin: string): Promise<{ stop(): Promise<void> }> {
+  const project = join(folder, `project-${port}`);
+  execFileSync("git", ["init", "-q", "-b", "main", project]);
+  execFileSync("node", [cli, "init", "--port", String(port), "--origin", origin, "--user", "sam"], { cwd: project, encoding: "utf8" });
+  const daemon = spawn("node", [cli, "start"], { cwd: project, stdio: ["ignore", "pipe", "ignore"] });
+  await new Promise<void>((done, fail) => {
+    let seen = "";
+    daemon.stdout!.on("data", (d) => {
+      seen += d;
+      if (seen.includes("listening")) done();
+    });
+    daemon.once("exit", () => fail(new Error(`daemon exited early: ${seen}`)));
+  });
+  return {
+    async stop() {
+      const gone = new Promise((done) => daemon.once("exit", done));
+      daemon.kill("SIGTERM");
+      await gone;
+    },
+  };
+}
+
+/** Two free ports of the extension's range, or none when the developer's own daemons hold them. */
+async function twoRangePorts(): Promise<number[]> {
+  const free: number[] = [];
+  for (let port = brand.pairPort; port < brand.pairPort + brand.pairSpan && free.length < 2; port++) {
+    await new Promise<void>((done) => {
+      const probe = createPortProbe();
+      probe.once("error", () => done());
+      probe.listen(port, "127.0.0.1", () => probe.close(() => (free.push(port), done())));
+    });
+  }
+  return free;
+}
+
+test("with two projects running, a local page pairs with the daemon whose origins include it", async () => {
+  const ports = await twoRangePorts();
+  test.skip(ports.length < 2, "the extension's port range is in use on this machine");
+  await withStack(async (stack) => {
+    const siteA = await stack.site();
+    const siteB = await stack.site();
+    const folder = mkdtempSync(join(tmpdir(), "tb-two-"));
+    const first = await startProject(folder, ports[0]!, siteA);
+    const second = await startProject(folder, ports[1]!, siteB);
+    try {
+      const pageB = await stack.context.newPage();
+      await pageB.goto(siteB);
+      const pageA = await stack.context.newPage();
+      await pageA.goto(siteA);
+      await expect(host(pageA)).toBeAttached();
+      await expect(host(pageB)).toBeAttached();
+      const options = await optionsPage(stack);
+      const saved = async () =>
+        options.evaluate(async () => (await (globalThis as any).chrome.storage.local.get("sites")).sites as Record<string, { daemon: string }>);
+      await expect.poll(async () => (await saved())[siteA]?.daemon).toBe(`http://127.0.0.1:${ports[0]}`);
+      expect((await saved())[siteB]?.daemon).toBe(`http://127.0.0.1:${ports[1]}`);
+    } finally {
+      await first.stop();
+      await second.stop();
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+});

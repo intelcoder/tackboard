@@ -196,7 +196,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
   app.post(brand.pairPath, (c) => {
     paired_at = clock.now();
     log("pair", `extension paired on :${address()?.port ?? opts.port}`);
-    return c.json({ pair: 1, port: address()?.port ?? opts.port, token: opts.token, dir: opts.projectDir });
+    return c.json({ pair: 1, port: address()?.port ?? opts.port, token: opts.token, dir: opts.projectDir, origins: opts.allowedOrigins });
   });
 
   app.get(`/${brand.bundle}`, (c) => {

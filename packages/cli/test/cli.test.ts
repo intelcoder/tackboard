@@ -398,3 +398,13 @@ test("logs prints the daemon's log without needing the daemon, and says so when 
     assert.match(r.stdout, /claim {4}claude/);
   });
 });
+
+test("a daemon that rejects this folder's token is another project's: the message says so and points to doctor", async () => {
+  await withStub(async (stub) => {
+    const dir = project(stub);
+    writeConfig(dir, { port: Number(new URL(stub.url).port), token: "not-the-daemons-token", origins: [], userName: "alice" });
+    const r = await cli(dir, ["status"]);
+    assert.match(r.stdout, /did not accept this folder's token, so it belongs to another project/);
+    assert.match(r.stdout, /tackboard doctor/);
+  });
+});
