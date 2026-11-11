@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { badgeFor, badgeNeedsUpdate, whatClickDoes } from "../src/toolbar.ts";
+import { badgeFor, badgeNeedsUpdate, linkFrom, whatClickDoes } from "../src/toolbar.ts";
 import type { Sites } from "../src/sites.ts";
 
 const on = { daemon: "http://127.0.0.1:1", token: "t", on: true };
@@ -61,4 +61,34 @@ test("badgeNeedsUpdate is true for a url or a status and false for a title, an i
   assert.equal(badgeNeedsUpdate({ status: "loading" }), true);
   assert.equal(badgeNeedsUpdate({ status: "complete" }), true);
   for (const change of [{ title: "New" }, { favIconUrl: "x.png" }, { audible: true }, {}]) assert.equal(badgeNeedsUpdate(change), false);
+});
+
+test("the badge turns amber with no agent, red with no daemon, and stays green while one listens or is idle", () => {
+  const at = "https://xxx.com/";
+  const state = (kind: "listening" | "idle" | "away" | "none") => ({ kind, label: kind, hint: `hint ${kind}` });
+  assert.equal(badgeFor(sites, at, state("listening")).text, "ON");
+  assert.equal(badgeFor(sites, at, state("idle")).text, "ON");
+  assert.match(badgeFor(sites, at, state("idle")).title, /hint idle/);
+  for (const kind of ["away", "none"] as const) {
+    const b = badgeFor(sites, at, state(kind));
+    assert.equal(b.text, "ON?");
+    assert.match(b.title, new RegExp(`no agent is listening. hint ${kind}`));
+  }
+  const bad = badgeFor(sites, at, "unreachable");
+  assert.equal(bad.text, "!");
+  assert.match(bad.title, /doctor/);
+  assert.notEqual(bad.color, badgeFor(sites, at, state("none")).color);
+  assert.equal(badgeFor(sites, "http://localhost:4321/", "unreachable").text, "OFF", "a site that is off shows OFF whatever the daemon says");
+});
+
+test("linkFrom: a good list gives the agent state; a refused token, a daemon error or no daemon give unreachable; other bodies say nothing", () => {
+  const list = (seenAt: number | null) => ({ status: 200, text: JSON.stringify({ agent: { name: "claude", online: false, seenAt }, threads: [] }) });
+  assert.equal((linkFrom(list(null), 1000) as { kind: string }).kind, "none");
+  assert.equal((linkFrom(list(900), 1000) as { kind: string }).kind, "listening");
+  for (const bad of [{ status: 401, text: "{}" }, { status: 403, text: "{}" }, { status: 500, text: "" }, { error: "Cannot reach the daemon" }]) {
+    assert.equal(linkFrom(bad, 1000), "unreachable", JSON.stringify(bad));
+  }
+  assert.equal(linkFrom({ status: 200, text: "not json" }, 1000), undefined);
+  assert.equal(linkFrom(true, 1000), undefined, "the is_on answer is a boolean");
+  assert.equal(linkFrom(null, 1000), undefined);
 });

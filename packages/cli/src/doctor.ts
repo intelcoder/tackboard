@@ -1,17 +1,10 @@
 import { existsSync, realpathSync } from "node:fs";
 import { join } from "node:path";
-import { brand, findConfig, paths } from "@app/shared";
+import { agentState, ago, brand, findConfig, paths } from "@app/shared";
 import type { HealthResponse, ListThreadsResponse } from "@app/shared";
 import { currentBranch } from "./client.ts";
 
 type Check = { level: "ok" | "warn" | "FAIL"; name: string; text: string; fix?: string };
-
-function ago(ms: number): string {
-  const s = Math.max(0, Math.round(ms / 1000));
-  if (s < 90) return `${s} s ago`;
-  if (s < 5400) return `${Math.round(s / 60)} min ago`;
-  return `${Math.round(s / 3600)} h ago`;
-}
 
 const same_folder = (a: string, b: string) => {
   try {
@@ -102,7 +95,7 @@ export async function doctor(cwd: string, now = Date.now()): Promise<{ text: str
     checks.push(
       agent.name === null || agent.seenAt === null
         ? { level: "warn", name: "agent", text: "no agent has asked for comments yet", fix: ask }
-        : agent.online
+        : agentState(agent, now, brand.cli).kind === "listening" || agentState(agent, now, brand.cli).kind === "idle"
           ? { level: "ok", name: "agent", text: `${agent.name} asked ${ago(now - agent.seenAt)}` }
           : { level: "warn", name: "agent", text: `${agent.name} last asked ${ago(now - agent.seenAt)}`, fix: ask },
     );

@@ -26,6 +26,7 @@ const chrome = {
     create: async () => {},
     onUpdated: adder("tabUpdated"),
     onActivated: adder("tabActivated"),
+    onRemoved: adder("tabRemoved"),
     get: async () => {
       if (tabGone) throw new Error("No tab with id");
       return { id: 1, url: "https://xxx.com/" };

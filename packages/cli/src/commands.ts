@@ -5,7 +5,7 @@ import { createServer } from "node:net";
 import { userInfo } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { brand, paths, statusLabel, writeConfig, findConfig } from "@app/shared";
+import { agentState, brand, paths, statusLabel, writeConfig, findConfig } from "@app/shared";
 import type {
   ClaimNextResponse,
   HistoryResponse,
@@ -247,7 +247,7 @@ async function claim_all_pending(c: Client, cwd: string, explain = false): Promi
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<number> {
+async function runOnce(cmd: string, c: Client, cwd: string, a: Args, listed?: ListThreadsResponse): Promise<number> {
   const [, ...pos] = a.positionals;
   switch (cmd) {
     case "next": {
@@ -295,9 +295,11 @@ async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<nu
       return 0;
     }
     case "status": {
-      const r = await c.get<ListThreadsResponse>(paths.threads);
+      const r = listed ?? (await c.get<ListThreadsResponse>(paths.threads));
       console.log(`branch: ${r.branch}`);
-      console.log(`agent: ${r.agent.name ?? "none"} (${r.agent.online ? "online" : "offline"})`);
+      const state = agentState(r.agent, Date.now(), brand.cli);
+      console.log(`agent: ${r.agent.name ?? "none"} (${state.label})`);
+      if (state.kind !== "listening") console.log(state.hint);
       if (r.restoreBlocked) console.log(`restore blocked: ${r.restoreBlocked}`);
       if (!r.threads.length) console.log("no threads");
       for (const t of r.threads) console.log(`#${t.n} ${t.id}  ${statusLabel(t.status)}  ${t.element.selector}`);
@@ -370,9 +372,11 @@ export async function run(argv: string[], cwd: string): Promise<number> {
     if (!["next", "wait", "reply", "comment", "ack", "status", "history"].includes(cmd)) throw new CliError(USAGE);
     const c = connect(cwd, a.values.as);
     if (process.env[`${brand.envPrefix}DEBUG`] === "1") console.error(`${brand.cli}: daemon :${c.config.port}, folder ${c.dir}, branch ${currentBranch(cwd) ?? "none"}, agent ${c.agent}`);
+    // Asking for notices marks this agent as seen, so `status` reads the list first or it would always report "listening".
+    const listed = cmd === "status" ? await c.get<ListThreadsResponse>(paths.threads) : undefined;
     const n = await c.get<NoticesResponse>(paths.notices, { agent: c.agent });
     for (const notice of n.notices) console.log(`${formatNotice(notice)}\n`);
-    return await runOnce(cmd, c, cwd, a);
+    return await runOnce(cmd, c, cwd, a, listed);
   } catch (e) {
     console.log(e instanceof CliError ? e.message : `error: ${(e as Error).message}`);
     return 1;

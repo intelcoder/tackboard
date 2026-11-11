@@ -91,6 +91,12 @@ test("everything fine: no FAIL, the agent's last ask shows its age, a missing sk
   });
 });
 
+test("an agent that asked 2 minutes ago is idle for doctor too, as in the panel and in status", async () => {
+  await withDaemon({ health: healthy, agent: { name: "claude", online: false, seenAt: NOW - 120_000 } }, async (dir) => {
+    assert.match((await doctor(dir, NOW)).text, /ok +agent +claude asked 2 min ago/);
+  });
+});
+
 test("an agent that stopped asking, or never asked, gets a warn with what to tell it", async () => {
   await withDaemon({ health: healthy, agent: { name: "claude", online: false, seenAt: NOW - 14 * 60_000 } }, async (dir) => {
     assert.match((await doctor(dir, NOW)).text, /warn +agent +claude last asked 14 min ago\n +fix: tell the agent: run `tackboard wait`/);

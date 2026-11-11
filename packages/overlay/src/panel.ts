@@ -1,5 +1,5 @@
 // The comments panel: a floating window with the thread list, the comment box and History.
-import { brand, LIMITS } from "@app/shared";
+import { agentState, brand, LIMITS } from "@app/shared";
 import type { ElementRef, PageError, ThreadDto } from "@app/shared";
 import type { Api } from "./api.ts";
 import type { H } from "./dom.ts";
@@ -400,14 +400,14 @@ export function createPanel(o: PanelOptions): Panel {
 
   const header = (): HTMLElement => {
     const s = store.get();
-    const agent = s.agent;
+    const state = agentState(s.agent, Date.now(), brand.cli);
     return h("div", { class: "tb-head" },
       h("div", { class: "tb-title" },
         h("b", null, h("span", { class: "tb-grip", "aria-hidden": "true" }, "⋮⋮"), " Comments"),
         s.branch ? h("span", { class: "tb-branch", title: s.project ? `${s.project} on ${s.branch}` : s.branch }, s.project ? `${s.project} · ${s.branch}` : s.branch) : null),
       h("span", { class: "tb-head-right" },
-        h("span", { class: `tb-agent${agent.online ? "" : " off"}`, title: agent.online ? "Agent is connected" : "Agent is not connected" },
-          h("span", { class: "dot" }), agent.name ?? "no agent"),
+        h("span", { class: `tb-agent ${state.kind}`, "data-state": state.kind, title: state.hint },
+          h("span", { class: "dot" }), state.label),
         h("button", { type: "button", class: "tb-x", "aria-label": drawer ? "Float panel" : "Dock as drawer", title: drawer ? "Float panel" : "Dock as drawer", "aria-pressed": String(drawer), "data-key": "drawer", onclick: toggleDrawer }, drawer ? "❐" : "▌"),
         h("button", { type: "button", class: "tb-x", "aria-label": "Close comments", title: "Close", "data-key": "close", onclick: close }, "✕")));
   };
@@ -625,10 +625,17 @@ export function createPanel(o: PanelOptions): Panel {
     if (focusId && !s.threads.some((t) => t.id === focusId)) focusId = null;
     const detachedIds = s.threads.filter((t) => !finder.find(t)).map((t) => t.id);
     const look = JSON.stringify([
-      s.threads, s.history, s.branch, s.project, s.otherPages, s.agent, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
+      s.threads, s.history, s.branch, s.project, s.otherPages, s.agent, agentState(s.agent, Date.now(), brand.cli).kind, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
       tab, source, [...replyAttach], showHistory, historyOpenId, composer?.ref.selector ?? null, composer?.also.map((r) => r.selector) ?? null, adding, focusId, sendQueue.items(), drafts, confirming, notice,
       notificationState(), dismissed, blockedHidden, detachedIds,
     ]);
+    // The pill's age ticks without a redraw: `look` holds only its kind, so a new label is written in place.
+    const pill = panel.querySelector(".tb-agent");
+    if (pill?.lastChild) {
+      const now = agentState(s.agent, Date.now(), brand.cli);
+      if (pill.lastChild.textContent !== now.label) pill.lastChild.textContent = now.label;
+      pill.setAttribute("title", now.hint);
+    }
     if (look === lastLook) return;
     lastLook = look;
 

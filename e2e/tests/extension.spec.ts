@@ -401,7 +401,7 @@ test("the toolbar click turns a site off and on with no reload, and the badge fo
     await page.goto(site);
     await expect(host(page)).toBeAttached();
     await page.evaluate(() => ((window as any).marker = 1));
-    await expect.poll(async () => (await badgeOn(stack, page)).text).toBe("ON");
+    await expect.poll(async () => (await badgeOn(stack, page)).text).toMatch(/^ON\??$/); // "ON?" until an agent asks, "ON" after
 
     const daemonCalls: string[] = [];
     stack.context.on("request", (request) => {
@@ -420,12 +420,29 @@ test("the toolbar click turns a site off and on with no reload, and the badge fo
 
     await clickToolbar(stack, page);
     await expect(host(page)).toBeAttached();
-    await expect.poll(async () => (await badgeOn(stack, page)).text).toBe("ON");
+    await expect.poll(async () => (await badgeOn(stack, page)).text).toMatch(/^ON\??$/); // "ON?" until an agent asks
     expect((await badgeOn(stack, page)).textColor).toEqual([255, 255, 255, 255]);
     expect(await page.evaluate(() => (window as any).marker)).toBe(1);
 
     await page.goto(notAdded);
     await expect.poll(async () => (await badgeOn(stack, page)).text).toBe("");
+  });
+});
+
+test("the badge turns amber when no agent is listening and green when one asks", async () => {
+  await withStack(async (stack) => {
+    const site = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, site.replace("http://", ""));
+    const page = await stack.context.newPage();
+    await page.goto(site);
+    await expect(host(page)).toBeAttached();
+    await expect.poll(async () => (await badgeOn(stack, page)).text, { timeout: 10_000 }).toBe("ON?");
+    expect((await badgeOn(stack, page)).title).toMatch(/no agent is listening.*`tackboard wait`/);
+
+    stack.run(["next"]); // an agent asks: the next poll of the panel turns the button green
+    await expect.poll(async () => (await badgeOn(stack, page)).text, { timeout: 10_000 }).toBe("ON");
+    expect((await badgeOn(stack, page)).title).toContain("most likely waiting");
   });
 });
 

@@ -16,17 +16,19 @@ export const panelCss = `
 .tb-head b{font:600 13px var(--display)}
 .tb-title{display:flex;flex-direction:column;gap:2px;min-width:0}
 .tb-title .tb-branch{align-self:flex-start;background:none;padding:0}
-.tb-head-right{display:flex;gap:6px;align-items:center;min-width:0}
+.tb-head-right{display:flex;gap:4px;align-items:center;min-width:0}
 .tb-grip{color:var(--tb-muted);letter-spacing:-3px;font-size:13px;margin-right:4px}
 .tb-x{border:0;background:none;color:var(--tb-muted);width:24px;height:24px;border-radius:5px;font-size:12px;padding:0;flex:none}
 .tb-x:hover{background:var(--tb-soft);color:var(--tb-fg)}
 .tb-branch{font:500 11px var(--mono);color:var(--tb-muted);background:var(--tb-soft);padding:2px 6px;border-radius:3px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* AgentBadge */
-.tb-agent{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--mono);color:var(--agent);background:var(--agent-bg);padding:2px 8px 2px 6px;border-radius:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-agent{flex:none;display:inline-flex;align-items:center;gap:6px;font:500 12px var(--mono);color:var(--agent);background:var(--agent-bg);padding:2px 8px 2px 6px;border-radius:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tb-agent .dot{width:7px;height:7px;border-radius:50%;background:var(--agent);flex:none}
-.tb-agent.off{color:var(--tb-muted);background:var(--tb-soft)}
-.tb-agent.off .dot{background:transparent;border:1.5px solid var(--tb-muted)}
+.tb-agent.idle{color:var(--st-waiting);background:var(--st-waiting-bg)}
+.tb-agent.idle .dot{background:var(--st-waiting)}
+.tb-agent.away,.tb-agent.none{color:var(--tb-muted);background:var(--tb-soft)}
+.tb-agent.away .dot,.tb-agent.none .dot{background:transparent;border:1.5px solid var(--tb-muted)}
 
 /* the draft count on the toolbar's comments button sits below the other badge */
 .draft-count{position:absolute;bottom:2px;right:1px;min-width:16px;height:16px;border-radius:8px;background:#7c3aed;color:#fff;font:600 9.5px var(--mono);display:grid;place-items:center;padding:0 4px;border:2px solid #23262c;box-sizing:content-box}
