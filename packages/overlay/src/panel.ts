@@ -625,7 +625,7 @@ export function createPanel(o: PanelOptions): Panel {
     if (focusId && !s.threads.some((t) => t.id === focusId)) focusId = null;
     const detachedIds = s.threads.filter((t) => !finder.find(t)).map((t) => t.id);
     const look = JSON.stringify([
-      s.threads, s.history, s.branch, s.project, s.otherPages, s.agent, agentState(s.agent, Date.now(), brand.cli).kind, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
+      s.threads, s.history, s.branch, s.project, s.otherPages, s.agent.name, agentState(s.agent, Date.now(), brand.cli).kind, s.restoreBlocked, s.loaded, s.error, s.activeThreadId,
       tab, source, [...replyAttach], showHistory, historyOpenId, composer?.ref.selector ?? null, composer?.also.map((r) => r.selector) ?? null, adding, focusId, sendQueue.items(), drafts, confirming, notice,
       notificationState(), dismissed, blockedHidden, detachedIds,
     ]);

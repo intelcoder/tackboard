@@ -1,5 +1,6 @@
 import type { Api } from "./api.ts";
-import { badgeCount, diffForEvents, errorText } from "./panel_logic.ts";
+import { agentConnected, badgeCount, diffForEvents, errorText } from "./panel_logic.ts";
+import { agentIsUp, brand } from "@app/shared";
 import type { ChangeEvent } from "./panel_logic.ts";
 import type { Store } from "./store.ts";
 
@@ -22,6 +23,9 @@ export function createPoller(o: PollerOptions): { now(): void; destroy(): void }
   let busy = false;
   let again = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  // Agents seen connected on this page, so two agents taking turns are announced once each.
+  const announced = new Set<string>();
+  let lastPoll = 0;
 
   const poll = async () => {
     if (busy) {
@@ -46,10 +50,16 @@ export function createPoller(o: PollerOptions): { now(): void; destroy(): void }
         error: null,
         badge: badgeCount(list.threads),
       });
-      if (before.loaded) {
-        const events = diffForEvents(before.threads, list.threads);
-        if (events.length) o.onEvents(events);
-      }
+      const events = before.loaded ? diffForEvents(before.threads, list.threads) : [];
+      const now = Date.now();
+      // After comments were hidden, or the machine slept, `before` is old: an agent that never left would look new. That poll is a fresh baseline.
+      const fresh = now - lastPoll <= o.every * 4;
+      lastPoll = now;
+      const connected = before.loaded && fresh ? agentConnected(before.agent, list.agent, now, announced) : null;
+      // A claim or reply in the same poll already names the agent, and one toast replaces the other.
+      if (connected && !events.length) events.push(connected);
+      if (list.agent.name !== null && agentIsUp(list.agent, now, brand.cli)) announced.add(list.agent.name);
+      if (events.length) o.onEvents(events);
     } catch (e) {
       if (on) store.set({ error: errorText(e) });
     } finally {

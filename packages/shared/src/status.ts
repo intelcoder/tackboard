@@ -42,3 +42,6 @@ export function agentState(agent: AgentSeen, now: number, cli: string): AgentSta
   if (age <= IDLE_MS) return { kind: "idle", label: `idle · ${ago(age).replace(" ago", "")}`, hint: `${name} last asked ${ago(age)}. It is busy or between two waits; comments are kept until it asks again. To make it listen: \`${cli} wait\`.` };
   return { kind: "away", label: `away · ${ago(age).replace(" ago", "")}`, hint: `${name} last asked ${ago(age)}. Tell your agent to run \`${cli} wait\`.` };
 }
+
+/** The agent asked in the last 10 minutes, so it is listening or idle. */
+export const agentIsUp = (agent: AgentSeen, now: number, cli: string): boolean => ["listening", "idle"].includes(agentState(agent, now, cli).kind);

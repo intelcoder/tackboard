@@ -1,6 +1,6 @@
 // Plain functions with no DOM, so they are easy to test.
-import { statusLabel } from "@app/shared";
-import type { ThreadDto } from "@app/shared";
+import { agentIsUp, brand, statusLabel } from "@app/shared";
+import type { AgentSeen, ThreadDto } from "@app/shared";
 import { ApiError } from "./api.ts";
 import type { NotificationState } from "./notifications.ts";
 
@@ -70,7 +70,8 @@ export function bannerFor(state: NotificationState, dismissed: boolean): Banner 
 export type ChangeEvent =
   | { kind: "reply"; threadId: string; n: number; agent: string; text: string }
   | { kind: "received"; threadId: string; n: number; agent: string }
-  | { kind: "resolved"; threadId: string; n: number };
+  | { kind: "resolved"; threadId: string; n: number }
+  | { kind: "agent"; agent: string };
 
 /** What a poll changed that the user should hear about: new agent messages, claimed, resolved. */
 export function diffForEvents(before: ThreadDto[], after: ThreadDto[]): ChangeEvent[] {
@@ -89,6 +90,17 @@ export function diffForEvents(before: ThreadDto[], after: ThreadDto[]): ChangeEv
     if (t.status === "resolved") events.push({ kind: "resolved", threadId: t.id, n: t.n });
   }
   return events;
+}
+
+/**
+ * The agent that just connected, or null. That is an agent that asked while it was away or never seen (so a `wait` or `next` the user
+ * was waiting on just started), or a different agent than the one before that this page has not announced. `announced` is the names
+ * already seen connected on this page; the caller fills it, so an agent already there at page load is not announced.
+ */
+export function agentConnected(before: AgentSeen, after: AgentSeen, now: number, announced: ReadonlySet<string>): ChangeEvent | null {
+  if (after.name === null || !agentIsUp(after, now, brand.cli)) return null;
+  if (!agentIsUp(before, now, brand.cli)) return { kind: "agent", agent: after.name };
+  return before.name !== after.name && !announced.has(after.name) ? { kind: "agent", agent: after.name } : null;
 }
 
 export function restoreDisabledReason(list: { restoreBlocked: string | null }): string | null {

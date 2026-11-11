@@ -28,8 +28,8 @@ test("the panel and status show listening, then idle, with the reason", async ({
   await h.agent(["next"]);
   await expect(pill).toHaveAttribute("data-state", "listening", { timeout: 5000 });
   await expect(pill).toHaveText("listening");
+  expect((await h.agent(["status"])).stdout).toContain("(listening)"); // before the shots: the window is 8 s
   await shots(page, "listening");
-  expect((await h.agent(["status"])).stdout).toContain("(listening)");
 
   // 8 s after its last question the agent is idle, not "not connected"; the comments stay.
   await expect(pill).toHaveAttribute("data-state", "idle", { timeout: 20_000 });
@@ -45,4 +45,40 @@ test("the panel and status show listening, then idle, with the reason", async ({
   const status = (await h.agent(["status"])).stdout;
   expect(status).toMatch(/agent: ai-agent \(idle · \d+ s\)/);
   expect(status).toContain("`tackboard wait`");
+});
+
+test("a toast says which agent connected, once, and not for an agent already there at page load", async ({ harness: h }) => {
+  const page = h.page;
+  await openPanel(page);
+  await expect(page.locator(".tb-agent")).toHaveAttribute("data-state", "none");
+
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await h.agent(["next"]);
+  const toast = page.locator(".tb-toast");
+  await expect(toast).toHaveText("ai-agent is connected", { timeout: 5000 });
+  // Measured at once: the toast lives 3.5 s.
+  const box = await toast.boundingBox();
+  expect(box && box.x >= 0 && box.x + box.width <= 320, "toast inside 320px").toBe(true);
+  await shot(page, "agent_toast_320_dark");
+  await expect(toast).toHaveCount(0, { timeout: 6000 });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ colorScheme: "light" });
+
+  // Still the same agent a few seconds later: no second toast.
+  await h.agent(["next"]);
+  await page.waitForTimeout(3000);
+  await expect(page.locator(".tb-toast")).toHaveCount(0);
+
+  // A reload with the agent already there starts quiet.
+  await page.reload();
+  await openPanel(page);
+  await expect(page.locator(".tb-agent")).toHaveAttribute("data-state", /listening|idle/);
+  await page.waitForTimeout(2500);
+  await expect(page.locator(".tb-toast")).toHaveCount(0);
+
+  // A second agent: its name reaches the pill's title and gets its own toast.
+  await h.agent(["next", "--as", "codex"]);
+  await expect(page.locator(".tb-agent")).toHaveAttribute("title", /codex/, { timeout: 5000 });
+  await expect(page.locator(".tb-toast")).toHaveText("codex is connected", { timeout: 5000 });
 });
