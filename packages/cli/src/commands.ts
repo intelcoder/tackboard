@@ -1,5 +1,5 @@
 import { spawn, execFileSync } from "node:child_process";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, statSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import { userInfo } from "node:os";
@@ -33,6 +33,7 @@ const OPTIONS = {
   branch: { type: "string" },
   url: { type: "string" },
   json: { type: "boolean" },
+  follow: { type: "boolean", short: "f" },
 } as const;
 
 const USAGE = [
@@ -46,12 +47,14 @@ const USAGE = [
   "  wait [--timeout s] [--as name]",
   "  ack [--as name]",
   "  status",
+  `  logs [-f]                          (what the daemon did; needs ${brand.envPrefix}DEBUG=1 on start; -f keeps following)`,
   "  history [id] [--branch <name>] [--url <page>] [--json]",
   "  channel [--as name]",
   "  extension",
 ].join("\n");
 
 const NONE = "no pending threads on this branch";
+const none_message = (why?: string) => (why ? `${NONE}: ${why}` : NONE);
 
 type Args = ReturnType<typeof parse>;
 function parse(argv: string[]) {
@@ -185,7 +188,7 @@ function start(cwd: string, agent = false): Promise<number> {
     if (agent) {
       const c = connect(cwd);
       console.log(`${brand.cli} agent: on. Each comment is answered by a headless claude that may edit files in ${found.dir}. Ctrl+C stops it.`);
-      void runAgent(() => claim(c, cwd), found.dir, stop);
+      void runAgent(() => claim_thread(c, cwd), found.dir, stop);
     }
     child.on("exit", (code) => {
       stop.done = true;
@@ -194,21 +197,50 @@ function start(cwd: string, agent = false): Promise<number> {
   });
 }
 
-async function claim(c: Client, cwd: string): Promise<ThreadDto | null> {
+// Works with the daemon down: it only reads the file the daemon writes.
+async function logs(cwd: string, follow: boolean): Promise<number> {
+  const found = findConfig(cwd);
+  if (!found) throw new CliError(`no ${brand.cli} project found here; run ${brand.cli} init`);
+  const file = join(found.dir, brand.dataDir, "daemon.log");
+  if (!existsSync(file)) throw new CliError(`no log yet (${file}). The daemon only writes it in dev mode: stop it and run ${brand.envPrefix}DEBUG=1 ${brand.cli} start`);
+  console.log(readFileSync(file, "utf8").trimEnd().split("\n").slice(-50).join("\n"));
+  if (!follow) return 0;
+  let at = statSync(file).size;
+  for (;;) {
+    await sleep(500);
+    const size = statSync(file).size;
+    if (size < at) at = 0; // the daemon moved a full file aside
+    if (size === at) continue;
+    const fd = openSync(file, "r");
+    const chunk = Buffer.alloc(size - at);
+    readSync(fd, chunk, 0, chunk.length, at);
+    closeSync(fd);
+    process.stdout.write(chunk);
+    at = size;
+  }
+}
+
+async function claim(c: Client, cwd: string, explain = false): Promise<ClaimNextResponse> {
   const branch = currentBranch(cwd);
-  const r = await c.post<ClaimNextResponse>(paths.claimNext, { agent: c.agent, ...(branch ? { branch } : {}) });
-  return r.thread;
+  return await c.post<ClaimNextResponse>(paths.claimNext, { agent: c.agent, ...(branch ? { branch } : {}), ...(explain ? { explain: true } : {}) });
 }
 
 // Takes every pending thread, oldest first. If a later claim fails, keeps what it already got; the next call retries the rest.
-async function claim_all_pending(c: Client, cwd: string): Promise<ThreadDto[]> {
+const claim_thread = async (c: Client, cwd: string): Promise<ThreadDto | null> => (await claim(c, cwd)).thread;
+
+// `why` says why nothing came back, and is only asked for on the call the caller will report.
+async function claim_all_pending(c: Client, cwd: string, explain = false): Promise<{ got: ThreadDto[]; why?: string }> {
   const got: ThreadDto[] = [];
   try {
-    for (let t = await claim(c, cwd); t; t = await claim(c, cwd)) got.push(t);
+    for (;;) {
+      const r = await claim(c, cwd, explain);
+      if (!r.thread) return { got, why: r.why };
+      got.push(r.thread);
+    }
   } catch (e) {
     if (!got.length) throw e;
+    return { got };
   }
-  return got;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -217,8 +249,8 @@ async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<nu
   const [, ...pos] = a.positionals;
   switch (cmd) {
     case "next": {
-      const got = await claim_all_pending(c, cwd);
-      console.log(got.length ? formatThreads(got) : NONE);
+      const { got, why } = await claim_all_pending(c, cwd, true);
+      console.log(got.length ? formatThreads(got) : none_message(why));
       return 0;
     }
     case "wait": {
@@ -226,14 +258,14 @@ async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<nu
       if (!(secs >= 0)) throw new CliError("--timeout must be a number of seconds");
       const deadline = Date.now() + secs * 1000;
       for (;;) {
-        const got = await claim_all_pending(c, cwd);
+        const { got, why } = await claim_all_pending(c, cwd, deadline - Date.now() <= 2000);
         if (got.length) {
           console.log(formatThreads(got));
           return 0;
         }
         const left = deadline - Date.now();
         if (left <= 0) {
-          console.log(NONE);
+          console.log(none_message(why));
           return 0;
         }
         await sleep(Math.min(2000, left));
@@ -297,7 +329,7 @@ async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<nu
 async function run_channel(cwd: string, a: Args): Promise<number> {
   try {
     const c = connect(cwd, a.values.as);
-    return await channel(c, () => claim(c, cwd));
+    return await channel(c, () => claim_thread(c, cwd));
   } catch (e) {
     console.error(e instanceof CliError ? e.message : `error: ${(e as Error).message}`);
     return 1;
@@ -326,9 +358,11 @@ export async function run(argv: string[], cwd: string): Promise<number> {
       return await start(cwd, a.values.agent);
     }
     if (cmd === "channel") return await run_channel(cwd, a);
+    if (cmd === "logs") return await logs(cwd, a.values.follow === true);
     if (cmd === "resolve") throw new CliError(`only the user closes a thread; ask with: ${brand.cli} reply <id> "<text>" --ask`);
     if (!["next", "wait", "reply", "comment", "ack", "status", "history"].includes(cmd)) throw new CliError(USAGE);
     const c = connect(cwd, a.values.as);
+    if (process.env[`${brand.envPrefix}DEBUG`] === "1") console.error(`${brand.cli}: daemon :${c.config.port}, folder ${c.dir}, branch ${currentBranch(cwd) ?? "none"}, agent ${c.agent}`);
     const n = await c.get<NoticesResponse>(paths.notices, { agent: c.agent });
     for (const notice of n.notices) console.log(`${formatNotice(notice)}\n`);
     return await runOnce(cmd, c, cwd, a);

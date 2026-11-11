@@ -383,3 +383,18 @@ test("next prints the threads it got when a later claim fails", async () => {
     }
   });
 });
+
+test("logs prints the daemon's log without needing the daemon, and says so when there is none", async () => {
+  await withStub(async (stub) => {
+    const dir = project(stub);
+    const none = await cli(dir, ["logs"]);
+    assert.equal(none.code, 1);
+    assert.match(none.stdout, /no log yet/);
+    mkdirSync(join(dir, brand.dataDir), { recursive: true });
+    writeFileSync(join(dir, brand.dataDir, "daemon.log"), "12:00:00 comment  #1 t1 branch=main page=/\n12:00:01 claim    claude branch=main -> #1 t1\n");
+    const r = await cli(dir, ["logs"]);
+    assert.equal(r.code, 0);
+    assert.match(r.stdout, /comment {2}#1 t1/);
+    assert.match(r.stdout, /claim {4}claude/);
+  });
+});

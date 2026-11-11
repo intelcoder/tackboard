@@ -39,6 +39,22 @@ export class ClaimNextThreadHandler {
     return thread.toDto(now);
   }
 
+  /** Why a claim on this branch found nothing, in words for the agent. */
+  whyNone(branch?: string): string {
+    const here = branch ?? this.git.branch().value;
+    const elsewhere = new Map<string, number>();
+    let working = 0;
+    for (const t of this.repo.listAll()) {
+      if (t.discarded) continue;
+      if (t.branch !== here && t.status === "pending") elsewhere.set(t.branch, (elsewhere.get(t.branch) ?? 0) + 1);
+      if (t.branch === here && t.status === "received") working++;
+    }
+    const parts: string[] = [];
+    if (elsewhere.size) parts.push(`${[...elsewhere].map(([b, n]) => `${n} on ${b}`).join(", ")} waiting (you asked for ${here}; run from that branch or worktree)`);
+    if (working) parts.push(`${working} on ${here} already taken by an agent and not answered yet (it goes back to the queue after 30 minutes)`);
+    return parts.length ? parts.join("; ") : `nothing has been sent from the browser on ${here}`;
+  }
+
   /** The claim could not get its checkpoint: put the thread back in the queue. */
   private giveBack(id: string, now: number): void {
     try {

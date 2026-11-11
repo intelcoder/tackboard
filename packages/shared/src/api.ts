@@ -76,8 +76,16 @@ export type PostAgentThreadRequest = {
   text: string;
   url?: string;
 };
-export type ClaimNextRequest = { agent: string; branch?: string };
-export type ClaimNextResponse = { thread: ThreadDto | null };
+export type ClaimNextRequest = {
+  agent: string;
+  branch?: string;
+  /** Ask for `why` when nothing is claimed. */
+  explain?: boolean;
+};
+/** `why` is only there when nothing was claimed and the caller asked for it. */
+export type ClaimNextResponse = { thread: ThreadDto | null; why?: string };
+/** Without the token only `ok`. */
+export type HealthResponse = { ok: true; dir?: string; branch?: string; origins?: string[] };
 export type PostMessageRequest = {
   author: string;
   text: string;
