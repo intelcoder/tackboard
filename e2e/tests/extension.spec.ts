@@ -906,3 +906,40 @@ test("with two projects running, a local page pairs with the daemon whose origin
     }
   });
 });
+
+test("the options page fits every width in both themes, empty and with sites", async () => {
+  await withStack(async (stack) => {
+    const options = await optionsPage(stack);
+    const look = async (state: string) => {
+      for (const [w, h] of [[1280, 900], [390, 900], [320, 900]] as const) {
+        for (const scheme of ["light", "dark"] as const) {
+          await options.setViewportSize({ width: w, height: h });
+          await options.emulateMedia({ colorScheme: scheme });
+          // one frame, so the page has laid out for the new width before it is measured and pictured
+          await options.evaluate(() => new Promise(requestAnimationFrame));
+          expect(await options.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${state} no sideways scroll at ${w}px`).toBe(true);
+          const outside = await options.evaluate(() =>
+            [...document.querySelectorAll("button, input, textarea, kbd, .address")]
+              .map((e) => e.getBoundingClientRect())
+              .filter((r) => r.width > 0 && (r.left < 0 || r.right > window.innerWidth)).length,
+          );
+          expect(outside, `${state} every control inside ${w}px`).toBe(0);
+          const rows = await options.locator("#sites li:not(.empty)").all();
+          expect(rows.length, `${state} rows`).toBe(state === "sites" ? 2 : 0);
+          for (const row of rows) {
+            const on = (await row.getByLabel("On").boundingBox())!;
+            const remove = (await row.getByRole("button").boundingBox())!;
+            expect(Math.abs(on.y + on.height / 2 - (remove.y + remove.height / 2)), `${state} On and Remove share a line at ${w}px`).toBeLessThan(8);
+            // each row says how it got here: a local page pairs by itself, any other site was added in the form
+            await expect(row.locator(".tag")).toHaveText((await row.locator(".address").innerText()).includes("localhost") ? "Local" : "Added");
+          }
+          await options.screenshot({ path: join(root, "e2e", "artifacts", `options_${state}_${w}_${scheme}.png`), fullPage: true });
+        }
+      }
+    };
+    await look("empty");
+    await addSite(stack, options, (await stack.site()).replace("http://", ""));
+    await addSite(stack, options, "dev.example.test");
+    await look("sites");
+  });
+});
