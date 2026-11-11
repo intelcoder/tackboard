@@ -107,7 +107,7 @@ export async function startStubDaemon(opts: { token?: string } = {}): Promise<St
         branch: b,
         threads: open,
         history: mine.filter((t) => t.discarded),
-        agent: { name: lastAgent, online },
+        agent: { name: lastAgent, online, seenAt: lastAgent === null ? null : (agents.get(lastAgent) ?? null) },
         restoreBlocked: claimed ? `thread #${claimed.n} is claimed by ${claimed.agent}` : null,
       };
       return [200, res];

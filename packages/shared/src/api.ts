@@ -84,8 +84,8 @@ export type ClaimNextRequest = {
 };
 /** `why` is only there when nothing was claimed and the caller asked for it. */
 export type ClaimNextResponse = { thread: ThreadDto | null; why?: string };
-/** Without the token only `ok`. */
-export type HealthResponse = { ok: true; dir?: string; branch?: string; origins?: string[] };
+/** Without the token only `ok`. `pairedAt`: when the extension last paired (ms since 1970), null if not since the daemon started. */
+export type HealthResponse = { ok: true; dir?: string; branch?: string; origins?: string[]; pairedAt?: number | null };
 export type PostMessageRequest = {
   author: string;
   text: string;

@@ -17,6 +17,7 @@ import { channel } from "./channel.ts";
 import { CliError, connect, currentBranch } from "./client.ts";
 import type { Client } from "./client.ts";
 import { formatNotice, formatThread, formatThreads } from "./format.ts";
+import { doctor } from "./doctor.ts";
 import { claudeCommand, runAgent, writeMcpJson } from "./launch.ts";
 import { firstExisting } from "./where.ts";
 
@@ -47,6 +48,7 @@ const USAGE = [
   "  wait [--timeout s] [--as name]",
   "  ack [--as name]",
   "  status",
+  "  doctor                             (checks daemon, folder, branch, extension, skill and agent; says what to run)",
   `  logs [-f]                          (what the daemon did; needs ${brand.envPrefix}DEBUG=1 on start; -f keeps following)`,
   "  history [id] [--branch <name>] [--url <page>] [--json]",
   "  channel [--as name]",
@@ -358,6 +360,11 @@ export async function run(argv: string[], cwd: string): Promise<number> {
       return await start(cwd, a.values.agent);
     }
     if (cmd === "channel") return await run_channel(cwd, a);
+    if (cmd === "doctor") {
+      const r = await doctor(cwd);
+      console.log(r.text);
+      return r.ok ? 0 : 1;
+    }
     if (cmd === "logs") return await logs(cwd, a.values.follow === true);
     if (cmd === "resolve") throw new CliError(`only the user closes a thread; ask with: ${brand.cli} reply <id> "<text>" --ask`);
     if (!["next", "wait", "reply", "comment", "ack", "status", "history"].includes(cmd)) throw new CliError(USAGE);

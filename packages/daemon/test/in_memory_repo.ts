@@ -86,12 +86,12 @@ export class InMemoryThreadRepository implements ThreadRepository {
     this.agents.set(name, { at: now, firstSeen: this.agents.get(name)?.firstSeen ?? now });
   }
 
-  lastAgent(now: number): { name: string | null; online: boolean } {
+  lastAgent(now: number): { name: string | null; online: boolean; seenAt: number | null } {
     let name: string | null = null;
     let at = -Infinity;
     for (const [n, seen] of this.agents) {
       if (seen.at >= at) { name = n; at = seen.at; }
     }
-    return { name, online: name !== null && now - at <= ONLINE_MS };
+    return { name, online: name !== null && now - at <= ONLINE_MS, seenAt: name === null ? null : at };
   }
 }

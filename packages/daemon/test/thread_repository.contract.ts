@@ -194,10 +194,10 @@ export function runContract(label: string, makeRepo: () => RepoHarness): void {
   }));
 
   test(`${label}: touchAgent and lastAgent report online within 60 s and offline after`, withRepo((h) => {
-    assert.deepEqual(h.repo.lastAgent(0), { name: null, online: false });
+    assert.deepEqual(h.repo.lastAgent(0), { name: null, online: false, seenAt: null });
     h.repo.touchAgent("claude", 100_000);
-    assert.deepEqual(h.repo.lastAgent(100_000 + 59_000), { name: "claude", online: true });
-    assert.deepEqual(h.repo.lastAgent(100_000 + 61_000), { name: "claude", online: false });
+    assert.deepEqual(h.repo.lastAgent(100_000 + 59_000), { name: "claude", online: true, seenAt: 100_000 });
+    assert.deepEqual(h.repo.lastAgent(100_000 + 61_000), { name: "claude", online: false, seenAt: 100_000 });
     h.repo.touchAgent("codex", 200_000);
     assert.equal(h.repo.lastAgent(200_000).name, "codex");
     assert.equal(h.reopen().lastAgent(200_000).name, "codex");

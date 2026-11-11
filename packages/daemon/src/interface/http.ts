@@ -146,6 +146,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
   const clock = opts.clock ?? new SystemClock();
   const git = new GitInfoReader(opts.projectDir);
   const checkpoints = new GitCheckpointStore(opts.projectDir);
+  let paired_at: number | null = null;
   const log = opts.debug ? createLog(join(dataDir, "daemon.log")) : () => {};
 
   const shots = new FileScreenshotStore(opts.projectDir);
@@ -188,11 +189,12 @@ export function createDaemon(opts: DaemonOptions): Daemon {
 
   // Open without a token for the "is it up" probe; the folder, branch and origins only go to a caller that has the token.
   app.get(paths.health, (c) =>
-    c.json(same_token(c.req.header(brand.tokenHeader), opts.token) ? { ok: true, dir: opts.projectDir, branch: git.branch().value, origins: opts.allowedOrigins } : { ok: true }),
+    c.json(same_token(c.req.header(brand.tokenHeader), opts.token) ? { ok: true, dir: opts.projectDir, branch: git.branch().value, origins: opts.allowedOrigins, pairedAt: paired_at } : { ok: true }),
   );
 
   // security() lets only the extension's origin reach this; it hands over the token so the extension needs no pasted config.
   app.post(brand.pairPath, (c) => {
+    paired_at = clock.now();
     log("pair", `extension paired on :${address()?.port ?? opts.port}`);
     return c.json({ pair: 1, port: address()?.port ?? opts.port, token: opts.token, dir: opts.projectDir });
   });

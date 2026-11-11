@@ -22,7 +22,7 @@ export interface ThreadRepository {
   history(threadId?: string): HistoryEvent[];
   /** Records the agent as seen now. The first time also sets its first_seen, which never changes. */
   touchAgent(name: string, now: number): void;
-  lastAgent(now: number): { name: string | null; online: boolean };
+  lastAgent(now: number): { name: string | null; online: boolean; seenAt: number | null };
 }
 
 export interface Clock {

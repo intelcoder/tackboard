@@ -22,6 +22,7 @@ The user starts such a session with `tackboard claude` (it starts the daemon if 
 Other commands:
 
 - `tackboard status` shows the branch and the threads. If it answers, the daemon is running. It does not show whether any agent is working.
+- `tackboard doctor` checks each link (daemon, folder, branch, extension, skill, when you last asked) and prints the command that fixes each one that is off. Run it first when `next` or `wait` finds nothing and you expected something.
 - `tackboard logs [-f]` shows what the daemon did: comments received, threads claimed, replies. It exists only if the user started the daemon with `TACKBOARD_DEBUG=1`. When `next` or `wait` finds nothing, the line says why (for example, comments waiting on another branch). Run it before asking the user to resend.
 - `tackboard history [id] [--branch <name>] [--url <page>] [--json]` lists what happened, including what you were given when you took a thread. To write a change log or a summary of past fixes, see the `tackboard-history` skill (`skills/tackboard-history/`; `init` does not install it, copy it into `.claude/skills/` to use it).
 - `tackboard comment --selector <css> <text> [--mention me]` starts a thread of your own on an element. Your comment always shows as "waiting on you". `--mention me` only puts `@<user name>` in front of the text.

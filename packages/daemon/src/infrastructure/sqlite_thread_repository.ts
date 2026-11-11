@@ -196,12 +196,12 @@ export class SqliteThreadRepository implements ThreadRepository {
       .run(name, now, now);
   }
 
-  lastAgent(now: number): { name: string | null; online: boolean } {
+  lastAgent(now: number): { name: string | null; online: boolean; seenAt: number | null } {
     const row = this.db.prepare("SELECT name, at FROM agents ORDER BY at DESC, ord DESC LIMIT 1").get() as
       | { name: string; at: number }
       | undefined;
-    if (!row) return { name: null, online: false };
-    return { name: row.name, online: now - row.at <= ONLINE_MS };
+    if (!row) return { name: null, online: false, seenAt: null };
+    return { name: row.name, online: now - row.at <= ONLINE_MS, seenAt: row.at };
   }
 
   private insertNotice(n: Notice): void {
