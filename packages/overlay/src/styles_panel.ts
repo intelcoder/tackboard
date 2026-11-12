@@ -48,7 +48,7 @@ export const panelCss = `
 .tb-subhead{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--tb-line);flex:none}
 .tb-others{padding:6px 14px;border-top:1px solid var(--tb-line);display:flex;flex-wrap:wrap;gap:2px 12px;align-items:center;flex:none}
 .tb-others .tb-section{width:100%;margin:0}
-.tb-foot{padding:6px 14px;border-top:1px solid var(--tb-line);display:flex;justify-content:flex-end;flex:none}
+.tb-foot{padding:6px 14px;border-top:1px solid var(--tb-line);display:flex;justify-content:space-between;gap:12px;flex:none}
 .tb-link{border:0;background:none;color:var(--tb-accent);font:500 12px var(--body);padding:3px 4px;border-radius:4px}
 .tb-link:hover{text-decoration:underline}
 .tb-more{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.tb-more:empty{display:none}

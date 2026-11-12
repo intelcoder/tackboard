@@ -79,6 +79,8 @@ export type PostAgentThreadRequest = {
 export type ClaimNextRequest = {
   agent: string;
   branch?: string;
+  /** Only threads from this page: a path ("/pricing") or a whole address. */
+  url?: string;
   /** Ask for `why` when nothing is claimed. */
   explain?: boolean;
 };

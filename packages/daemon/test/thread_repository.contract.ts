@@ -18,11 +18,11 @@ const element: ElementRef = {
   rect: { x: 1, y: 2, w: 3, h: 4 }, confidence: "text",
 };
 
-function open(repo: ThreadRepository, branch = "main", text = "make this blue", now = 1_000): Thread {
+function open(repo: ThreadRepository, branch = "main", text = "make this blue", now = 1_000, url = "http://localhost:3000/"): Thread {
   const b = Branch.of(branch);
   return Thread.open({
     id: repo.nextId(), n: repo.nextNumber(b), branch: b, commit: CommitSha.of("abc1234"),
-    url: "http://localhost:3000/", viewport: { w: 1000, h: 800 }, element, text, now, seq: repo.nextSeq(),
+    url, viewport: { w: 1000, h: 800 }, element, text, now, seq: repo.nextSeq(),
   });
 }
 
@@ -128,6 +128,21 @@ export function runContract(label: string, makeRepo: () => RepoHarness): void {
     assert.equal(again?.agent, "codex");
     const types = h.repo.history(t.id).map((e) => e.type);
     assert.deepEqual(types, ["posted", "claimed", "requeued", "claimed"]);
+  }));
+
+  test(`${label}: claimNext with a page takes only a thread from that page, oldest first`, withRepo((h) => {
+    const home = open(h.repo, "main", "home", 1_000, "http://localhost:3000/");
+    h.repo.save(home);
+    const first = open(h.repo, "main", "pricing 1", 1_000, "http://localhost:3000/pricing#plans");
+    h.repo.save(first);
+    const second = open(h.repo, "main", "pricing 2", 1_000, "http://localhost:3000/pricing");
+    h.repo.save(second);
+    assert.equal(h.repo.claimNext(Branch.of("main"), AgentName.of("claude"), 1_000, "/nowhere"), null);
+    assert.equal(h.repo.claimNext(Branch.of("main"), AgentName.of("claude"), 1_000, "/pricing")?.id, first.id);
+    assert.equal(h.repo.claimNext(Branch.of("main"), AgentName.of("claude"), 1_000, "/pricing")?.id, second.id);
+    assert.equal(h.repo.claimNext(Branch.of("main"), AgentName.of("claude"), 1_000, "/pricing"), null);
+    // the home page thread is still waiting for an agent that asks without a page
+    assert.equal(h.repo.claimNext(Branch.of("main"), AgentName.of("claude"), 1_000)?.id, home.id);
   }));
 
   test(`${label}: data survives closing and reopening the db file`, withRepo((h) => {

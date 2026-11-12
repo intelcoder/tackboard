@@ -35,13 +35,13 @@ function project(stub: StubDaemon, git?: string): string {
 
 const headers = (stub: StubDaemon) => ({ "content-type": "application/json", [brand.tokenHeader]: stub.token });
 
-async function post(stub: StubDaemon, text: string, selector = "#hero"): Promise<ThreadDto> {
+async function post(stub: StubDaemon, text: string, selector = "#hero", url = "http://localhost:3000/"): Promise<ThreadDto> {
   const res = await fetch(`${stub.url}/threads`, {
     method: "POST",
     headers: headers(stub),
     body: JSON.stringify({
       element: { selector, tag: "div", text: "Hello", html: "<div>Hello</div>", rect: { x: 1, y: 2, w: 3, h: 4 }, confidence: "text" },
-      url: "http://localhost:3000/",
+      url,
       viewport: { w: 1000, h: 700 },
       text,
     }),
@@ -406,5 +406,20 @@ test("a daemon that rejects this folder's token is another project's: the messag
     const r = await cli(dir, ["status"]);
     assert.match(r.stdout, /did not accept this folder's token, so it belongs to another project/);
     assert.match(r.stdout, /tackboard doctor/);
+  });
+});
+
+test("next --url and wait --url take only the comments of that page; without it everything is taken", async () => {
+  await withStub(async (stub) => {
+    const dir = project(stub, "main");
+    await post(stub, "on pricing", "#a", "http://localhost:3000/pricing");
+    await post(stub, "on about", "#b", "http://localhost:3000/about");
+    const none = await cli(dir, ["next", "--url", "/contact"]);
+    assert.match(none.stdout, /no pending threads on this branch/);
+    const only = await cli(dir, ["wait", "--timeout", "0", "--url", "/about"]);
+    assert.match(only.stdout, /on about/);
+    assert.doesNotMatch(only.stdout, /on pricing/);
+    const rest = await cli(dir, ["next"]);
+    assert.match(rest.stdout, /on pricing/);
   });
 });

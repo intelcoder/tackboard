@@ -283,8 +283,8 @@ The daemon stamps each page comment with the branch of the folder it runs in, an
 
 | Command | What it does |
 |---|---|
-| `tackboard next` | Takes every pending thread on the current git branch, oldest first, and prints them all. With two or more, the first line says how many and one set of instructions follows for all of them. Prints `no pending threads on this branch` when there is none. There is no way to take just one. |
-| `tackboard wait [--timeout s]` | Same as `next`, but checks every 2 seconds until a thread appears or the timeout (default 60) runs out, then prints everything pending. Exit code 0 in both cases. |
+| `tackboard next [--url <path>]` | Takes every pending thread on the current git branch, oldest first, and prints them all. With `--url /pricing` it takes only the threads from that page (a path, or a whole address); the panel's "Copy agent prompt" button copies a prompt that includes it, so an agent can be tied to one page. Two tabs on the same page path still share their comments. With two or more, the first line says how many and one set of instructions follows for all of them. Prints `no pending threads on this branch` when there is none. There is no way to take just one. |
+| `tackboard wait [--timeout s] [--url <path>]` | Same as `next`, but checks every 2 seconds until a thread appears or the timeout (default 60) runs out, then prints everything pending. Exit code 0 in both cases. |
 | `tackboard reply <id> <text> [--ask]` | Adds a reply. With `--ask` the thread shows `waiting on you`. When the work is done, reply with `--ask` and a request to confirm. You close the thread with Resolve in the panel; `tackboard resolve` is refused. If you answer instead, the thread comes back as pending for the agent. |
 | `tackboard comment --selector <css> <text> [--mention me]` | The agent starts a thread on an element. `--mention me` puts `@<your user name>` in front of the text. |
 | `tackboard channel [--as name]` | Runs the Claude Code channel server that pushes comments into a session (see "Push comments into Claude Code (optional)"). Started by Claude Code from `.mcp.json`, not by hand. |

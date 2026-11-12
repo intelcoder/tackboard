@@ -42,10 +42,10 @@ const USAGE = [
   "  init [--origin <url>] [--port <n>] [--user <name>]",
   "  start [--agent] [--origin <url>] [--port <n>] [--user <name>]   (sets the folder up first if it has not been)",
   "  claude [claude options]",
-  "  next [--as name]",
+  "  next [--url <path>] [--as name]",
   "  reply <id> <text> [--ask] [--as name]",
   '  comment --selector <css> <text> [--mention me] [--as name]',
-  "  wait [--timeout s] [--as name]",
+  "  wait [--timeout s] [--url <path>] [--as name]",
   "  ack [--as name]",
   "  status",
   "  doctor                             (checks daemon, folder, branch, extension, skill and agent; says what to run)",
@@ -226,20 +226,20 @@ async function logs(cwd: string, follow: boolean): Promise<number> {
   }
 }
 
-async function claim(c: Client, cwd: string, explain = false): Promise<ClaimNextResponse> {
+async function claim(c: Client, cwd: string, explain = false, url?: string): Promise<ClaimNextResponse> {
   const branch = currentBranch(cwd);
-  return await c.post<ClaimNextResponse>(paths.claimNext, { agent: c.agent, ...(branch ? { branch } : {}), ...(explain ? { explain: true } : {}) });
+  return await c.post<ClaimNextResponse>(paths.claimNext, { agent: c.agent, ...(branch ? { branch } : {}), ...(url ? { url } : {}), ...(explain ? { explain: true } : {}) });
 }
 
 // Takes every pending thread, oldest first. If a later claim fails, keeps what it already got; the next call retries the rest.
 const claim_thread = async (c: Client, cwd: string): Promise<ThreadDto | null> => (await claim(c, cwd)).thread;
 
 // `why` says why nothing came back, and is only asked for on the call the caller will report.
-async function claim_all_pending(c: Client, cwd: string, explain = false): Promise<{ got: ThreadDto[]; why?: string }> {
+async function claim_all_pending(c: Client, cwd: string, explain = false, url?: string): Promise<{ got: ThreadDto[]; why?: string }> {
   const got: ThreadDto[] = [];
   try {
     for (;;) {
-      const r = await claim(c, cwd, explain);
+      const r = await claim(c, cwd, explain, url);
       if (!r.thread) return { got, why: r.why };
       got.push(r.thread);
     }
@@ -255,7 +255,7 @@ async function runOnce(cmd: string, c: Client, cwd: string, a: Args, listed?: Li
   const [, ...pos] = a.positionals;
   switch (cmd) {
     case "next": {
-      const { got, why } = await claim_all_pending(c, cwd, true);
+      const { got, why } = await claim_all_pending(c, cwd, true, a.values.url);
       console.log(got.length ? formatThreads(got) : none_message(why));
       return 0;
     }
@@ -264,7 +264,7 @@ async function runOnce(cmd: string, c: Client, cwd: string, a: Args, listed?: Li
       if (!(secs >= 0)) throw new CliError("--timeout must be a number of seconds");
       const deadline = Date.now() + secs * 1000;
       for (;;) {
-        const { got, why } = await claim_all_pending(c, cwd, deadline - Date.now() <= 2000);
+        const { got, why } = await claim_all_pending(c, cwd, deadline - Date.now() <= 2000, a.values.url);
         if (got.length) {
           console.log(formatThreads(got));
           return 0;

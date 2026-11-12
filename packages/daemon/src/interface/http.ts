@@ -247,13 +247,14 @@ export function createDaemon(opts: DaemonOptions): Daemon {
     const b = c.get("body");
     const agent = need_text(b.agent, "agent");
     const branch = typeof b.branch === "string" && b.branch !== "" ? b.branch : undefined;
-    const thread = claim_next.handle({ agent, branch });
+    const url = typeof b.url === "string" && b.url !== "" ? b.url : undefined;
+    const thread = claim_next.handle({ agent, branch, url });
     if (thread) {
-      log("claim", `${agent} branch=${thread.branch} -> #${thread.n} ${thread.id}`);
+      log("claim", `${agent} branch=${thread.branch}${url ? ` page=${url}` : ""} -> #${thread.n} ${thread.id}`);
       return c.json({ thread });
     }
-    const why = b.explain === true ? claim_next.whyNone(branch) : undefined;
-    if (opts.debug) log("claim", `${agent} branch=${branch ?? git.branch().value} -> none${why ? ` (${why})` : ""}`);
+    const why = b.explain === true ? claim_next.whyNone(branch, url) : undefined;
+    if (opts.debug) log("claim", `${agent} branch=${branch ?? git.branch().value}${url ? ` page=${url}` : ""} -> none${why ? ` (${why})` : ""}`);
     return c.json({ thread, ...(why ? { why } : {}) });
   });
 

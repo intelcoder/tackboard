@@ -1,4 +1,5 @@
 import type { HistoryEvent, Notice } from "@app/shared";
+import { onPage } from "../src/domain/page.ts";
 import type { ThreadRepository } from "../src/domain/repositories.ts";
 import { Thread, type ThreadState } from "../src/domain/thread.ts";
 import type { AgentName, Branch } from "../src/domain/value_objects.ts";
@@ -42,12 +43,12 @@ export class InMemoryThreadRepository implements ThreadRepository {
     }
   }
 
-  claimNext(branch: Branch, agent: AgentName, now: number): Thread | null {
+  claimNext(branch: Branch, agent: AgentName, now: number, page?: string): Thread | null {
     const onBranch = this.listByBranch(branch);
     for (const t of onBranch) {
       if (t.requeueIfStale(now)) this.save(t);
     }
-    const next = onBranch.find((t) => t.status === "pending" && !t.discarded);
+    const next = onBranch.find((t) => t.status === "pending" && !t.discarded && (page === undefined || onPage(t.url, page)));
     if (!next) return null;
     next.claim(agent, now);
     this.save(next);

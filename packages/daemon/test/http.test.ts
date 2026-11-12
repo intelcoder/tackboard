@@ -148,6 +148,20 @@ test("claim-next with a branch only returns that branch", () =>
     assert.equal(got.thread.id, a.id);
   }));
 
+test("claim-next with a url takes only that page's threads, and says why when only other pages wait", () =>
+  with_daemon(async (d) => {
+    const on = (path: string) => ({ ...post_body(`on ${path}`), url: `http://localhost:3000${path}` });
+    const home = (await (await d.call("POST", paths.threads, on("/"))).json()) as ThreadDto;
+    const pricing = (await (await d.call("POST", paths.threads, on("/pricing"))).json()) as ThreadDto;
+    const none = await (await d.call("POST", paths.claimNext, { agent: "claude", url: "/about", explain: true })).json();
+    assert.equal(none.thread, null);
+    assert.match(none.why, /2 waiting on other pages of main \(you asked for \/about; run without --url to take them\)/);
+    const got = await (await d.call("POST", paths.claimNext, { agent: "claude", url: "/pricing" })).json();
+    assert.equal(got.thread.id, pricing.id);
+    const rest = await (await d.call("POST", paths.claimNext, { agent: "claude" })).json();
+    assert.equal(rest.thread.id, home.id);
+  }));
+
 test("bundle route serves the bundle with the config global prepended", async () => {
   const folder = mkdtempSync(join(tmpdir(), "bundle-"));
   folders.push(folder);

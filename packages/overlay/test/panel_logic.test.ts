@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { statusLabel } from "@app/shared";
 import type { ThreadDto } from "@app/shared";
-import { agentConnected, badgeCount, badgeLabel, bannerFor, clampToViewport, diffForEvents, errorText, isSendKey, pageLabel, restoreDisabledReason, visibleThreads } from "../src/panel_logic.ts";
+import { agentConnected, agentPrompt, badgeCount, badgeLabel, bannerFor, clampToViewport, diffForEvents, errorText, isSendKey, pageLabel, restoreDisabledReason, visibleThreads } from "../src/panel_logic.ts";
 import { parseHTML } from "linkedom";
 import { createH } from "../src/dom.ts";
 import { notificationState, permissionBanner } from "../src/notifications.ts";
@@ -173,4 +173,10 @@ test("agentConnected: an agent that starts asking is announced; one already ther
   assert.equal(agentConnected(seen("claude", 20 * 60_000), seen("claude", 20 * 60_000), now, noneAnnounced), null, "still away");
   assert.deepEqual(agentConnected(seen("claude", 4000), seen("codex", 1000), now, noneAnnounced), { kind: "agent", agent: "codex" }, "a second agent");
   assert.equal(agentConnected(seen("claude", 4000), seen("codex", 1000), now, new Set(["codex"])), null, "two agents taking turns are announced once each");
+});
+
+test("agentPrompt names the page path and the commands, so an agent reads only that page", () => {
+  const text = agentPrompt("tackboard", "/pricing");
+  assert.match(text, /`tackboard wait --url \/pricing`/);
+  assert.match(text, /`tackboard reply <id> "<what you changed>"`/);
 });

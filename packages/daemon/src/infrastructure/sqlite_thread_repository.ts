@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import type { HistoryEvent, HistoryEventType, Notice } from "@app/shared";
+import { onPage } from "../domain/page.ts";
 import type { ThreadRepository } from "../domain/repositories.ts";
 import { Thread, type ThreadState } from "../domain/thread.ts";
 import type { AgentName, Branch } from "../domain/value_objects.ts";
@@ -121,13 +122,13 @@ export class SqliteThreadRepository implements ThreadRepository {
     this.tx(() => this.write(t));
   }
 
-  claimNext(branch: Branch, agent: AgentName, now: number): Thread | null {
+  claimNext(branch: Branch, agent: AgentName, now: number, page?: string): Thread | null {
     return this.tx(() => {
       const onBranch = this.listByBranch(branch);
       for (const t of onBranch) {
         if (t.requeueIfStale(now)) this.write(t);
       }
-      const next = onBranch.find((t) => t.status === "pending" && !t.discarded);
+      const next = onBranch.find((t) => t.status === "pending" && !t.discarded && (page === undefined || onPage(t.url, page)));
       if (!next) return null;
       next.claim(agent, now);
       this.write(next);

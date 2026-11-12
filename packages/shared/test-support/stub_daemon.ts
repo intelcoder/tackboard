@@ -177,7 +177,8 @@ export async function startStubDaemon(opts: { token?: string } = {}): Promise<St
           log(t.id, "requeued", {});
         }
       }
-      const t = threads.find((x) => x.branch === b && x.status === "pending" && !x.discarded);
+      const page = typeof body.url === "string" && body.url ? body.url : undefined;
+      const t = threads.find((x) => x.branch === b && x.status === "pending" && !x.discarded && (!page || new URL(x.url).pathname === page));
       if (!t) return [200, { thread: null }];
       t.status = "received";
       t.agent = agent;

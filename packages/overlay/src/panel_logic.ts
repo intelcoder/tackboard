@@ -25,6 +25,11 @@ export function pageLabel(url: string, here = ""): string {
   }
 }
 
+/** What to paste to a coding agent so it reads the comments of this page only. */
+export function agentPrompt(cli: string, path: string): string {
+  return `Run \`${cli} wait --url ${path}\` and do what each comment on this page asks. Then run \`${cli} reply <id> "<what you changed>"\` for each one.`;
+}
+
 export function badgeCount(threads: ThreadDto[]): number {
   return threads.filter((t) => !t.discarded && (t.status === "waiting" || t.unread)).length;
 }

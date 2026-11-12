@@ -11,7 +11,7 @@ import { elementScreenshot, whyNoShot } from "./screenshot.ts";
 import { createSendQueue } from "./send_queue.ts";
 import type { QueueItem } from "./send_queue.ts";
 import type { Source } from "./panel_logic.ts";
-import { badgeCount, clampToViewport, errorText, isSendKey, pageLabel, restoreDisabledReason, visibleThreads } from "./panel_logic.ts";
+import { agentPrompt, badgeCount, clampToViewport, errorText, isSendKey, pageLabel, restoreDisabledReason, visibleThreads } from "./panel_logic.ts";
 import type { Tab } from "./panel_logic.ts";
 import type { Store } from "./store.ts";
 import { toastText } from "./toast.ts";
@@ -412,6 +412,15 @@ export function createPanel(o: PanelOptions): Panel {
         h("button", { type: "button", class: "tb-x", "aria-label": "Close comments", title: "Close", "data-key": "close", onclick: close }, "✕")));
   };
 
+  const copyPrompt = () => {
+    const text = agentPrompt(brand.cli, win.location.pathname);
+    // The clipboard needs a secure page; on a plain http site the user is told instead of nothing happening.
+    Promise.resolve(win.navigator.clipboard?.writeText(text) ?? Promise.reject(new Error("no clipboard"))).then(
+      () => o.showToast("Agent prompt copied"),
+      () => o.showToast("Could not copy the prompt on this page"),
+    );
+  };
+
   const close = () => {
     composer = null;
     confirming = null;
@@ -685,6 +694,7 @@ export function createPanel(o: PanelOptions): Panel {
             }, `${pageLabel(p.url, win.location.origin)} (${p.count})`))));
         }
         panel.append(h("div", { class: "tb-foot" },
+          h("button", { type: "button", class: "tb-link", "data-key": "copy-prompt", title: `Copies a prompt that tells the agent to read only this page (${win.location.pathname})`, onclick: copyPrompt }, "Copy agent prompt"),
           h("button", { type: "button", class: "tb-link", "data-key": "history", onclick: () => { showHistory = true; draw(); } },
             `History (${s.history.length})`)));
       }
