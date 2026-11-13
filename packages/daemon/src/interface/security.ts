@@ -15,7 +15,7 @@ export type SecurityOptions = {
 const open_paths = new Set(["/health", `/${brand.bundle}`]);
 
 /** Compares in constant time. A different length is a plain mismatch. */
-function same_token(given: string | undefined, real: string): boolean {
+export function same_token(given: string | undefined, real: string): boolean {
   if (given === undefined) return false;
   const a = Buffer.from(given);
   const b = Buffer.from(real);

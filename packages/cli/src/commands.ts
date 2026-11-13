@@ -1,11 +1,11 @@
 import { spawn, execFileSync } from "node:child_process";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, statSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import { userInfo } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { brand, paths, statusLabel, writeConfig, findConfig } from "@app/shared";
+import { agentState, brand, paths, statusLabel, writeConfig, findConfig } from "@app/shared";
 import type {
   ClaimNextResponse,
   HistoryResponse,
@@ -17,6 +17,7 @@ import { channel } from "./channel.ts";
 import { CliError, connect, currentBranch } from "./client.ts";
 import type { Client } from "./client.ts";
 import { formatNotice, formatThread, formatThreads } from "./format.ts";
+import { doctor } from "./doctor.ts";
 import { claudeCommand, runAgent, writeMcpJson } from "./launch.ts";
 import { firstExisting } from "./where.ts";
 
@@ -33,6 +34,7 @@ const OPTIONS = {
   branch: { type: "string" },
   url: { type: "string" },
   json: { type: "boolean" },
+  follow: { type: "boolean", short: "f" },
 } as const;
 
 const USAGE = [
@@ -40,18 +42,21 @@ const USAGE = [
   "  init [--origin <url>] [--port <n>] [--user <name>]",
   "  start [--agent] [--origin <url>] [--port <n>] [--user <name>]   (sets the folder up first if it has not been)",
   "  claude [claude options]",
-  "  next [--as name]",
+  "  next [--url <path>] [--as name]",
   "  reply <id> <text> [--ask] [--as name]",
   '  comment --selector <css> <text> [--mention me] [--as name]',
-  "  wait [--timeout s] [--as name]",
+  "  wait [--timeout s] [--url <path>] [--as name]",
   "  ack [--as name]",
   "  status",
+  "  doctor                             (checks daemon, folder, branch, extension, skill and agent; says what to run)",
+  `  logs [-f]                          (what the daemon did; needs ${brand.envPrefix}DEBUG=1 on start; -f keeps following)`,
   "  history [id] [--branch <name>] [--url <page>] [--json]",
   "  channel [--as name]",
   "  extension",
 ].join("\n");
 
 const NONE = "no pending threads on this branch";
+const none_message = (why?: string) => (why ? `${NONE}: ${why}` : NONE);
 
 type Args = ReturnType<typeof parse>;
 function parse(argv: string[]) {
@@ -69,16 +74,20 @@ function tryPort(port: number): Promise<number> {
   });
 }
 
-/** The fixed port the extension looks on when it is free (or already this project's own), else the project's old port, else any free one. */
-async function choosePort(same: { port: number } | undefined): Promise<number> {
-  try {
-    return await tryPort(brand.pairPort);
-  } catch {
-    if (same) return same.port;
-    // stderr and loud: the extension pairs with whoever holds this port, so comments would go to that other project.
-    console.error(`\n!! port ${brand.pairPort} is held by another daemon (a different project, or an old one).\n!! The extension will pair with THAT one, and your comments would be saved there, not in this project.\n!! Find it: lsof -nP -iTCP:${brand.pairPort} -sTCP:LISTEN   then stop it and run "${brand.cli} start" again.\n!! Or paste this project's .${brand.cli}/config.json into the extension's "Add a site" page.\n`);
-    return tryPort(0);
+/** The project's own port when it is already in the extension's range (so running init again never moves a running daemon), else the first free port of the range (one per project running at once), else the old port, else any free one. */
+export async function choosePort(same: { port: number } | undefined, first: number = brand.pairPort, span: number = brand.pairSpan): Promise<number> {
+  if (same && same.port >= first && same.port < first + span) return same.port;
+  for (let port = first; port < first + span; port++) {
+    try {
+      return await tryPort(port);
+    } catch {
+      // taken by another project's daemon: try the next one
+    }
   }
+  if (same) return same.port;
+  // stderr and loud: the extension looks only in the range, so it will not find this daemon.
+  console.error(`\n!! ports ${first} to ${first + span - 1} are all taken by other daemons, so the extension cannot find this one.\n!! Stop one: lsof -nP -iTCP:${first}-${first + span - 1} -sTCP:LISTEN\n!! Or paste this project's .${brand.cli}/config.json into the extension's "Add a site" page.\n`);
+  return tryPort(0);
 }
 
 function clean_origin(given: string): string {
@@ -185,7 +194,7 @@ function start(cwd: string, agent = false): Promise<number> {
     if (agent) {
       const c = connect(cwd);
       console.log(`${brand.cli} agent: on. Each comment is answered by a headless claude that may edit files in ${found.dir}. Ctrl+C stops it.`);
-      void runAgent(() => claim(c, cwd), found.dir, stop);
+      void runAgent(() => claim_thread(c, cwd), found.dir, stop);
     }
     child.on("exit", (code) => {
       stop.done = true;
@@ -194,31 +203,60 @@ function start(cwd: string, agent = false): Promise<number> {
   });
 }
 
-async function claim(c: Client, cwd: string): Promise<ThreadDto | null> {
+// Works with the daemon down: it only reads the file the daemon writes.
+async function logs(cwd: string, follow: boolean): Promise<number> {
+  const found = findConfig(cwd);
+  if (!found) throw new CliError(`no ${brand.cli} project found here; run ${brand.cli} init`);
+  const file = join(found.dir, brand.dataDir, "daemon.log");
+  if (!existsSync(file)) throw new CliError(`no log yet (${file}). The daemon only writes it in dev mode: stop it and run ${brand.envPrefix}DEBUG=1 ${brand.cli} start`);
+  console.log(readFileSync(file, "utf8").trimEnd().split("\n").slice(-50).join("\n"));
+  if (!follow) return 0;
+  let at = statSync(file).size;
+  for (;;) {
+    await sleep(500);
+    const size = statSync(file).size;
+    if (size < at) at = 0; // the daemon moved a full file aside
+    if (size === at) continue;
+    const fd = openSync(file, "r");
+    const chunk = Buffer.alloc(size - at);
+    readSync(fd, chunk, 0, chunk.length, at);
+    closeSync(fd);
+    process.stdout.write(chunk);
+    at = size;
+  }
+}
+
+async function claim(c: Client, cwd: string, explain = false, url?: string): Promise<ClaimNextResponse> {
   const branch = currentBranch(cwd);
-  const r = await c.post<ClaimNextResponse>(paths.claimNext, { agent: c.agent, ...(branch ? { branch } : {}) });
-  return r.thread;
+  return await c.post<ClaimNextResponse>(paths.claimNext, { agent: c.agent, ...(branch ? { branch } : {}), ...(url ? { url } : {}), ...(explain ? { explain: true } : {}) });
 }
 
 // Takes every pending thread, oldest first. If a later claim fails, keeps what it already got; the next call retries the rest.
-async function claim_all_pending(c: Client, cwd: string): Promise<ThreadDto[]> {
+const claim_thread = async (c: Client, cwd: string): Promise<ThreadDto | null> => (await claim(c, cwd)).thread;
+
+// `why` says why nothing came back, and is only asked for on the call the caller will report.
+async function claim_all_pending(c: Client, cwd: string, explain = false, url?: string): Promise<{ got: ThreadDto[]; why?: string }> {
   const got: ThreadDto[] = [];
   try {
-    for (let t = await claim(c, cwd); t; t = await claim(c, cwd)) got.push(t);
+    for (;;) {
+      const r = await claim(c, cwd, explain, url);
+      if (!r.thread) return { got, why: r.why };
+      got.push(r.thread);
+    }
   } catch (e) {
     if (!got.length) throw e;
+    return { got };
   }
-  return got;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<number> {
+async function runOnce(cmd: string, c: Client, cwd: string, a: Args, listed?: ListThreadsResponse): Promise<number> {
   const [, ...pos] = a.positionals;
   switch (cmd) {
     case "next": {
-      const got = await claim_all_pending(c, cwd);
-      console.log(got.length ? formatThreads(got) : NONE);
+      const { got, why } = await claim_all_pending(c, cwd, true, a.values.url);
+      console.log(got.length ? formatThreads(got) : none_message(why));
       return 0;
     }
     case "wait": {
@@ -226,14 +264,14 @@ async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<nu
       if (!(secs >= 0)) throw new CliError("--timeout must be a number of seconds");
       const deadline = Date.now() + secs * 1000;
       for (;;) {
-        const got = await claim_all_pending(c, cwd);
+        const { got, why } = await claim_all_pending(c, cwd, deadline - Date.now() <= 2000, a.values.url);
         if (got.length) {
           console.log(formatThreads(got));
           return 0;
         }
         const left = deadline - Date.now();
         if (left <= 0) {
-          console.log(NONE);
+          console.log(none_message(why));
           return 0;
         }
         await sleep(Math.min(2000, left));
@@ -261,9 +299,11 @@ async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<nu
       return 0;
     }
     case "status": {
-      const r = await c.get<ListThreadsResponse>(paths.threads);
+      const r = listed ?? (await c.get<ListThreadsResponse>(paths.threads));
       console.log(`branch: ${r.branch}`);
-      console.log(`agent: ${r.agent.name ?? "none"} (${r.agent.online ? "online" : "offline"})`);
+      const state = agentState(r.agent, Date.now(), brand.cli);
+      console.log(`agent: ${r.agent.name ?? "none"} (${state.label})`);
+      if (state.kind !== "listening") console.log(state.hint);
       if (r.restoreBlocked) console.log(`restore blocked: ${r.restoreBlocked}`);
       if (!r.threads.length) console.log("no threads");
       for (const t of r.threads) console.log(`#${t.n} ${t.id}  ${statusLabel(t.status)}  ${t.element.selector}`);
@@ -297,7 +337,7 @@ async function runOnce(cmd: string, c: Client, cwd: string, a: Args): Promise<nu
 async function run_channel(cwd: string, a: Args): Promise<number> {
   try {
     const c = connect(cwd, a.values.as);
-    return await channel(c, () => claim(c, cwd));
+    return await channel(c, () => claim_thread(c, cwd));
   } catch (e) {
     console.error(e instanceof CliError ? e.message : `error: ${(e as Error).message}`);
     return 1;
@@ -326,12 +366,21 @@ export async function run(argv: string[], cwd: string): Promise<number> {
       return await start(cwd, a.values.agent);
     }
     if (cmd === "channel") return await run_channel(cwd, a);
+    if (cmd === "doctor") {
+      const r = await doctor(cwd);
+      console.log(r.text);
+      return r.ok ? 0 : 1;
+    }
+    if (cmd === "logs") return await logs(cwd, a.values.follow === true);
     if (cmd === "resolve") throw new CliError(`only the user closes a thread; ask with: ${brand.cli} reply <id> "<text>" --ask`);
     if (!["next", "wait", "reply", "comment", "ack", "status", "history"].includes(cmd)) throw new CliError(USAGE);
     const c = connect(cwd, a.values.as);
+    if (process.env[`${brand.envPrefix}DEBUG`] === "1") console.error(`${brand.cli}: daemon :${c.config.port}, folder ${c.dir}, branch ${currentBranch(cwd) ?? "none"}, agent ${c.agent}`);
+    // Asking for notices marks this agent as seen, so `status` reads the list first or it would always report "listening".
+    const listed = cmd === "status" ? await c.get<ListThreadsResponse>(paths.threads) : undefined;
     const n = await c.get<NoticesResponse>(paths.notices, { agent: c.agent });
     for (const notice of n.notices) console.log(`${formatNotice(notice)}\n`);
-    return await runOnce(cmd, c, cwd, a);
+    return await runOnce(cmd, c, cwd, a, listed);
   } catch (e) {
     console.log(e instanceof CliError ? e.message : `error: ${(e as Error).message}`);
     return 1;

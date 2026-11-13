@@ -18,6 +18,7 @@ const daemon = createDaemon({
   allowedOrigins: config.origins,
   token: config.token,
   clock,
+  debug: process.env[`${brand.envPrefix}DEBUG`] === "1",
 });
 
 const port = await daemon.listen();

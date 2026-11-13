@@ -76,8 +76,18 @@ export type PostAgentThreadRequest = {
   text: string;
   url?: string;
 };
-export type ClaimNextRequest = { agent: string; branch?: string };
-export type ClaimNextResponse = { thread: ThreadDto | null };
+export type ClaimNextRequest = {
+  agent: string;
+  branch?: string;
+  /** Only threads from this page: a path ("/pricing") or a whole address. */
+  url?: string;
+  /** Ask for `why` when nothing is claimed. */
+  explain?: boolean;
+};
+/** `why` is only there when nothing was claimed and the caller asked for it. */
+export type ClaimNextResponse = { thread: ThreadDto | null; why?: string };
+/** Without the token only `ok`. `pairedAt`: when the extension last paired (ms since 1970), null if not since the daemon started. */
+export type HealthResponse = { ok: true; dir?: string; branch?: string; origins?: string[]; pairedAt?: number | null };
 export type PostMessageRequest = {
   author: string;
   text: string;

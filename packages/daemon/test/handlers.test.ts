@@ -279,8 +279,11 @@ test("state open and resolved filter threads and leave history alone", () => {
 
 test("claim, reply and agent comment each register the agent as present", () => {
   const s = setup();
-  const name = () => s.list.handle({}).agent;
-  assert.deepEqual(name(), { name: null, online: false });
+  const name = () => {
+    const { name, online } = s.list.handle({}).agent;
+    return { name, online };
+  };
+  assert.deepEqual(s.list.handle({}).agent, { name: null, online: false, seenAt: null });
   const t1 = s.post.handle(postArgs("one"));
   s.post.handle(postArgs("two"));
   s.claim.handle({ agent: "claimer" });
@@ -291,6 +294,7 @@ test("claim, reply and agent comment each register the agent as present", () => 
   s.clock.t += 1000;
   s.postAgent.handle({ agent: "poster", selector: "#a", text: "q" });
   assert.deepEqual(name(), { name: "poster", online: true });
+  assert.equal(s.list.handle({}).agent.seenAt, s.clock.t);
 });
 
 test("agent online flips to false after 60 s of injected clock time", () => {
@@ -299,7 +303,7 @@ test("agent online flips to false after 60 s of injected clock time", () => {
   s.clock.t += 60_000;
   assert.equal(s.list.handle({}).agent.online, true);
   s.clock.t += 1;
-  assert.deepEqual(s.list.handle({}).agent, { name: "claude", online: false });
+  assert.deepEqual(s.list.handle({}).agent, { name: "claude", online: false, seenAt: s.clock.t - 60_001 });
 });
 
 test("message timestamps come from the injected clock", () => {

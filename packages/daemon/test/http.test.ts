@@ -1,6 +1,6 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brand, LIMITS, paths } from "@app/shared";
@@ -146,6 +146,20 @@ test("claim-next with a branch only returns that branch", () =>
     assert.equal(none.thread, null);
     const got = await (await d.call("POST", paths.claimNext, { agent: "claude", branch: "main" })).json();
     assert.equal(got.thread.id, a.id);
+  }));
+
+test("claim-next with a url takes only that page's threads, and says why when only other pages wait", () =>
+  with_daemon(async (d) => {
+    const on = (path: string) => ({ ...post_body(`on ${path}`), url: `http://localhost:3000${path}` });
+    const home = (await (await d.call("POST", paths.threads, on("/"))).json()) as ThreadDto;
+    const pricing = (await (await d.call("POST", paths.threads, on("/pricing"))).json()) as ThreadDto;
+    const none = await (await d.call("POST", paths.claimNext, { agent: "claude", url: "/about", explain: true })).json();
+    assert.equal(none.thread, null);
+    assert.match(none.why, /2 waiting on other pages of main \(you asked for \/about; run without --url to take them\)/);
+    const got = await (await d.call("POST", paths.claimNext, { agent: "claude", url: "/pricing" })).json();
+    assert.equal(got.thread.id, pricing.id);
+    const rest = await (await d.call("POST", paths.claimNext, { agent: "claude" })).json();
+    assert.equal(rest.thread.id, home.id);
   }));
 
 test("bundle route serves the bundle with the config global prepended", async () => {
@@ -371,3 +385,59 @@ test("a selection is kept cut to its limit and a dragged-box flag only when it i
     assert.equal(none.selection, undefined);
     assert.equal(none.area, undefined);
   }));
+
+test("health shows the folder, branch and origins only to a caller with the token", () =>
+  with_daemon(async (d) => {
+    const open = await (await d.call("GET", paths.health, undefined, { [brand.tokenHeader]: "" })).json();
+    assert.deepEqual(open, { ok: true });
+    const full = await (await d.call("GET", paths.health)).json();
+    assert.equal(full.dir, d.dir);
+    assert.equal(full.branch, "main");
+    assert.deepEqual(full.origins, [ORIGIN]);
+  }));
+
+test("an empty claim says why, but only when asked", () =>
+  with_daemon(async (d) => {
+    await d.call("POST", paths.threads, post_body("on main"));
+    const quiet = await (await d.call("POST", paths.claimNext, { agent: "claude", branch: "feat-x" })).json();
+    assert.equal(quiet.thread, null);
+    assert.equal("why" in quiet, false);
+    const asked = await (await d.call("POST", paths.claimNext, { agent: "claude", branch: "feat-x", explain: true })).json();
+    assert.match(asked.why, /1 on main waiting \(you asked for feat-x/);
+    await d.call("POST", paths.claimNext, { agent: "claude" });
+    const taken = await (await d.call("POST", paths.claimNext, { agent: "other", explain: true })).json();
+    assert.match(taken.why, /1 on main already taken by an agent/);
+    const none = await (await d.call("POST", paths.claimNext, { agent: "other", branch: "empty", explain: true })).json();
+    assert.match(none.why, /nothing has been sent from the browser on empty/);
+  }));
+
+test("the daemon writes no log file unless debug is on, and then logs a comment, a claim, a reply and an empty claim", async () => {
+  const dir = make_repo();
+  folders.push(dir);
+  const log = () => readFileSync(join(dir, brand.dataDir, "daemon.log"), "utf8");
+  const quiet = await start_daemon(dir);
+  try {
+    const t = (await (await quiet.call("POST", paths.threads, post_body("hi"))).json()) as ThreadDto;
+    await quiet.call("POST", paths.claimNext, { agent: "claude" });
+    await quiet.call("POST", paths.claimNext, { agent: "claude" });
+    await quiet.call("POST", paths.messages(t.id), { author: "claude", text: "done" });
+  } finally {
+    await quiet.close();
+  }
+  assert.equal(existsSync(join(dir, brand.dataDir, "daemon.log")), false);
+
+  const loud = await start_daemon(dir, { debug: true });
+  try {
+    const t = (await (await loud.call("POST", paths.threads, post_body("hi"))).json()) as ThreadDto;
+    await loud.call("POST", paths.claimNext, { agent: "claude" });
+    await loud.call("POST", paths.messages(t.id), { author: "claude", text: "done" });
+    await loud.call("POST", paths.claimNext, { agent: "claude", explain: true });
+  } finally {
+    await loud.close();
+  }
+  assert.match(log(), /comment +#\d+ t\d+ branch=main page=\//);
+  assert.match(log(), /claim +claude branch=main -> #\d+/);
+  assert.match(log(), /reply +claude -> /);
+  assert.match(log(), /claim +claude branch=main -> none \(\d+ on main already taken/);
+  assert.match(log(), /request +POST \/threads\/claim-next 200/);
+});

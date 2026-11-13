@@ -25,7 +25,8 @@ import { AckNoticesHandler } from "../application/commands/ack_notices.ts";
 import { ListThreadsHandler } from "../application/queries/list_threads.ts";
 import { GetHistoryHandler } from "../application/queries/get_history.ts";
 import { GetNoticesHandler } from "../application/queries/get_notices.ts";
-import { security } from "./security.ts";
+import { createLog } from "./log.ts";
+import { same_token, security } from "./security.ts";
 
 export type DaemonOptions = {
   projectDir: string;
@@ -34,6 +35,8 @@ export type DaemonOptions = {
   token: string;
   clock?: Clock;
   bundlePath?: string;
+  /** Dev mode (the DEBUG env var): write daemon.log in the data folder, with every request and every claim that finds nothing. Off: no log file. */
+  debug?: boolean;
 };
 
 export type Daemon = {
@@ -120,6 +123,14 @@ function read_page_errors(value: unknown): PageError[] | undefined {
   return lines.length ? lines.slice(-LIMITS.pageErrors) : undefined;
 }
 
+function page_path(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url.slice(0, 80);
+  }
+}
+
 function read_viewport(value: unknown): { w: number; h: number } {
   const v = value as { w?: unknown; h?: unknown } | null | undefined;
   if (typeof v !== "object" || v === null || typeof v.w !== "number" || typeof v.h !== "number") {
@@ -135,6 +146,8 @@ export function createDaemon(opts: DaemonOptions): Daemon {
   const clock = opts.clock ?? new SystemClock();
   const git = new GitInfoReader(opts.projectDir);
   const checkpoints = new GitCheckpointStore(opts.projectDir);
+  let paired_at: number | null = null;
+  const log = opts.debug ? createLog(join(dataDir, "daemon.log")) : () => {};
 
   const shots = new FileScreenshotStore(opts.projectDir);
   const post_comment = new PostCommentHandler(repo, clock, git, shots);
@@ -160,16 +173,31 @@ export function createDaemon(opts: DaemonOptions): Daemon {
   const app = new Hono<{ Variables: Variables }>();
   app.use("*", security({ allowedOrigins: [...opts.allowedOrigins, brand.extensionOrigin], token: opts.token, port: () => address()?.port ?? opts.port }));
 
+  if (opts.debug) {
+    app.use("*", async (c, next) => {
+      const started = Date.now();
+      await next();
+      log("request", `${c.req.method} ${c.req.path} ${c.res.status} ${Date.now() - started}ms`);
+    });
+  }
+
   app.onError((e, c) => {
     if (e instanceof DomainError) return c.json({ error: e.code, message: e.message }, ERROR_STATUS[e.code] as 400);
     return c.json({ error: "internal", message: "something went wrong inside the daemon" }, 500);
   });
   app.notFound((c) => c.json({ error: "not_found", message: `no route ${c.req.method} ${c.req.path}` }, 404));
 
-  app.get(paths.health, (c) => c.json({ ok: true }));
+  // Open without a token for the "is it up" probe; the folder, branch and origins only go to a caller that has the token.
+  app.get(paths.health, (c) =>
+    c.json(same_token(c.req.header(brand.tokenHeader), opts.token) ? { ok: true, dir: opts.projectDir, branch: git.branch().value, origins: opts.allowedOrigins, pairedAt: paired_at } : { ok: true }),
+  );
 
   // security() lets only the extension's origin reach this; it hands over the token so the extension needs no pasted config.
-  app.post(brand.pairPath, (c) => c.json({ pair: 1, port: address()?.port ?? opts.port, token: opts.token, dir: opts.projectDir }));
+  app.post(brand.pairPath, (c) => {
+    paired_at = clock.now();
+    log("pair", `extension paired on :${address()?.port ?? opts.port}`);
+    return c.json({ pair: 1, port: address()?.port ?? opts.port, token: opts.token, dir: opts.projectDir, origins: opts.allowedOrigins });
+  });
 
   app.get(`/${brand.bundle}`, (c) => {
     let bundle: string;
@@ -200,6 +228,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
       pageErrors: read_page_errors(b.pageErrors),
       also: read_also(b.also),
     });
+    log("comment", `#${thread.n} ${thread.id} branch=${thread.branch} page=${page_path(thread.url)}`);
     return c.json(thread, 201);
   });
 
@@ -216,11 +245,17 @@ export function createDaemon(opts: DaemonOptions): Daemon {
 
   app.post(paths.claimNext, (c) => {
     const b = c.get("body");
-    const thread = claim_next.handle({
-      agent: need_text(b.agent, "agent"),
-      branch: typeof b.branch === "string" && b.branch !== "" ? b.branch : undefined,
-    });
-    return c.json({ thread });
+    const agent = need_text(b.agent, "agent");
+    const branch = typeof b.branch === "string" && b.branch !== "" ? b.branch : undefined;
+    const url = typeof b.url === "string" && b.url !== "" ? b.url : undefined;
+    const thread = claim_next.handle({ agent, branch, url });
+    if (thread) {
+      log("claim", `${agent} branch=${thread.branch}${url ? ` page=${url}` : ""} -> #${thread.n} ${thread.id}`);
+      return c.json({ thread });
+    }
+    const why = b.explain === true ? claim_next.whyNone(branch, url) : undefined;
+    if (opts.debug) log("claim", `${agent} branch=${branch ?? git.branch().value}${url ? ` page=${url}` : ""} -> none${why ? ` (${why})` : ""}`);
+    return c.json({ thread, ...(why ? { why } : {}) });
   });
 
   app.post("/threads/:id/messages", (c) => {
@@ -233,6 +268,7 @@ export function createDaemon(opts: DaemonOptions): Daemon {
       screenshot: read_screenshot(b.screenshot),
       detail: read_detail(b.detail),
     });
+    log("reply", `${String(b.author)} -> ${thread.id}${b.ask === true ? " (ask)" : ""}`);
     return c.json(thread);
   });
 

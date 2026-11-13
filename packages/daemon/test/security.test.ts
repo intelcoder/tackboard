@@ -176,3 +176,11 @@ test("/pair hands the token only to the extension's own origin and needs no toke
     assert.equal((await raw(d.port, brand.pairPath, { host: `127.0.0.1:${d.port}` })).status, 403);
     assert.equal((await raw(d.port, brand.pairPath, { host: "evil.example.com", origin: brand.extensionOrigin })).status, 403);
   }));
+
+test("health reports when the extension last paired, null before", () =>
+  with_daemon(async (d) => {
+    assert.equal((await (await d.call("GET", paths.health)).json()).pairedAt, null);
+    await d.call("POST", brand.pairPath, undefined, { origin: brand.extensionOrigin, [brand.tokenHeader]: "" });
+    const at = (await (await d.call("GET", paths.health)).json()).pairedAt;
+    assert.ok(Math.abs(Date.now() - at) < 5000, String(at));
+  }));

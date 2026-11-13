@@ -1,10 +1,11 @@
-import { brand } from "@app/shared";
+import { brand, paths } from "@app/shared";
 import { chrome, loadSites, saveSites } from "./chrome_calls.ts";
 import { pairSites } from "./discover.ts";
 import { answerMessage, answerScreenshot } from "./proxy.ts";
 import type { Sites } from "./sites.ts";
 import { LOCAL_PATTERNS, isLocalKey, siteFrom, siteKey } from "./sites.ts";
-import { badgeFor, badgeNeedsUpdate, whatClickDoes } from "./toolbar.ts";
+import { badgeFor, badgeNeedsUpdate, linkFrom, linkKey, whatClickDoes } from "./toolbar.ts";
+import type { Link } from "./toolbar.ts";
 
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
   if (!sender.tab?.url) return;
@@ -21,9 +22,29 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       .then(reply);
     return true;
   }
-  void answer(sender.tab.url, message).then(reply);
+  const { tab } = sender;
+  void answer(tab.url!, message).then((result) => {
+    noteLink(tab, message.path, result);
+    reply(result);
+  });
   return true;
 });
+
+// What each tab's last thread-list call said, so the button can show whether an agent is listening. The overlay polls this path, so no polling is added here.
+const links = new Map<number, Link>();
+chrome.tabs.onRemoved.addListener((id) => links.delete(id));
+
+function noteLink(tab: { id?: number; url?: string }, path: string | undefined, result: unknown): void {
+  // The is_on and screenshot messages carry no path.
+  if (tab.id === undefined || path?.split("?")[0] !== paths.threads) return;
+  const link = linkFrom(result, Date.now());
+  if (link === undefined) return;
+  const before = links.get(tab.id);
+  links.set(tab.id, link);
+  // The title's "N s ago" would change on every poll; only a change of state redraws the button.
+  if (linkKey(before) === linkKey(link)) return;
+  void loadSites().then((sites) => showBadge(sites, tab)).catch(() => {});
+}
 
 /** Local pages (localhost, 127.0.0.1, file) pair with the daemon on the fixed port, so no config is pasted. Other sites use what the user saved. */
 async function answer(url: string, message: { kind: string; method: string; path: string; body?: string }) {
@@ -71,7 +92,7 @@ chrome.storage.onChanged.addListener(async (changes) => {
 /** Sets the button's words and title for one tab. Chrome keeps them per tab, even after the tab goes to another site, so this runs on every new address or load. */
 function showBadge(sites: Sites, tab: { id?: number; url?: string }): void {
   if (tab.id === undefined) return;
-  const badge = badgeFor(sites, tab.url);
+  const badge = badgeFor(sites, tab.url, links.get(tab.id));
   const done = [
     chrome.action.setBadgeText({ tabId: tab.id, text: badge.text }),
     chrome.action.setBadgeBackgroundColor({ tabId: tab.id, color: badge.color }),
@@ -82,8 +103,9 @@ function showBadge(sites: Sites, tab: { id?: number; url?: string }): void {
   for (const one of done) one.catch(() => {});
 }
 
-chrome.tabs.onUpdated.addListener(async (_tabId, changes, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changes, tab) => {
   if (!badgeNeedsUpdate(changes)) return;
+  if ("url" in changes) links.delete(tabId); // another site: the old answer is not about it
   await loadSites().then((sites) => showBadge(sites, tab)).catch(() => {});
 });
 chrome.tabs.onActivated.addListener(({ tabId }) =>

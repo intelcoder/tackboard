@@ -45,7 +45,7 @@ export type Running = {
 
 export async function start_daemon(
   dir: string,
-  extra: { bundlePath?: string; token?: string } = {},
+  extra: { bundlePath?: string; token?: string; debug?: boolean } = {},
 ): Promise<Running> {
   const token = extra.token ?? "test-token";
   mkdirSync(join(dir, brand.dataDir), { recursive: true });
@@ -55,6 +55,7 @@ export async function start_daemon(
     allowedOrigins: [ORIGIN],
     token,
     bundlePath: extra.bundlePath,
+    debug: extra.debug,
   });
   const port = await daemon.listen();
   const url = `http://127.0.0.1:${port}`;

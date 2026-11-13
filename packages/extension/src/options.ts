@@ -9,9 +9,11 @@ const siteField = find<HTMLInputElement>("site");
 const configField = find<HTMLTextAreaElement>("config");
 const problem = find("problem");
 
-document.title = `${brand.name} sites`;
-find("title").textContent = `${brand.name} sites`;
-find("config_label").textContent = `Config (paste the project's ${brand.dataDir}/${brand.configFile})`;
+document.title = `${brand.name} settings`;
+find("title").textContent = `${brand.name} settings`;
+find("config_hint").textContent = `Paste the whole ${brand.dataDir}/${brand.configFile} of the project.`;
+// The shortcuts are the same keys everywhere; a Mac just calls the key Option.
+if (navigator.platform.startsWith("Mac")) for (const key of document.querySelectorAll("kbd")) key.textContent = key.textContent!.replace("Alt", "Option");
 
 function element(tag: string, props: Record<string, string> = {}, ...children: (Node | string)[]): HTMLElement {
   const made = document.createElement(tag);
@@ -29,15 +31,20 @@ async function showSites(): Promise<void> {
   }
   list.replaceChildren(
     ...origins.map((origin) => {
+      const local = isLocalKey(origin);
       const on = element("input", { type: "checkbox" }) as HTMLInputElement;
       on.checked = sites[origin]!.on;
+      const tag = element("span", { class: "tag", title: local ? "Pairs with the daemon by itself" : "Added here, with Chrome's permission" }, local ? "Local" : "Added");
+      const row = element("li", { class: on.checked ? "" : "off" }, element("span", { class: "site" }, element("span", { class: "address" }, origin), tag));
       on.addEventListener("change", async () => {
+        row.classList.toggle("off", !on.checked);
         const saved = await loadSites();
         if (saved[origin]) await saveSites({ ...saved, [origin]: { ...saved[origin], on: on.checked } });
       });
-      const remove = element("button", { type: "button" }, "Remove");
+      const remove = element("button", { type: "button", class: "remove", title: local ? "Turns it off. A local page comes back by itself." : "Forgets the site and gives its permission back." }, "Remove");
       remove.addEventListener("click", () => void removeSite(origin));
-      return element("li", {}, element("span", { class: "address" }, origin), element("label", {}, on, "On"), remove);
+      row.append(element("span", { class: "actions" }, element("label", {}, on, "On"), remove));
+      return row;
     }),
   );
 }
@@ -102,7 +109,7 @@ if (wantedSite) {
   siteField.value = wantedSite;
   configField.focus();
   if (isLocalKey(siteKey(wantedSite))) {
-    problem.textContent = `No ${brand.name} daemon was found on port ${brand.pairPort}. Run "${brand.cli} start" in your project and click the button again, or paste the config below.`;
+    problem.textContent = `No ${brand.name} daemon for this page was found on ports ${brand.pairPort} to ${brand.pairPort + brand.pairSpan - 1} (the daemon's allowed origins must include this page). Run "${brand.cli} start" in your project and click the button again, or paste the config below.`;
   }
   // Fill the config from the clipboard when it holds one, so only the approval click is left.
   void navigator.clipboard.readText().then((text) => {

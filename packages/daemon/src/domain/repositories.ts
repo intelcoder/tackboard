@@ -10,7 +10,8 @@ export interface ThreadRepository {
   /** Persists the thread, its messages and appends pullEvents() to the event log in one operation. */
   save(t: Thread): void;
   /** Re-queues stale claims on the branch (recording `requeued`), then claims the oldest pending non-discarded thread. */
-  claimNext(branch: Branch, agent: AgentName, now: number): Thread | null;
+  /** `page`: only a thread from that page (see `onPage`). */
+  claimNext(branch: Branch, agent: AgentName, now: number, page?: string): Thread | null;
   /** Saves all the threads and the notice in one operation: either all of it is stored or none. */
   saveRestore(threads: Thread[], notice: Notice): void;
   /** Restore notices later than the agent's first_seen that it has not acked, oldest first. Unknown agent: none. */
@@ -22,7 +23,7 @@ export interface ThreadRepository {
   history(threadId?: string): HistoryEvent[];
   /** Records the agent as seen now. The first time also sets its first_seen, which never changes. */
   touchAgent(name: string, now: number): void;
-  lastAgent(now: number): { name: string | null; online: boolean };
+  lastAgent(now: number): { name: string | null; online: boolean; seenAt: number | null };
 }
 
 export interface Clock {

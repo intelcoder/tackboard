@@ -64,7 +64,8 @@ export type ListThreadsResponse = {
   branch: string;
   threads: ThreadDto[];
   history: ThreadDto[];
-  agent: { name: string | null; online: boolean };
+  /** `seenAt`: when the agent last asked for anything (ms since 1970), null if none has. */
+  agent: { name: string | null; online: boolean; seenAt: number | null };
   restoreBlocked: string | null;
   /** With a page filter: other pages of the branch that still have unresolved threads. */
   otherPages?: { url: string; count: number }[];

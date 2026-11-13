@@ -43,7 +43,7 @@ export function createStore(initial: Partial<OverlayState> = {}): Store {
     branch: null,
     project: null,
     otherPages: [],
-    agent: { name: null, online: false },
+    agent: { name: null, online: false, seenAt: null },
     restoreBlocked: null,
     loaded: false,
     error: null,

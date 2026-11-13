@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { statusLabel } from "@app/shared";
 import type { ThreadDto } from "@app/shared";
-import { badgeCount, badgeLabel, bannerFor, clampToViewport, diffForEvents, errorText, isSendKey, pageLabel, restoreDisabledReason, visibleThreads } from "../src/panel_logic.ts";
+import { agentConnected, agentPrompt, badgeCount, badgeLabel, bannerFor, clampToViewport, diffForEvents, errorText, isSendKey, pageLabel, restoreDisabledReason, visibleThreads } from "../src/panel_logic.ts";
 import { parseHTML } from "linkedom";
 import { createH } from "../src/dom.ts";
 import { notificationState, permissionBanner } from "../src/notifications.ts";
@@ -163,4 +163,26 @@ test("isSendKey: Enter sends, Shift+Enter does not, Ctrl or Cmd plus Enter sends
 test("pageLabel shows the path, and the host only for another site", () => {
   assert.equal(pageLabel("http://localhost:4322/en/malaysia/", "http://localhost:4322"), "/en/malaysia");
   assert.equal(pageLabel("http://localhost:6007/iframe.html?id=btn", "http://localhost:4322"), "localhost:6007/iframe.html?id=btn");
+});
+
+test("agentConnected: an agent that starts asking is announced; one already there, or taking a turn it already had, is not", () => {
+  const now = 1_000_000;
+  const seen = (name: string | null, ago: number | null) => ({ name, seenAt: ago === null ? null : now - ago });
+  const none = seen(null, null);
+  const noneAnnounced = new Set<string>();
+  assert.deepEqual(agentConnected(none, seen("claude", 1000), now, noneAnnounced), { kind: "agent", agent: "claude" });
+  assert.deepEqual(agentConnected(seen("claude", 20 * 60_000), seen("claude", 1000), now, noneAnnounced), { kind: "agent", agent: "claude" }, "back after being away");
+  assert.equal(agentConnected(seen("claude", 4000), seen("claude", 1000), now, noneAnnounced), null, "still the same agent, still up");
+  assert.equal(agentConnected(none, none, now, noneAnnounced), null, "nobody yet");
+  assert.equal(agentConnected(seen("claude", 4000), seen("claude", 20 * 60_000), now, noneAnnounced), null, "gone, not connected");
+  assert.equal(agentConnected(none, { name: null, seenAt: now - 1000 }, now, noneAnnounced), null, "no name");
+  assert.equal(agentConnected(seen("claude", 20 * 60_000), seen("claude", 20 * 60_000), now, noneAnnounced), null, "still away");
+  assert.deepEqual(agentConnected(seen("claude", 4000), seen("codex", 1000), now, noneAnnounced), { kind: "agent", agent: "codex" }, "a second agent");
+  assert.equal(agentConnected(seen("claude", 4000), seen("codex", 1000), now, new Set(["codex"])), null, "two agents taking turns are announced once each");
+});
+
+test("agentPrompt names the page path and the commands, so an agent reads only that page", () => {
+  const text = agentPrompt("tackboard", "/pricing");
+  assert.match(text, /`tackboard wait --url \/pricing`/);
+  assert.match(text, /`tackboard reply <id> "<what you changed>"`/);
 });

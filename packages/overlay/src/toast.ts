@@ -12,6 +12,8 @@ export function toastText(event: ToastEvent): string {
       return `${event.agent} ${statusLabel("received")} your comment`;
     case "resolved":
       return `Comment ${event.n} ${statusLabel("resolved")}`;
+    case "agent":
+      return `${event.agent} is connected`;
     case "restored":
       return `Project restored to message ${event.number}`;
   }

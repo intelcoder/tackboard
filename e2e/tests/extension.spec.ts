@@ -401,7 +401,7 @@ test("the toolbar click turns a site off and on with no reload, and the badge fo
     await page.goto(site);
     await expect(host(page)).toBeAttached();
     await page.evaluate(() => ((window as any).marker = 1));
-    await expect.poll(async () => (await badgeOn(stack, page)).text).toBe("ON");
+    await expect.poll(async () => (await badgeOn(stack, page)).text).toMatch(/^ON\??$/); // "ON?" until an agent asks, "ON" after
 
     const daemonCalls: string[] = [];
     stack.context.on("request", (request) => {
@@ -420,12 +420,29 @@ test("the toolbar click turns a site off and on with no reload, and the badge fo
 
     await clickToolbar(stack, page);
     await expect(host(page)).toBeAttached();
-    await expect.poll(async () => (await badgeOn(stack, page)).text).toBe("ON");
+    await expect.poll(async () => (await badgeOn(stack, page)).text).toMatch(/^ON\??$/); // "ON?" until an agent asks
     expect((await badgeOn(stack, page)).textColor).toEqual([255, 255, 255, 255]);
     expect(await page.evaluate(() => (window as any).marker)).toBe(1);
 
     await page.goto(notAdded);
     await expect.poll(async () => (await badgeOn(stack, page)).text).toBe("");
+  });
+});
+
+test("the badge turns amber when no agent is listening and green when one asks", async () => {
+  await withStack(async (stack) => {
+    const site = await stack.site();
+    const options = await optionsPage(stack);
+    await addSite(stack, options, site.replace("http://", ""));
+    const page = await stack.context.newPage();
+    await page.goto(site);
+    await expect(host(page)).toBeAttached();
+    await expect.poll(async () => (await badgeOn(stack, page)).text, { timeout: 10_000 }).toBe("ON?");
+    expect((await badgeOn(stack, page)).title).toMatch(/no agent is listening.*`tackboard wait`/);
+
+    stack.run(["next"]); // an agent asks: the next poll of the panel turns the button green
+    await expect.poll(async () => (await badgeOn(stack, page)).text, { timeout: 10_000 }).toBe("ON");
+    expect((await badgeOn(stack, page)).title).toContain("most likely waiting");
   });
 });
 
@@ -823,4 +840,106 @@ test("a screenshot of a comment about two elements covers the area of both", asy
     expect(Math.abs(png.readUInt32BE(20) - union.h)).toBeLessThanOrEqual(2);
     expect(png.readUInt32BE(20)).toBeGreaterThan(a.height + 1);
   }, ["<all_urls>"]);
+});
+
+/** A second project with its own daemon on a port of the extension's range, allowing one page origin. */
+async function startProject(folder: string, port: number, origin: string): Promise<{ stop(): Promise<void> }> {
+  const project = join(folder, `project-${port}`);
+  execFileSync("git", ["init", "-q", "-b", "main", project]);
+  execFileSync("node", [cli, "init", "--port", String(port), "--origin", origin, "--user", "sam"], { cwd: project, encoding: "utf8" });
+  const daemon = spawn("node", [cli, "start"], { cwd: project, stdio: ["ignore", "pipe", "ignore"] });
+  await new Promise<void>((done, fail) => {
+    let seen = "";
+    daemon.stdout!.on("data", (d) => {
+      seen += d;
+      if (seen.includes("listening")) done();
+    });
+    daemon.once("exit", () => fail(new Error(`daemon exited early: ${seen}`)));
+  });
+  return {
+    async stop() {
+      const gone = new Promise((done) => daemon.once("exit", done));
+      daemon.kill("SIGTERM");
+      await gone;
+    },
+  };
+}
+
+/** Two free ports of the extension's range, or none when the developer's own daemons hold them. */
+async function twoRangePorts(): Promise<number[]> {
+  const free: number[] = [];
+  for (let port = brand.pairPort; port < brand.pairPort + brand.pairSpan && free.length < 2; port++) {
+    await new Promise<void>((done) => {
+      const probe = createPortProbe();
+      probe.once("error", () => done());
+      probe.listen(port, "127.0.0.1", () => probe.close(() => (free.push(port), done())));
+    });
+  }
+  return free;
+}
+
+test("with two projects running, a local page pairs with the daemon whose origins include it", async () => {
+  const ports = await twoRangePorts();
+  test.skip(ports.length < 2, "the extension's port range is in use on this machine");
+  await withStack(async (stack) => {
+    const siteA = await stack.site();
+    const siteB = await stack.site();
+    const folder = mkdtempSync(join(tmpdir(), "tb-two-"));
+    const first = await startProject(folder, ports[0]!, siteA);
+    const second = await startProject(folder, ports[1]!, siteB);
+    try {
+      const pageB = await stack.context.newPage();
+      await pageB.goto(siteB);
+      const pageA = await stack.context.newPage();
+      await pageA.goto(siteA);
+      await expect(host(pageA)).toBeAttached();
+      await expect(host(pageB)).toBeAttached();
+      const options = await optionsPage(stack);
+      const saved = async () =>
+        options.evaluate(async () => (await (globalThis as any).chrome.storage.local.get("sites")).sites as Record<string, { daemon: string }>);
+      await expect.poll(async () => (await saved())[siteA]?.daemon).toBe(`http://127.0.0.1:${ports[0]}`);
+      expect((await saved())[siteB]?.daemon).toBe(`http://127.0.0.1:${ports[1]}`);
+    } finally {
+      await first.stop();
+      await second.stop();
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+});
+
+test("the options page fits every width in both themes, empty and with sites", async () => {
+  await withStack(async (stack) => {
+    const options = await optionsPage(stack);
+    const look = async (state: string) => {
+      for (const [w, h] of [[1280, 900], [390, 900], [320, 900]] as const) {
+        for (const scheme of ["light", "dark"] as const) {
+          await options.setViewportSize({ width: w, height: h });
+          await options.emulateMedia({ colorScheme: scheme });
+          // one frame, so the page has laid out for the new width before it is measured and pictured
+          await options.evaluate(() => new Promise(requestAnimationFrame));
+          expect(await options.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${state} no sideways scroll at ${w}px`).toBe(true);
+          const outside = await options.evaluate(() =>
+            [...document.querySelectorAll("button, input, textarea, kbd, .address")]
+              .map((e) => e.getBoundingClientRect())
+              .filter((r) => r.width > 0 && (r.left < 0 || r.right > window.innerWidth)).length,
+          );
+          expect(outside, `${state} every control inside ${w}px`).toBe(0);
+          const rows = await options.locator("#sites li:not(.empty)").all();
+          expect(rows.length, `${state} rows`).toBe(state === "sites" ? 2 : 0);
+          for (const row of rows) {
+            const on = (await row.getByLabel("On").boundingBox())!;
+            const remove = (await row.getByRole("button").boundingBox())!;
+            expect(Math.abs(on.y + on.height / 2 - (remove.y + remove.height / 2)), `${state} On and Remove share a line at ${w}px`).toBeLessThan(8);
+            // each row says how it got here: a local page pairs by itself, any other site was added in the form
+            await expect(row.locator(".tag")).toHaveText((await row.locator(".address").innerText()).includes("localhost") ? "Local" : "Added");
+          }
+          await options.screenshot({ path: join(root, "e2e", "artifacts", `options_${state}_${w}_${scheme}.png`), fullPage: true });
+        }
+      }
+    };
+    await look("empty");
+    await addSite(stack, options, (await stack.site()).replace("http://", ""));
+    await addSite(stack, options, "dev.example.test");
+    await look("sites");
+  });
 });

@@ -46,6 +46,7 @@ export function connect(cwd: string, agentFlag?: string): Client {
       throw new CliError(`cannot reach the daemon on port ${config.port}; run ${brand.cli} start`);
     }
     const data = (await res.json()) as unknown;
+    if (res.status === 401) throw new CliError(`the daemon on port ${config.port} did not accept this folder's token, so it belongs to another project (or this folder's config changed); run ${brand.cli} doctor`);
     if (!res.ok) throw new CliError((data as ApiErrorBody).message ?? `request failed (${res.status})`);
     return data as T;
   }

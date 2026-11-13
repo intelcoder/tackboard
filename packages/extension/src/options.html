@@ -3,53 +3,112 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sites</title>
+<title>Settings</title>
 <style>
-  :root { color-scheme: light dark; --line: #8886; --accent: #2457d6; --bad: #b3261e; }
-  @media (prefers-color-scheme: dark) { :root { --accent: #8ab4ff; --bad: #ff8a80; } }
-  body { font: 16px/1.5 system-ui, sans-serif; margin: 0; padding: 24px 16px; }
+  :root {
+    color-scheme: light dark;
+    --bg: #f3f4f6; --card: #ffffff; --field: #ffffff; --fg: #1b1f24; --muted: #596270; --line: #d5d9e0;
+    --accent: #2457d6; --on-accent: #ffffff; --bad: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121417; --card: #1b1e24; --field: #121417; --fg: #e6e8ec; --muted: #a3aab6; --line: #353b45; --accent: #8ab4ff; --on-accent: #0e1424; --bad: #ff8a80; }
+  }
+  * { box-sizing: border-box; }
+  body { font: 16px/1.5 system-ui, sans-serif; margin: 0; padding: 32px 16px 64px; background: var(--bg); color: var(--fg); }
   main { max-width: 36rem; margin: 0 auto; }
-  h1 { font-size: 1.5rem; margin: 0 0 16px; }
-  h2 { font-size: 1.125rem; margin: 32px 0 8px; }
+  header { margin: 0 0 24px; }
+  h1 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 6px; }
+  h2 { font-size: 1.0625rem; margin: 0; }
+  .lede { color: var(--muted); margin: 0; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin: 0 0 16px; }
+  /* The section heading and its one-line explanation sit together, above the controls. */
+  .head { margin: 0 0 12px; }
+  p { margin: 0; }
+  .note { color: var(--muted); font-size: 0.875rem; }
+  .head .note, p + .note, .problem + .note { margin-top: 4px; }
   ul { list-style: none; margin: 0; padding: 0; }
-  li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-  .address { flex: 1 1 12rem; overflow-wrap: anywhere; }
-  .empty { color: GrayText; }
+  li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+  li:first-child { border-top: 0; padding-top: 4px; }
+  li:last-of-type { padding-bottom: 4px; }
+  /* The address and its tag stay together; on a narrow screen the tag wraps under the address and the controls under both. */
+  .site { flex: 1 1 12rem; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .address { min-width: 0; overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: 0.9375rem; }
+  li.off .address { color: var(--muted); }
+  .tag { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+  .actions { display: flex; align-items: center; gap: 16px; margin-left: auto; }
+  li.empty { display: block; padding: 20px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; }
+  ul + .note { margin-top: 12px; }
   label { display: block; font-weight: 600; margin: 16px 0 4px; }
-  label.inline { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }
-  li label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }
-  input[type="text"], textarea { box-sizing: border-box; width: 100%; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: Canvas; color: CanvasText; }
-  textarea { min-height: 8rem; font-family: ui-monospace, monospace; font-size: 0.875rem; }
-  button { font: inherit; padding: 8px 16px; min-height: 40px; border: 1px solid var(--line); border-radius: 6px; background: ButtonFace; color: ButtonText; cursor: pointer; }
-  button:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, ButtonFace); }
-  button.main { background: var(--accent); border-color: var(--accent); color: Canvas; font-weight: 600; }
-  button.main:hover { background: color-mix(in srgb, var(--accent) 85%, CanvasText); }
-  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-  .warning { margin: 0 0 8px; }
-  .problem { color: var(--bad); margin: 12px 0; min-height: 1.5em; }
+  label.inline, li label { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; }
+  input[type="checkbox"] { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--accent); }
+  input[type="text"], textarea { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--fg); }
+  input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+  textarea { min-height: 7rem; font-family: ui-monospace, monospace; font-size: 0.875rem; resize: vertical; }
+  .hint { color: var(--muted); font-size: 0.8125rem; margin: 4px 0 0; }
+  button { font: inherit; padding: 8px 14px; min-height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--fg); cursor: pointer; }
+  button:hover { border-color: var(--fg); }
+  button.remove:hover { border-color: var(--bad); color: var(--bad); }
+  button.main { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; padding: 8px 18px; }
+  button.main:hover { filter: brightness(0.92); }
+  form p:last-child { margin-top: 16px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* An empty alert stays in the page for screen readers but takes no room. */
+  .problem { color: var(--bad); margin: 12px 0 0; padding: 8px 12px; border-left: 3px solid var(--bad); background: color-mix(in srgb, var(--bad) 8%, transparent); border-radius: 0 6px 6px 0; }
+  .problem:empty { margin: 0; padding: 0; border: 0; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; align-items: center; margin: 0 0 12px; }
+  dd { margin: 0; }
+  kbd { font: 0.8125rem ui-monospace, monospace; padding: 2px 8px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; background: var(--field); white-space: nowrap; }
+  /* On a phone the cards go flat and full width, so the controls keep their room. */
+  @media (max-width: 420px) {
+    body { padding: 24px 16px 48px; background: var(--card); }
+    section { border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 20px 0; margin: 0; }
+  }
 </style>
 </head>
 <body>
 <main>
-  <h1 id="title"></h1>
-  <ul id="sites"></ul>
-  <p id="file_hint" hidden>To use pages opened from your computer (file://), open this extension's card in chrome://extensions and turn on "Allow access to file URLs".</p>
-  <h2>Keyboard shortcuts</h2>
-  <p>Alt+Shift+K add comment, Alt+Shift+X hide or show the overlay, Alt+Shift+L comments panel (Option+Shift on a Mac). They do nothing while you type in a text field.</p>
-  <h2>Screenshots</h2>
-  <p class="warning">Lets a comment carry a picture of the element it is about. Chrome asks for access to all sites because it will not take a picture of a tab without it. A picture is taken only when you tick "Attach screenshot" on a comment, and it goes to your own daemon, nowhere else.</p>
-  <label class="inline"><input type="checkbox" id="shots"> Allow screenshots</label>
-  <p class="problem" id="shots_problem" role="alert"></p>
-  <h2>Add a site</h2>
-  <p class="warning">Pages on localhost and files on your computer work by themselves while the daemon is running, with nothing to add. Adding a site puts the comment bar on every page of that site. The daemon token stays inside this extension. Add only sites you control, never one that real visitors use.</p>
-  <form id="add">
-    <label for="site">Site</label>
-    <input type="text" id="site" placeholder="https://xxx.com or localhost:4321" autocomplete="off" spellcheck="false">
-    <label for="config" id="config_label">Config</label>
-    <textarea id="config" spellcheck="false"></textarea>
-    <p class="problem" id="problem" role="alert"></p>
-    <button type="submit" class="main">Add a site</button>
-  </form>
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">Choose which pages get the comment bar. Comments go through the daemon on your computer to the coding agent working in that project.</p>
+  </header>
+  <section>
+    <div class="head"><h2>Sites</h2></div>
+    <ul id="sites"></ul>
+    <p class="note" id="local_hint">Pages on localhost and files on your computer pair by themselves while the daemon runs, and appear here once they have. There is nothing to add for those.</p>
+    <p class="note" id="file_hint" hidden>Files opened from your computer (file://) also need a switch only you can flip: open this extension's card in chrome://extensions and turn on "Allow access to file URLs".</p>
+  </section>
+  <section>
+    <div class="head">
+      <h2>Other sites</h2>
+      <p class="note">A staging host or a tunnel address, for instance. The comment bar goes on every page of that site and the daemon token stays inside this extension. Add only sites you control, never one that real visitors use.</p>
+    </div>
+    <form id="add">
+      <label for="site">Site</label>
+      <input type="text" id="site" placeholder="xxx.com or localhost:4321" autocomplete="off" spellcheck="false">
+      <label for="config" id="config_label">Config</label>
+      <textarea id="config" spellcheck="false" aria-describedby="config_hint"></textarea>
+      <p class="hint" id="config_hint"></p>
+      <p class="problem" id="problem" role="alert"></p>
+      <p><button type="submit" class="main">Add a site</button></p>
+    </form>
+  </section>
+  <section>
+    <div class="head">
+      <h2>Screenshots</h2>
+      <p class="note" id="shots_note">Lets a comment carry a picture of the element it is about. Chrome asks for access to all sites because it takes no picture of a tab without that. A picture is taken only when you tick "Attach screenshot" on a comment, and it goes to your own daemon, nowhere else.</p>
+    </div>
+    <label class="inline"><input type="checkbox" id="shots" aria-describedby="shots_note"> Allow screenshots</label>
+    <p class="problem" id="shots_problem" role="alert"></p>
+  </section>
+  <section>
+    <div class="head"><h2>Keyboard shortcuts</h2></div>
+    <dl>
+      <dt><kbd>Alt+Shift+K</kbd></dt><dd>Add a comment</dd>
+      <dt><kbd>Alt+Shift+X</kbd></dt><dd>Hide or show the overlay</dd>
+      <dt><kbd>Alt+Shift+L</kbd></dt><dd>Open the comments panel</dd>
+    </dl>
+    <p class="note">They do nothing while you type in a text field.</p>
+  </section>
 </main>
 <script src="options.js"></script>
 </body>
