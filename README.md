@@ -11,6 +11,12 @@ Click an element on your own dev site and leave a comment. A coding agent reads 
 - **Any framework, any agent that can run a shell command.** A script tag or the Chrome extension on the page, and the `tackboard` command plus a skill on the agent side. Tested with Claude Code; Cursor is not tested yet.
 - **Local and permissive.** The daemon listens on 127.0.0.1 only, and the code is MIT.
 
+## Demo
+
+[Watch the 47-second demo](demo/tackboard-demo.mp4): click elements on a page, send every comment at once, the agent replies on each thread, and a comment stays when its element is deleted.
+
+The screen recording is made by `node scripts/demo_video.ts` on the playground site.
+
 ## Quick start
 
 In your project folder:

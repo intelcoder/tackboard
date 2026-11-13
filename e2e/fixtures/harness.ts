@@ -27,7 +27,7 @@ export type Harness = {
   stopAll(): Promise<void>;
 };
 
-export type HarnessOptions = { site?: "plain" | "react" | "react-plugin"; env?: Record<string, string> };
+export type HarnessOptions = { site?: "plain" | "react" | "react-plugin"; env?: Record<string, string>; /** Folder to record a video of the page into (scripts/demo_video.ts). */ videoDir?: string };
 
 function freePort(): Promise<number> {
   return new Promise((done, fail) => {
@@ -125,7 +125,10 @@ export async function startHarness(options: HarnessOptions = {}): Promise<Harnes
   await startDaemon();
   const server = await serveFolder(repo, sitePort);
   const browser: Browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  const viewport = { width: 1280, height: 800 };
+  const page = options.videoDir
+    ? await (await browser.newContext({ viewport, recordVideo: { dir: options.videoDir, size: viewport } })).newPage()
+    : await browser.newPage({ viewport });
   const problems: string[] = [];
   page.on("console", (m) => {
     if (m.type() === "error") problems.push(`console: ${m.text()}`);
