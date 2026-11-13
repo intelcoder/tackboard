@@ -105,6 +105,7 @@ test("a batch prints the instructions block once, and no thread block has its ow
   const out = formatThreads(three);
   assert.equal(out.split("Instructions").length, 2);
   assert.equal(out.split("and stop").length, 1);
+  assert.ok(out.includes("same file, do those one after another"));
   for (const [id, text] of [["ta", "first comment"], ["tb", "second comment"], ["tc", "third comment"]]) {
     assert.ok(out.includes(`THREAD ${id} `) && out.includes(`> ${text}`));
   }

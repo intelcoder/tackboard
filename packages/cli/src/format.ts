@@ -101,6 +101,7 @@ export function formatThreads(threads: ThreadDto[]): string {
     `- If a request is unclear, run: ${brand.cli} reply <id> "<question>" --ask  for that thread.`,
     "- Only the user closes a thread.",
     "- Only change what each comment asks.",
+    "- Threads run in parallel: if two threads touch the same file, do those one after another, not at the same time.",
     "- Hint: search the code for the text and classes shown for each element; where a thread shows a source location or component names, use those first.",
     "",
     threads.map(describeThread).join("\n\n----\n\n"),

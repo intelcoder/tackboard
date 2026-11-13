@@ -183,7 +183,10 @@ export function threadItem(h: H, thread: ThreadDto, o: ThreadItemOptions): HTMLE
     thread.unread ? h("span", { class: "tb-unread", title: "unread" }) : null,
     statusChip(h, status));
   const root = h("div", { class: `tb-thread${o.open ? " active" : ""}`, "data-id": thread.id }, top);
-  if (o.missing) root.append(h("div", { class: "tb-note" }, "element missing"));
+  if (o.missing) {
+    const was = thread.element.text.trim().slice(0, 80);
+    root.append(h("div", { class: "tb-note" }, `element missing · was ${thread.element.tag || "an element"}${was ? ` "${was}"` : ` ${thread.element.selector}`}`));
+  }
   if (o.thumb) root.append(o.thumb);
 
   if (!o.open) {

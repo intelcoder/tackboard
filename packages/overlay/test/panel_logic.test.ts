@@ -24,6 +24,12 @@ test("visibleThreads splits open and resolved", () => {
   assert.deepEqual(visibleThreads(list, "resolved").map((t) => t.n), [2]);
 });
 
+test("visibleThreads puts the thread with the newest message first", () => {
+  const msg = (at: number) => [{ id: `m${at}`, author: "user", text: "x", at, discarded: false }];
+  const list = [thread(1, { messages: msg(5) }), thread(2, { messages: msg(30) }), thread(3, { messages: [...msg(1), ...msg(20)] })];
+  assert.deepEqual(visibleThreads(list, "open").map((t) => t.n), [2, 3, 1]);
+});
+
 test("badgeCount counts waiting and unread threads once each", () => {
   const list = [
     thread(1, { status: "waiting", unread: true }),

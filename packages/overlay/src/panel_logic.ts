@@ -8,9 +8,13 @@ export type Tab = "open" | "resolved";
 /** Who started the thread: you, or an agent (for example a UX review). */
 export type Source = "all" | "user" | "agent";
 
-/** Open means not resolved. Discarded threads are never listed. */
+const lastAt = (t: ThreadDto): number => t.messages.reduce((latest, m) => Math.max(latest, m.at), 0);
+
+/** Open means not resolved. Discarded threads are never listed. Newest message first. */
 export function visibleThreads(threads: ThreadDto[], tab: Tab, source: Source = "all"): ThreadDto[] {
-  return threads.filter((t) => !t.discarded && (tab === "resolved") === (t.status === "resolved") && (source === "all" || t.openedBy === source));
+  return threads
+    .filter((t) => !t.discarded && (tab === "resolved") === (t.status === "resolved") && (source === "all" || t.openedBy === source))
+    .sort((a, b) => lastAt(b) - lastAt(a));
 }
 
 /** Threads waiting on the user or unread, each counted once. */

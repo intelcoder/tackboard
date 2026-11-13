@@ -127,6 +127,7 @@ test("the DetachedList shows a thread whose element is missing", () => {
   const lost = thread(2, { element: { ...thread(2).element, selector: "#gone", tag: "section", text: "nothing like this" } });
   const list = detachedList(h, [lost], (t) => threadItem(h, t, options({ open: false, missing: true, label: "section#gone" })));
   assert.ok(list.textContent!.includes("element missing"));
+  assert.ok(list.textContent!.includes('was section "nothing like this"'), "says what the element was");
   assert.equal(list.querySelectorAll(".tb-thread").length, 1);
 });
 
