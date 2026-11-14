@@ -13,7 +13,9 @@ Click an element on your own dev site and leave a comment. A coding agent reads 
 
 ## Demo
 
-[Watch the 47-second demo](demo/tackboard-demo.mp4): click elements on a page, send every comment at once, the agent replies on each thread, and a comment stays when its element is deleted.
+![Tackboard demo](demo/tackboard-demo.gif)
+
+47 seconds ([full-quality mp4](demo/tackboard-demo.mp4)): click elements on a page, send every comment at once, the agent replies on each thread, and a comment stays when its element is deleted.
 
 The screen recording is made by `node scripts/demo_video.ts` on the playground site.
 
